@@ -1,6 +1,6 @@
 import { useState } from 'react';
 
-export type ViewMode = 'card' | 'table' | 'compact';
+export type ViewMode = 'card' | 'table';
 
 interface ViewPreferences {
   viewMode: ViewMode;

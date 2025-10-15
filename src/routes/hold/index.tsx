@@ -9,7 +9,6 @@ import { HoldingsCardSkeleton } from '../../components/holdings/hold-holdings-ca
 import { Toolbar } from '../../components/holdings/hold-toolbar';
 import { FilterBarModern } from '../../components/holdings/filter-bar-modern';
 import { TableView } from '../../components/holdings/hold-table-view';
-import { CompactView } from '../../components/holdings/hold-compact-view';
 import { Button } from '../../components/ui/button';
 import { AlertCircle, Wallet } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
@@ -186,7 +185,6 @@ function HoldPage() {
     onRefresh: handleRefresh,
     onViewMode1: () => setViewMode('card'),
     onViewMode2: () => setViewMode('table'),
-    onViewMode3: () => setViewMode('compact'),
   });
 
   // 加载状态 - 使用精美的骨架屏
@@ -202,11 +200,6 @@ function HoldPage() {
           <Toolbar
             searchQuery=""
             onSearchChange={() => {}}
-            viewMode={viewMode}
-            onViewModeChange={setViewMode}
-            isRefreshing={isRefreshing}
-            onRefresh={handleRefresh}
-            isAutoRefreshing={isPageVisible}
           />
 
           <motion.div
@@ -241,6 +234,7 @@ function HoldPage() {
   const totalMarketValue = convertedHoldings.reduce((sum, h) => sum + h.marketValue, 0);
   const totalCost = convertedHoldings.reduce((sum, h) => sum + h.totalCost, 0);
   const totalProfitLoss = convertedHoldings.reduce((sum, h) => sum + h.totalProfitLoss, 0);
+  const todayTotalProfitLoss = convertedHoldings.reduce((sum, h) => sum + h.todayProfitLoss, 0);
 
   return (
     <div className="h-full overflow-y-auto bg-background" data-scroll-container>
@@ -256,23 +250,19 @@ function HoldPage() {
         <Toolbar
           searchQuery={filterState.searchQuery}
           onSearchChange={setSearchQuery}
-          viewMode={viewMode}
-          onViewModeChange={setViewMode}
-          isRefreshing={isRefreshing}
-          onRefresh={handleRefresh}
-          isAutoRefreshing={isPageVisible}
-          isScrollPaused={isScrollPaused} // 传递滚动暂停状态
-          countdown={countdown} // 传递倒计时
         />
 
         {/* 统计卡片 - 更紧凑 */}
         {hasHoldings && (
-          <StatisticsCards statistics={{
-            totalStocks: convertedHoldings.length,
-            totalMarketValue,
-            totalCost,
-            totalProfitLoss,
-          }} />
+          <StatisticsCards 
+            statistics={{
+              totalStocks: convertedHoldings.length,
+              totalMarketValue,
+              totalCost,
+              totalProfitLoss,
+            }}
+            todayTotalProfitLoss={todayTotalProfitLoss}
+          />
         )}
 
         {/* 现代化筛选栏 */}
@@ -289,6 +279,13 @@ function HoldPage() {
             onResetFilters={resetFilters}
             stats={stats}
             filteredCount={filteredHoldings.length}
+            viewMode={viewMode}
+            onViewModeChange={setViewMode}
+            isRefreshing={isRefreshing}
+            onRefresh={handleRefresh}
+            isAutoRefreshing={isPageVisible}
+            isScrollPaused={isScrollPaused}
+            countdown={countdown}
           />
         )}
 
@@ -311,7 +308,6 @@ function HoldPage() {
                   <VirtualizedGridNew holdings={filteredHoldings} />
                 )}
                 {viewMode === 'table' && <TableView holdings={filteredHoldings} />}
-                {viewMode === 'compact' && <CompactView holdings={filteredHoldings} />}
 
                 {/* 无筛选结果 */}
                 {filteredHoldings.length === 0 && (

@@ -213,95 +213,6 @@ export const HoldingCard = memo(function HoldingCard({ holding, onUpdate }: Hold
           className="py-0 gap-0 @container group border border-border/30 dark:border-border/10 bg-card dark:bg-card shadow-sm hover:shadow-lg transition-all duration-200 relative cursor-pointer overflow-hidden"
           onClick={() => navigateToHoldingDetail(navigate, holding)}
         >
-          {/* 警示标签 - 右上角倾斜，文字滚动，悬浮时隐藏 */}
-          <AnimatePresence>
-            {hasWarning && !showActions && (
-              <motion.div 
-                initial={{ opacity: 0, scale: 0.8 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.8 }}
-                transition={{ duration: 0.2 }}
-                className="absolute top-0 right-0 z-30 w-24 h-24 overflow-hidden pointer-events-none"
-              >
-                <div 
-                  className={`
-                    absolute top-4 -right-8 w-32 h-7
-                    rotate-45 origin-center
-                    font-bold text-[11px] tracking-wide
-                    shadow-[0_4px_12px_rgba(0,0,0,0.25)]
-                    overflow-hidden
-                    ${nearStopLoss 
-                      ? 'bg-amber-600 dark:bg-amber-700' 
-                      : 'bg-blue-600 dark:bg-blue-700'
-                    }
-                    text-white
-                  `}
-                >
-                  {/* 滚动文字容器 */}
-                  <div className="relative w-full h-full flex items-center overflow-hidden">
-                    <motion.div
-                      className="flex gap-1"
-                      animate={{
-                        x: [0, -100],
-                      }}
-                      transition={{
-                        x: {
-                          repeat: Infinity,
-                          repeatType: "loop",
-                          duration: 6,
-                          ease: "linear",
-                        },
-                      }}
-                    >
-                      <span className="whitespace-nowrap flex items-center gap-1">
-                        {nearStopLoss ? (
-                          <>
-                            <TrendingDown className="h-3 w-3" />
-                            止损预警
-                          </>
-                        ) : (
-                          <>
-                            <TrendingUp className="h-3 w-3" />
-                            止盈提示
-                          </>
-                        )}
-                      </span>
-                      <span className="mx-1">·</span>
-                      <span className="whitespace-nowrap flex items-center gap-1">
-                        {nearStopLoss ? (
-                          <>
-                            <TrendingDown className="h-3 w-3" />
-                            止损预警
-                          </>
-                        ) : (
-                          <>
-                            <TrendingUp className="h-3 w-3" />
-                            止盈提示
-                          </>
-                        )}
-                      </span>
-                      <span className="mx-1">·</span>
-                      <span className="whitespace-nowrap flex items-center gap-1">
-                        {nearStopLoss ? (
-                          <>
-                            <TrendingDown className="h-3 w-3" />
-                            止损预警
-                          </>
-                        ) : (
-                          <>
-                            <TrendingUp className="h-3 w-3" />
-                            止盈提示
-                          </>
-                        )}
-                      </span>
-                      <span className="mx-1">·</span>
-                    </motion.div>
-                  </div>
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
-          
           
           {/* 操作按钮 - 右下角 */}
           <AnimatePresence>
@@ -471,9 +382,9 @@ export const HoldingCard = memo(function HoldingCard({ holding, onUpdate }: Hold
               <div
                 className={`px-3 py-2.5 rounded-lg transition-all duration-200 relative overflow-hidden ${
                   nearStopLoss 
-                    ? 'bg-orange-50/80 dark:bg-orange-950/40' 
+                    ? 'bg-orange-50/80 dark:bg-orange-950/40 ring-2 ring-amber-500/50 dark:ring-amber-400/40 shadow-[0_0_15px_rgba(245,158,11,0.2)]' 
                     : nearTakeProfit
-                    ? 'bg-blue-50/80 dark:bg-blue-950/40'
+                    ? 'bg-blue-50/80 dark:bg-blue-950/40 ring-2 ring-blue-500/50 dark:ring-blue-400/40 shadow-[0_0_15px_rgba(59,130,246,0.2)]'
                     : 'bg-muted/40 dark:bg-muted/40'
                 }`}
               >
@@ -487,12 +398,49 @@ export const HoldingCard = memo(function HoldingCard({ holding, onUpdate }: Hold
                 ) : hasStopLoss && hasTakeProfit ? (
                   // 完整进度条：同时有止损和止盈
                   <div className="space-y-2 relative z-10">
-                    {/* 顶部价格标签 */}
+                    {/* 警示徽章 + 顶部价格标签 */}
                     <div className="flex items-center justify-between text-[10px]">
-                      <div className="flex items-center gap-1 text-orange-700 dark:text-orange-400">
-                        <TrendingDown className="h-2.5 w-2.5" />
-                        <span className="font-medium">¥{formatNumber(holding.forceClosePrice!)}</span>
+                      <div className="flex items-center gap-2">
+                        {/* 警示徽章 */}
+                        {hasWarning && (
+                          <motion.div
+                            animate={{
+                              rotate: [-1.5, 1.5, -1.5, 1.5, -1.5],
+                            }}
+                            transition={{
+                              duration: 0.8,
+                              repeat: Infinity,
+                              ease: "easeInOut",
+                              repeatType: "loop"
+                            }}
+                            className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold ${
+                              nearStopLoss
+                                ? 'bg-amber-500 dark:bg-amber-600 text-white'
+                                : 'bg-blue-500 dark:bg-blue-600 text-white'
+                            }`}
+                          >
+                            {nearStopLoss ? (
+                              <>
+                                <TrendingDown className="h-2.5 w-2.5" />
+                                止损预警
+                              </>
+                            ) : (
+                              <>
+                                <TrendingUp className="h-2.5 w-2.5" />
+                                止盈提示
+                              </>
+                            )}
+                          </motion.div>
+                        )}
+                        
+                        {/* 止损价格 */}
+                        <div className="flex items-center gap-1 text-orange-700 dark:text-orange-400">
+                          <TrendingDown className="h-2.5 w-2.5" />
+                          <span className="font-medium">¥{formatNumber(holding.forceClosePrice!)}</span>
+                        </div>
                       </div>
+                      
+                      {/* 止盈价格 */}
                       <div className="flex items-center gap-1 text-blue-700 dark:text-blue-400">
                         <span className="font-medium">¥{formatNumber(holding.sellPrice!)}</span>
                         <TrendingUp className="h-2.5 w-2.5" />
@@ -545,31 +493,65 @@ export const HoldingCard = memo(function HoldingCard({ holding, onUpdate }: Hold
                   </div>
                 ) : (
                   // 单独显示止损或止盈 - 极简版
-                  <div className="flex items-center justify-between relative z-10">
-                    {hasTakeProfit && (
-                      <div className="flex items-center gap-2">
-                        <TrendingUp className="h-3 w-3 text-blue-600 dark:text-blue-400" />
-                        <div>
-                          <div className="text-[9px] text-muted-foreground/60">止盈</div>
-                          <div className="font-semibold text-sm tabular-nums">¥{formatNumber(holding.sellPrice!)}</div>
-                        </div>
-                        <div className="ml-2 text-[10px] tabular-nums text-blue-600 dark:text-blue-400 font-medium">
-                          ↑{takeProfitDistance ? Math.abs(takeProfitDistance.percent).toFixed(1) : '0.0'}%
-                        </div>
-                      </div>
+                  <div className="space-y-2 relative z-10">
+                    {/* 警示徽章 */}
+                    {hasWarning && (
+                      <motion.div
+                        animate={{
+                          rotate: [-1.5, 1.5, -1.5, 1.5],
+                        }}
+                        transition={{
+                          duration: 0.8,
+                          repeat: Infinity,
+                          ease: "easeInOut"
+                        }}
+                        className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold ${
+                          nearStopLoss
+                            ? 'bg-amber-500 dark:bg-amber-600 text-white'
+                            : 'bg-blue-500 dark:bg-blue-600 text-white'
+                        }`}
+                      >
+                        {nearStopLoss ? (
+                          <>
+                            <TrendingDown className="h-2.5 w-2.5" />
+                            止损预警
+                          </>
+                        ) : (
+                          <>
+                            <TrendingUp className="h-2.5 w-2.5" />
+                            止盈提示
+                          </>
+                        )}
+                      </motion.div>
                     )}
-                    {hasStopLoss && (
-                      <div className="flex items-center gap-2">
-                        <TrendingDown className="h-3 w-3 text-orange-600 dark:text-orange-400" />
-                        <div>
-                          <div className="text-[9px] text-muted-foreground/60">止损</div>
-                          <div className="font-semibold text-sm tabular-nums">¥{formatNumber(holding.forceClosePrice!)}</div>
+                    
+                    {/* 价格信息 */}
+                    <div className="flex items-center justify-between">
+                      {hasTakeProfit && (
+                        <div className="flex items-center gap-2">
+                          <TrendingUp className="h-3 w-3 text-blue-600 dark:text-blue-400" />
+                          <div>
+                            <div className="text-[9px] text-muted-foreground/60">止盈</div>
+                            <div className="font-semibold text-sm tabular-nums">¥{formatNumber(holding.sellPrice!)}</div>
+                          </div>
+                          <div className="ml-2 text-[10px] tabular-nums text-blue-600 dark:text-blue-400 font-medium">
+                            ↑{takeProfitDistance ? Math.abs(takeProfitDistance.percent).toFixed(1) : '0.0'}%
+                          </div>
                         </div>
-                        <div className="ml-2 text-[10px] tabular-nums text-orange-600 dark:text-orange-400 font-medium">
-                          ↓{stopLossDistance ? stopLossDistance.percent.toFixed(1) : '0.0'}%
+                      )}
+                      {hasStopLoss && (
+                        <div className="flex items-center gap-2">
+                          <TrendingDown className="h-3 w-3 text-orange-600 dark:text-orange-400" />
+                          <div>
+                            <div className="text-[9px] text-muted-foreground/60">止损</div>
+                            <div className="font-semibold text-sm tabular-nums">¥{formatNumber(holding.forceClosePrice!)}</div>
+                          </div>
+                          <div className="ml-2 text-[10px] tabular-nums text-orange-600 dark:text-orange-400 font-medium">
+                            ↓{stopLossDistance ? stopLossDistance.percent.toFixed(1) : '0.0'}%
+                          </div>
                         </div>
-                      </div>
-                    )}
+                      )}
+                    </div>
                   </div>
                 )}
               </div>

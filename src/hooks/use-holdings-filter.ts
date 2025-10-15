@@ -58,7 +58,7 @@ export function useHoldingsFilter(holdings: StockHolding[]): UseHoldingsFilterRe
     searchQuery: '',
     profitFilter: 'all',
     riskFilter: 'all',
-    sortBy: 'profitRate',
+    sortBy: 'holdingDays',
     sortOrder: 'desc',
   });
 
@@ -152,7 +152,7 @@ export function useHoldingsFilter(holdings: StockHolding[]): UseHoldingsFilterRe
         searchQuery: '',
         profitFilter: 'all',
         riskFilter: 'all',
-        sortBy: 'profitRate',
+        sortBy: 'holdingDays',
         sortOrder: 'desc',
       }),
     stats,
