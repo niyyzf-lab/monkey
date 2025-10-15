@@ -448,21 +448,21 @@ remote_windows_build() {
             echo "   🔐 使用 Gitea Token 认证"
             
             # 更新远程 URL 为带 Token 的版本，并禁用凭证管理器
-            REMOTE_SET_URL="cd \"$REMOTE_PROJECT_PATH\" && git config credential.helper store && git config credential.useHttpPath true && git remote set-url $REMOTE_GIT_REMOTE $GIT_AUTH_URL"
-            eval "$SSH_CMD $REMOTE_USER@$REMOTE_HOST \"$REMOTE_SET_URL\"" 2>/dev/null
+            REMOTE_SET_URL="cd \"$REMOTE_PROJECT_PATH\" && git config credential.helper \"\" && git config --unset-all credential.helper && git remote set-url $REMOTE_GIT_REMOTE $GIT_AUTH_URL"
+            eval "$SSH_CMD $REMOTE_USER@$REMOTE_HOST \"$REMOTE_SET_URL\"" 2>/dev/null || true
         fi
         
         # 远程执行 git pull (修复分支问题)
         # 由于已经设置了带 Token 的 URL，直接拉取即可
         echo "   执行 Git 同步..."
         
-        # 步骤1: fetch 远程更新
-        REMOTE_GIT_FETCH="cd \"$REMOTE_PROJECT_PATH\" && git fetch $REMOTE_GIT_REMOTE"
+        # 步骤1: fetch 远程更新（设置环境变量禁用交互式提示）
+        REMOTE_GIT_FETCH="cd \"$REMOTE_PROJECT_PATH\" && set GIT_TERMINAL_PROMPT=0 && git -c credential.helper= fetch $REMOTE_GIT_REMOTE"
         eval "$SSH_CMD $REMOTE_USER@$REMOTE_HOST \"$REMOTE_GIT_FETCH\"" 2>&1 | grep -v "Unable to persist credentials" || true
         
-        # 步骤2: 切换到正确的分支
-        REMOTE_GIT_CHECKOUT="cd \"$REMOTE_PROJECT_PATH\" && git checkout $REMOTE_GIT_BRANCH 2>nul || git checkout -b $REMOTE_GIT_BRANCH $REMOTE_GIT_REMOTE/$REMOTE_GIT_BRANCH"
-        eval "$SSH_CMD $REMOTE_USER@$REMOTE_HOST \"$REMOTE_GIT_CHECKOUT\"" 2>&1 | grep -v "Unable to persist credentials" | grep -v "already exists" || true
+        # 步骤2: 切换到正确的分支（先检查是否存在）
+        REMOTE_GIT_CHECKOUT="cd \"$REMOTE_PROJECT_PATH\" && git show-ref --verify --quiet refs/heads/$REMOTE_GIT_BRANCH && git checkout $REMOTE_GIT_BRANCH || git checkout -b $REMOTE_GIT_BRANCH $REMOTE_GIT_REMOTE/$REMOTE_GIT_BRANCH"
+        eval "$SSH_CMD $REMOTE_USER@$REMOTE_HOST \"$REMOTE_GIT_CHECKOUT\"" 2>&1 | grep -v "Unable to persist credentials" || true
         
         # 步骤3: 重置到远程最新状态
         REMOTE_GIT_RESET="cd \"$REMOTE_PROJECT_PATH\" && git reset --hard $REMOTE_GIT_REMOTE/$REMOTE_GIT_BRANCH"
@@ -520,8 +520,8 @@ remote_windows_build() {
             fi
         fi
         
-        # 在远程克隆仓库 (Windows 环境，使用 CMD 语法)
-        REMOTE_GIT_CLONE="git clone -b $REMOTE_GIT_BRANCH $GIT_AUTH_URL \"$REMOTE_PROJECT_PATH\""
+        # 在远程克隆仓库 (Windows 环境，禁用凭证管理器和交互式提示)
+        REMOTE_GIT_CLONE="set GIT_TERMINAL_PROMPT=0 && git -c credential.helper= clone -b $REMOTE_GIT_BRANCH $GIT_AUTH_URL \"$REMOTE_PROJECT_PATH\""
         eval "$SSH_CMD $REMOTE_USER@$REMOTE_HOST \"$REMOTE_GIT_CLONE\""
         
         if [ $? -eq 0 ]; then
@@ -552,8 +552,8 @@ remote_windows_build() {
     echo "   3️⃣  同步签名密钥..."
     REMOTE_TAURI_DIR="${REMOTE_PROJECT_PATH}/.tauri"
     
-    # 创建 .tauri 目录
-    eval "$SSH_CMD $REMOTE_USER@$REMOTE_HOST \"mkdir -p \\\"$REMOTE_TAURI_DIR\\\"\""
+    # 创建 .tauri 目录（Windows 兼容）
+    eval "$SSH_CMD $REMOTE_USER@$REMOTE_HOST \"if not exist \\\"$REMOTE_TAURI_DIR\\\" mkdir \\\"$REMOTE_TAURI_DIR\\\"\"" 2>/dev/null || true
     
     # 上传签名密钥
     if [ -f "$PRIVATE_KEY_PATH" ]; then
