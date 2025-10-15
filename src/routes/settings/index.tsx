@@ -1,11 +1,20 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { User, Bell, Shield, Palette, Globe } from 'lucide-react'
+import { User, Bell, Shield, Palette, Globe, Rocket } from 'lucide-react'
+import { AppUpdater } from '@/components/updater'
+import { getVersion } from '@tauri-apps/api/app'
+import { useState, useEffect } from 'react'
 
 export const Route = createFileRoute('/settings/')({
   component: SettingsPage,
 })
 
 function SettingsPage() {
+  const [appVersion, setAppVersion] = useState<string>('加载中...')
+
+  useEffect(() => {
+    getVersion().then(version => setAppVersion(version)).catch(() => setAppVersion('未知'))
+  }, [])
+
   return (
     <div className="space-y-6">
       <div className="border-b pb-4">
@@ -139,6 +148,32 @@ function SettingsPage() {
               <option>90天</option>
               <option>永久</option>
             </select>
+          </div>
+        </div>
+      </div>
+      
+      <div className="bg-white rounded-lg shadow-sm border p-6">
+        <div className="flex items-center gap-3 mb-4">
+          <Rocket className="text-orange-500" size={24} />
+          <h2 className="text-xl font-semibold">关于与更新</h2>
+        </div>
+        <div className="space-y-4">
+          <div className="flex items-center justify-between py-2 border-b">
+            <span className="text-gray-700 font-medium">应用名称</span>
+            <span className="text-gray-600">Watch Monkey App</span>
+          </div>
+          <div className="flex items-center justify-between py-2 border-b">
+            <span className="text-gray-700 font-medium">当前版本</span>
+            <span className="text-gray-600">{appVersion}</span>
+          </div>
+          <div className="flex items-center justify-between py-2">
+            <span className="text-gray-700 font-medium">检查更新</span>
+            <AppUpdater />
+          </div>
+          <div className="mt-4 p-4 bg-gray-50 rounded-md">
+            <p className="text-sm text-gray-600">
+              应用会在启动时自动检查更新。如果有新版本可用，将会提示您下载安装。
+            </p>
           </div>
         </div>
       </div>

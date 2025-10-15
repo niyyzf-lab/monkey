@@ -30,6 +30,14 @@ pub fn run() {
         builder = builder.plugin(tauri_plugin_devtools::init());
     }
 
+    // 初始化更新插件 (仅桌面平台)
+    #[cfg(not(any(target_os = "android", target_os = "ios")))]
+    {
+        builder = builder
+            .plugin(tauri_plugin_updater::Builder::new().build())
+            .plugin(tauri_plugin_process::init());
+    }
+
     #[cfg(target_os = "macos")]
     let builder = builder.setup(|_app| {
         #[allow(deprecated)]

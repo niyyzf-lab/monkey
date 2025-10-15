@@ -43,6 +43,18 @@
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
   
+  /* 金融蓝色系 */
+  --color-finance-50: #eff6ff;
+  --color-finance-100: #dbeafe;
+  --color-finance-200: #bfdbfe;
+  --color-finance-300: #93c5fd;
+  --color-finance-400: #60a5fa;
+  --color-finance-500: #3b82f6;
+  --color-finance-600: #2563eb;
+  --color-finance-700: #1d4ed8;
+  --color-finance-800: #1e40af;
+  --color-finance-900: #1e3a8a;
+  
   /* 容器查询断点 - 自定义股票持仓页面断点 */
   --container-xs: 400px;
   --container-sm: 640px;
@@ -50,6 +62,20 @@
   --container-lg: 1024px;
   --container-xl: 1280px;
   --container-2xl: 1600px;
+  
+  /* 动画 */
+  --animate-marquee: marquee var(--duration) linear infinite;
+  --animate-marquee-vertical: marquee-vertical var(--duration) linear infinite;
+  
+  @keyframes marquee {
+    from { transform: translateX(0); }
+    to { transform: translateX(calc(-100% - var(--gap))); }
+  }
+  
+  @keyframes marquee-vertical {
+    from { transform: translateY(0); }
+    to { transform: translateY(calc(-100% - var(--gap))); }
+  }
 }
 
 :root {

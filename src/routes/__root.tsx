@@ -11,6 +11,7 @@ import {
 import { Settings, HatGlasses, Banana, HandMetal, MessageSquareHeart, Brain, Unlink } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { useViewportHeight } from '../hooks/use-viewport-height'
+import { AppUpdater } from '../components/updater'
 
 export const Route = createRootRoute({
   component: RootLayout,
@@ -171,6 +172,10 @@ function RootLayout() {
   return (
     <SidebarProvider>
       <RootLayoutContent />
+      {/* 全局更新检查组件 - 隐藏按钮，仅用于自动检查 */}
+      <div style={{ display: 'none' }}>
+        <AppUpdater />
+      </div>
     </SidebarProvider>
   )
 }

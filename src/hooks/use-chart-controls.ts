@@ -256,12 +256,12 @@ export function useAdvancedChartControls(
       const url = new URL(window.location.href);
       
       // 从URL读取参数
-      const urlInterval = url.searchParams.get(urlParamNames.interval);
-      const urlChartType = url.searchParams.get(urlParamNames.chartType);
-      const urlAdjustType = url.searchParams.get(urlParamNames.adjustType);
-      const urlShowMA5 = url.searchParams.get(urlParamNames.showMA5);
-      const urlShowMA10 = url.searchParams.get(urlParamNames.showMA10);
-      const urlShowVolume = url.searchParams.get(urlParamNames.showVolume);
+      const urlInterval = urlParamNames.interval ? url.searchParams.get(urlParamNames.interval) : null;
+      const urlChartType = urlParamNames.chartType ? url.searchParams.get(urlParamNames.chartType) : null;
+      const urlAdjustType = urlParamNames.adjustType ? url.searchParams.get(urlParamNames.adjustType) : null;
+      const urlShowMA5 = urlParamNames.showMA5 ? url.searchParams.get(urlParamNames.showMA5) : null;
+      const urlShowMA10 = urlParamNames.showMA10 ? url.searchParams.get(urlParamNames.showMA10) : null;
+      const urlShowVolume = urlParamNames.showVolume ? url.searchParams.get(urlParamNames.showVolume) : null;
 
       if (urlInterval) chartControls.setInterval(urlInterval as ChartInterval);
       if (urlChartType) chartControls.setChartType(urlChartType as ChartType);
@@ -277,12 +277,12 @@ export function useAdvancedChartControls(
     if (enableUrlSync && typeof window !== 'undefined' && chartControls.initialized) {
       const url = new URL(window.location.href);
       
-      url.searchParams.set(urlParamNames.interval, chartControls.interval);
-      url.searchParams.set(urlParamNames.chartType, chartControls.chartType);
-      url.searchParams.set(urlParamNames.adjustType, chartControls.adjustType);
-      url.searchParams.set(urlParamNames.showMA5, chartControls.showMA5.toString());
-      url.searchParams.set(urlParamNames.showMA10, chartControls.showMA10.toString());
-      url.searchParams.set(urlParamNames.showVolume, chartControls.showVolume.toString());
+      if (urlParamNames.interval) url.searchParams.set(urlParamNames.interval, chartControls.interval);
+      if (urlParamNames.chartType) url.searchParams.set(urlParamNames.chartType, chartControls.chartType);
+      if (urlParamNames.adjustType) url.searchParams.set(urlParamNames.adjustType, chartControls.adjustType);
+      if (urlParamNames.showMA5) url.searchParams.set(urlParamNames.showMA5, chartControls.showMA5.toString());
+      if (urlParamNames.showMA10) url.searchParams.set(urlParamNames.showMA10, chartControls.showMA10.toString());
+      if (urlParamNames.showVolume) url.searchParams.set(urlParamNames.showVolume, chartControls.showVolume.toString());
       
       window.history.replaceState({}, '', url.toString());
     }

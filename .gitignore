@@ -24,6 +24,11 @@ dist-ssr
 src-tauri/target/
 src-tauri/WixTools/
 
+# Updater
+.tauri/
+.updater.config.json
+latest.json
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

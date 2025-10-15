@@ -1,0 +1,18 @@
+{
+  "gitea": {
+    "url": "https://your-gitea-server.com",
+    "owner": "your-username",
+    "repo": "watch-monkey-app",
+    "token": "your-gitea-personal-access-token",
+    "autoUpload": false
+  },
+  "app": {
+    "name": "watch-monkey-app"
+  },
+  "build": {
+    "command": "bun run tauri build",
+    "privateKeyPath": ".tauri/watch-monkey.key",
+    "privateKeyPassword": ""
+  }
+}
+
