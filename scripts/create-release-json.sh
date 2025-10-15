@@ -15,6 +15,17 @@ PRIVATE_KEY_PATH=""
 PRIVATE_KEY_PASSWORD=""
 GITEA_TOKEN=""
 AUTO_UPLOAD=""
+REMOTE_BUILDS_ENABLED=""
+REMOTE_HOST=""
+REMOTE_PORT=""
+REMOTE_USER=""
+REMOTE_PASSWORD=""
+REMOTE_KEY_PATH=""
+REMOTE_PROJECT_PATH=""
+REMOTE_BUILD_COMMAND=""
+REMOTE_SYNC_METHOD=""
+REMOTE_GIT_BRANCH=""
+REMOTE_GIT_REMOTE=""
 
 if [ -f "$CONFIG_FILE" ]; then
     echo "📄 读取配置文件: $CONFIG_FILE"
@@ -31,6 +42,21 @@ if [ -f "$CONFIG_FILE" ]; then
         BUILD_COMMAND=$(jq -r '.build.command' "$CONFIG_FILE")
         PRIVATE_KEY_PATH=$(jq -r '.build.privateKeyPath' "$CONFIG_FILE")
         PRIVATE_KEY_PASSWORD=$(jq -r '.build.privateKeyPassword' "$CONFIG_FILE")
+        
+        # 读取远程构建配置（Windows）
+        REMOTE_BUILDS_ENABLED=$(jq -r '.build.remoteBuilds[0].enabled' "$CONFIG_FILE" 2>/dev/null)
+        if [ "$REMOTE_BUILDS_ENABLED" = "true" ]; then
+            REMOTE_HOST=$(jq -r '.build.remoteBuilds[0].host' "$CONFIG_FILE")
+            REMOTE_PORT=$(jq -r '.build.remoteBuilds[0].port' "$CONFIG_FILE")
+            REMOTE_USER=$(jq -r '.build.remoteBuilds[0].username' "$CONFIG_FILE")
+            REMOTE_PASSWORD=$(jq -r '.build.remoteBuilds[0].password' "$CONFIG_FILE")
+            REMOTE_KEY_PATH=$(jq -r '.build.remoteBuilds[0].privateKeyPath' "$CONFIG_FILE")
+            REMOTE_PROJECT_PATH=$(jq -r '.build.remoteBuilds[0].remoteProjectPath' "$CONFIG_FILE")
+            REMOTE_BUILD_COMMAND=$(jq -r '.build.remoteBuilds[0].buildCommand' "$CONFIG_FILE")
+            REMOTE_SYNC_METHOD=$(jq -r '.build.remoteBuilds[0].syncMethod' "$CONFIG_FILE")
+            REMOTE_GIT_BRANCH=$(jq -r '.build.remoteBuilds[0].gitBranch // "main"' "$CONFIG_FILE")
+            REMOTE_GIT_REMOTE=$(jq -r '.build.remoteBuilds[0].gitRemote // "origin"' "$CONFIG_FILE")
+        fi
     else
         # 简单的 grep 解析（备用方案）
         GITEA_URL=$(grep -o '"url"[[:space:]]*:[[:space:]]*"[^"]*"' "$CONFIG_FILE" | head -1 | sed 's/.*"\([^"]*\)".*/\1/')
@@ -332,6 +358,157 @@ if [ $NEED_BUILD -eq 1 ]; then
 fi
 
 # ============================================
+# 远程构建函数
+# ============================================
+remote_windows_build() {
+    echo "================================================"
+    echo "  远程 Windows 构建"
+    echo "================================================"
+    echo ""
+    echo "   主机: $REMOTE_HOST:$REMOTE_PORT"
+    echo "   用户: $REMOTE_USER"
+    echo "   项目路径: $REMOTE_PROJECT_PATH"
+    echo ""
+    
+    # 构建 SSH 命令参数
+    SSH_OPTS="-p $REMOTE_PORT"
+    SCP_OPTS="-P $REMOTE_PORT"
+    
+    # 如果配置了密钥认证
+    if [ -n "$REMOTE_KEY_PATH" ] && [ "$REMOTE_KEY_PATH" != "null" ] && [ -f "$REMOTE_KEY_PATH" ]; then
+        SSH_OPTS="$SSH_OPTS -i $REMOTE_KEY_PATH"
+        SCP_OPTS="$SCP_OPTS -i $REMOTE_KEY_PATH"
+        echo "   🔑 使用 SSH 密钥认证"
+    elif [ -n "$REMOTE_PASSWORD" ] && [ "$REMOTE_PASSWORD" != "null" ]; then
+        # 使用 sshpass（需要安装）
+        if ! command -v sshpass &> /dev/null; then
+            echo "   ⚠️  建议安装 sshpass 以支持密码认证: brew install sshpass"
+            echo "   或者配置 SSH 密钥认证"
+            return 1
+        fi
+        SSH_CMD="sshpass -p '$REMOTE_PASSWORD' ssh $SSH_OPTS"
+        SCP_CMD="sshpass -p '$REMOTE_PASSWORD' scp $SCP_OPTS"
+        echo "   🔐 使用密码认证"
+    else
+        SSH_CMD="ssh $SSH_OPTS"
+        SCP_CMD="scp $SCP_OPTS"
+        echo "   🔑 使用 SSH 默认认证"
+    fi
+    
+    echo ""
+    echo "1️⃣  同步项目文件到远程主机..."
+    echo ""
+    
+    # 同步文件到远程
+    if [ "$REMOTE_SYNC_METHOD" = "rsync" ]; then
+        # 使用 rsync（推荐，需要远程安装 rsync）
+        if command -v rsync &> /dev/null; then
+            echo "   尝试使用 rsync 同步..."
+            RSYNC_OPTS="-avz --delete --exclude=node_modules --exclude=target --exclude=.git"
+            if [ -n "$REMOTE_KEY_PATH" ] && [ "$REMOTE_KEY_PATH" != "null" ]; then
+                rsync $RSYNC_OPTS -e "ssh -p $REMOTE_PORT -i $REMOTE_KEY_PATH" ./ "$REMOTE_USER@$REMOTE_HOST:$REMOTE_PROJECT_PATH/" 2>/dev/null
+            else
+                rsync $RSYNC_OPTS -e "ssh -p $REMOTE_PORT" ./ "$REMOTE_USER@$REMOTE_HOST:$REMOTE_PROJECT_PATH/" 2>/dev/null
+            fi
+            
+            if [ $? -ne 0 ]; then
+                echo "   ⚠️  rsync 失败 (远程可能不支持)，回退到 tar+scp"
+                REMOTE_SYNC_METHOD="scp"
+            else
+                echo "   ✅ 文件同步成功"
+            fi
+        else
+            echo "   ⚠️  本地未找到 rsync，使用 tar+scp"
+            REMOTE_SYNC_METHOD="scp"
+        fi
+    fi
+    
+    if [ "$REMOTE_SYNC_METHOD" = "scp" ] || [ "$REMOTE_SYNC_METHOD" = "tar" ]; then
+        # 使用 tar + scp（备用方案）
+        echo "   📦 打包项目文件..."
+        tar czf /tmp/project-sync.tar.gz --exclude=node_modules --exclude=target --exclude=.git .
+        
+        if [ $? -ne 0 ]; then
+            echo "   ❌ 打包失败"
+            return 1
+        fi
+        
+        echo "   📤 上传到远程主机..."
+        echo "      文件大小: $(du -h /tmp/project-sync.tar.gz | cut -f1)"
+        
+        # Windows 路径转换
+        REMOTE_TAR_PATH="${REMOTE_PROJECT_PATH}/project-sync.tar.gz"
+        if [[ "$REMOTE_PROJECT_PATH" =~ ^[A-Za-z]: ]]; then
+            # Windows 路径格式 (C:/...)
+            REMOTE_TAR_PATH="${REMOTE_PROJECT_PATH//\\/\/}/project-sync.tar.gz"
+        fi
+        
+        eval "$SCP_CMD /tmp/project-sync.tar.gz $REMOTE_USER@$REMOTE_HOST:\"$REMOTE_TAR_PATH\""
+        
+        if [ $? -ne 0 ]; then
+            echo "   ❌ 文件上传失败"
+            rm /tmp/project-sync.tar.gz
+            return 1
+        fi
+        
+        echo "   📦 在远程解压..."
+        # 检测远程系统类型并使用相应的解压命令
+        REMOTE_UNTAR_CMD="cd \"$REMOTE_PROJECT_PATH\" && tar xzf project-sync.tar.gz && rm project-sync.tar.gz"
+        
+        eval "$SSH_CMD $REMOTE_USER@$REMOTE_HOST \"$REMOTE_UNTAR_CMD\""
+        
+        if [ $? -ne 0 ]; then
+            echo "   ⚠️  远程解压失败，尝试手动同步关键文件..."
+            # 如果 tar 解压失败，尝试直接传输关键文件
+            sync_individual_files
+        else
+            echo "   ✅ 文件同步成功"
+        fi
+        
+        rm /tmp/project-sync.tar.gz
+    fi
+    
+    echo ""
+    echo "2️⃣  在远程主机执行构建..."
+    echo ""
+    
+    # 转义构建命令中的引号
+    ESCAPED_BUILD_CMD="${REMOTE_BUILD_COMMAND//\"/\\\"}"
+    
+    # 在远程主机执行构建
+    echo "   执行: $REMOTE_BUILD_COMMAND"
+    echo ""
+    eval "$SSH_CMD $REMOTE_USER@$REMOTE_HOST \"$ESCAPED_BUILD_CMD\""
+    
+    if [ $? -ne 0 ]; then
+        echo ""
+        echo "   ❌ 远程构建失败"
+        return 1
+    fi
+    
+    echo ""
+    echo "   ✅ 远程构建成功"
+    echo ""
+    echo "3️⃣  下载构建产物..."
+    echo ""
+    
+    # 下载构建产物
+    mkdir -p "$BUNDLE_DIR/nsis"
+    
+    # 下载 Windows 构建文件
+    eval "$SCP_CMD $REMOTE_USER@$REMOTE_HOST:$REMOTE_PROJECT_PATH/src-tauri/target/release/bundle/nsis/*.nsis.zip $BUNDLE_DIR/nsis/" 2>/dev/null
+    eval "$SCP_CMD $REMOTE_USER@$REMOTE_HOST:$REMOTE_PROJECT_PATH/src-tauri/target/release/bundle/nsis/*.nsis.zip.sig $BUNDLE_DIR/nsis/" 2>/dev/null
+    
+    if [ $? -eq 0 ]; then
+        echo "   ✅ Windows 构建产物下载成功"
+        return 0
+    else
+        echo "   ⚠️  Windows 构建产物下载失败或不存在"
+        return 1
+    fi
+}
+
+# ============================================
 # 开始构建
 # ============================================
 if [ $NEED_BUILD -eq 1 ]; then
@@ -430,8 +607,8 @@ if [ $NEED_BUILD -eq 1 ]; then
         echo ""
     fi
     
-    # 执行构建命令
-    echo "📦 执行构建命令: $BUILD_COMMAND"
+    # 执行本地构建命令
+    echo "📦 执行本地构建命令: $BUILD_COMMAND"
     echo ""
     eval $BUILD_COMMAND
     
@@ -439,7 +616,7 @@ if [ $NEED_BUILD -eq 1 ]; then
     echo ""
     
     if [ $BUILD_EXIT_CODE -ne 0 ]; then
-        echo "❌ 构建失败，退出码: $BUILD_EXIT_CODE"
+        echo "❌ 本地构建失败，退出码: $BUILD_EXIT_CODE"
         
         # 恢复版本号
         echo ""
@@ -477,8 +654,26 @@ if [ $NEED_BUILD -eq 1 ]; then
         exit 1
     fi
     
-    echo "✅ 构建成功！"
+    echo "✅ 本地构建成功！"
     echo ""
+    
+    # 检查是否需要远程构建 Windows 版本
+    if [ "$REMOTE_BUILDS_ENABLED" = "true" ]; then
+        echo ""
+        read -p "🪟 是否在远程 Windows 主机上构建 Windows 版本？(Y/n): " BUILD_REMOTE_WINDOWS
+        BUILD_REMOTE_WINDOWS=${BUILD_REMOTE_WINDOWS:-Y}
+        
+        if [[ "$BUILD_REMOTE_WINDOWS" =~ ^[Yy]$ ]]; then
+            echo ""
+            remote_windows_build
+            
+            if [ $? -ne 0 ]; then
+                echo ""
+                echo "⚠️  远程 Windows 构建失败，将仅使用本地构建产物"
+                echo ""
+            fi
+        fi
+    fi
 fi
 
 echo "🔍 正在扫描构建产物..."

@@ -1,191 +1,480 @@
-import { createFileRoute } from '@tanstack/react-router'
-import { User, Bell, Shield, Palette, Globe, Rocket } from 'lucide-react'
-import { UpdateButton } from '@/components/updater'
-import { getVersion } from '@tauri-apps/api/app'
-import { useState, useEffect } from 'react'
+import { createFileRoute } from '@tanstack/react-router';
+import { useState, useRef } from 'react';
+import {
+  Palette,
+  LineChart,
+  Database,
+  Info,
+  Download,
+  Upload,
+  RotateCcw,
+  Trash2,
+  Check,
+  AlertCircle,
+  RefreshCw,
+} from 'lucide-react';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import { Button } from '@/components/ui/button';
+import { Switch } from '@/components/ui/switch';
+import { SettingsSection, SettingsItem } from '@/components/settings';
+import { useSettings } from '@/hooks/use-settings';
+import { UpdateButton } from '@/components/updater';
+import { getVersion } from '@tauri-apps/api/app';
+import { toast } from 'sonner';
+import { motion } from 'motion/react';
 
 export const Route = createFileRoute('/settings/')({
   component: SettingsPage,
-})
+});
 
 function SettingsPage() {
-  const [appVersion, setAppVersion] = useState<string>('加载中...')
+  const {
+    settings,
+    setTheme,
+    setViewMode,
+    setStatisticsDisplayMode,
+    setChartSettings,
+    setSidebarOpen,
+    resetSettings,
+    exportConfig,
+    importConfig,
+    clearCache,
+    cacheStats,
+    refreshCacheStats,
+    isLoading,
+  } = useSettings();
 
-  useEffect(() => {
-    getVersion().then(version => setAppVersion(version)).catch(() => setAppVersion('未知'))
-  }, [])
+  const [appVersion, setAppVersion] = useState<string>('加载中...');
+  const [activeTab, setActiveTab] = useState('appearance');
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // 加载应用版本
+  useState(() => {
+    getVersion()
+      .then((version) => setAppVersion(version))
+      .catch(() => setAppVersion('未知'));
+  });
+
+  // 处理主题切换
+  const handleThemeToggle = (checked: boolean) => {
+    setTheme(checked ? 'dark' : 'light');
+    toast.success(`已切换到${checked ? '深色' : '浅色'}模式`);
+  };
+
+  // 处理导出配置
+  const handleExport = () => {
+    try {
+      const config = exportConfig();
+      const blob = new Blob([config], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `watch-monkey-settings-${new Date().toISOString().slice(0, 10)}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      toast.success('配置已导出');
+    } catch (error) {
+      toast.error('导出配置失败');
+    }
+  };
+
+  // 处理导入配置
+  const handleImport = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    try {
+      const text = await file.text();
+      importConfig(text);
+      toast.success('配置已导入');
+      // 重新加载页面以应用新配置
+      window.location.reload();
+    } catch (error) {
+      toast.error('导入配置失败,请检查文件格式');
+    }
+
+    // 清空文件输入
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
+  // 处理重置配置
+  const handleReset = () => {
+    if (confirm('确定要重置所有设置为默认值吗?此操作不可撤销。')) {
+      resetSettings();
+      toast.success('配置已重置');
+    }
+  };
+
+  // 处理清空缓存
+  const handleClearCache = () => {
+    if (confirm('确定要清空所有临时缓存吗?这将清除页面折叠状态和分页位置。')) {
+      clearCache();
+      refreshCacheStats();
+      toast.success('缓存已清空');
+    }
+  };
+
+  // 格式化文件大小
+  const formatSize = (bytes: number) => {
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
+  };
 
   return (
-    <div className="space-y-6">
-      <div className="border-b pb-4">
-        <h1 className="text-3xl font-bold text-gray-900">倒腾</h1>
-        <p className="text-gray-600 mt-2">系统倒腾设置</p>
-      </div>
-      
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="space-y-6">
-          <div className="bg-white rounded-lg shadow-sm border p-6">
-            <div className="flex items-center gap-3 mb-4">
-              <User className="text-blue-500" size={24} />
-              <h2 className="text-xl font-semibold">账户设置</h2>
-            </div>
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">用户名</label>
-                <input
-                  type="text"
-                  defaultValue="猴子投资者"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+    <div className="h-full overflow-y-auto">
+      <div className="max-w-4xl mx-auto p-6 space-y-6">
+        {/* 页面标题 */}
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3 }}
+          className="border-b pb-4"
+        >
+          <h1 className="text-3xl font-bold text-foreground">倒腾</h1>
+          <p className="text-muted-foreground mt-2">管理应用的所有配置和偏好设置</p>
+        </motion.div>
+
+        {/* 标签页 */}
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+          <TabsList className="grid w-full grid-cols-4 lg:w-auto lg:inline-grid">
+            <TabsTrigger value="appearance" className="gap-2">
+              <Palette className="h-4 w-4" />
+              <span className="hidden sm:inline">外观</span>
+            </TabsTrigger>
+            <TabsTrigger value="charts" className="gap-2">
+              <LineChart className="h-4 w-4" />
+              <span className="hidden sm:inline">图表</span>
+            </TabsTrigger>
+            <TabsTrigger value="data" className="gap-2">
+              <Database className="h-4 w-4" />
+              <span className="hidden sm:inline">数据</span>
+            </TabsTrigger>
+            <TabsTrigger value="about" className="gap-2">
+              <Info className="h-4 w-4" />
+              <span className="hidden sm:inline">关于</span>
+            </TabsTrigger>
+          </TabsList>
+
+          {/* 外观设置 */}
+          <TabsContent value="appearance" className="space-y-4">
+            <SettingsSection
+              title="主题设置"
+              description="自定义应用的外观和视觉效果"
+              icon={<Palette className="h-5 w-5" />}
+            >
+              <SettingsItem
+                label="深色模式"
+                description="切换深色或浅色主题"
+              >
+                <Switch
+                  checked={settings.theme === 'dark'}
+                  onCheckedChange={handleThemeToggle}
                 />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">邮箱</label>
-                <input
-                  type="email"
-                  defaultValue="monkey@example.com"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              </SettingsItem>
+            </SettingsSection>
+
+            <SettingsSection
+              title="视图偏好"
+              description="设置数据的默认显示方式"
+            >
+              <SettingsItem
+                label="持仓视图模式"
+                description="选择卡片或列表视图"
+              >
+                <select
+                  value={settings.viewMode}
+                  onChange={(e) => {
+                    setViewMode(e.target.value as 'card' | 'table');
+                    toast.success(`已切换到${e.target.value === 'card' ? '卡片' : '列表'}视图`);
+                  }}
+                  className="px-3 py-1.5 text-sm border border-input bg-background rounded-md focus:outline-none focus:ring-2 focus:ring-ring"
+                >
+                  <option value="card">卡片视图</option>
+                  <option value="table">列表视图</option>
+                </select>
+              </SettingsItem>
+
+              <SettingsItem
+                label="统计数值显示"
+                description="选择统计数字的显示格式"
+              >
+                <select
+                  value={settings.statisticsDisplayMode}
+                  onChange={(e) => {
+                    setStatisticsDisplayMode(e.target.value as 'auto' | 'yuan');
+                    toast.success(`统计显示已更新`);
+                  }}
+                  className="px-3 py-1.5 text-sm border border-input bg-background rounded-md focus:outline-none focus:ring-2 focus:ring-ring"
+                >
+                  <option value="auto">自动格式化</option>
+                  <option value="yuan">元为单位</option>
+                </select>
+              </SettingsItem>
+
+              <SettingsItem
+                label="侧边栏默认状态"
+                description="设置侧边栏是否默认展开"
+              >
+                <Switch
+                  checked={settings.sidebarOpen}
+                  onCheckedChange={(checked) => {
+                    setSidebarOpen(checked);
+                    toast.success(`侧边栏默认${checked ? '展开' : '折叠'}`);
+                  }}
                 />
-              </div>
-            </div>
-          </div>
-          
-          <div className="bg-white rounded-lg shadow-sm border p-6">
-            <div className="flex items-center gap-3 mb-4">
-              <Bell className="text-green-500" size={24} />
-              <h2 className="text-xl font-semibold">通知设置</h2>
-            </div>
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <span className="text-gray-700">价格提醒</span>
-                <input type="checkbox" defaultChecked className="rounded" />
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-gray-700">新闻推送</span>
-                <input type="checkbox" defaultChecked className="rounded" />
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-gray-700">交易提醒</span>
-                <input type="checkbox" className="rounded" />
-              </div>
-            </div>
-          </div>
-        </div>
-        
-        <div className="space-y-6">
-          <div className="bg-white rounded-lg shadow-sm border p-6">
-            <div className="flex items-center gap-3 mb-4">
-              <Palette className="text-purple-500" size={24} />
-              <h2 className="text-xl font-semibold">界面设置</h2>
-            </div>
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">主题</label>
-                <select className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
-                  <option>浅色主题</option>
-                  <option>深色主题</option>
-                  <option>自动</option>
+              </SettingsItem>
+            </SettingsSection>
+          </TabsContent>
+
+          {/* 图表设置 */}
+          <TabsContent value="charts" className="space-y-4">
+            <SettingsSection
+              title="图表默认配置"
+              description="设置图表的默认显示参数"
+              icon={<LineChart className="h-5 w-5" />}
+            >
+              <SettingsItem
+                label="默认时间周期"
+                description="K线图的默认时间粒度"
+              >
+                <select
+                  value={settings.chart.interval}
+                  onChange={(e) => {
+                    setChartSettings({ interval: e.target.value as any });
+                    toast.success('图表周期已更新');
+                  }}
+                  className="px-3 py-1.5 text-sm border border-input bg-background rounded-md focus:outline-none focus:ring-2 focus:ring-ring"
+                >
+                  <option value="minute">分时</option>
+                  <option value="5min">5分钟</option>
+                  <option value="15min">15分钟</option>
+                  <option value="30min">30分钟</option>
+                  <option value="60min">60分钟</option>
+                  <option value="day">日K</option>
+                  <option value="week">周K</option>
+                  <option value="month">月K</option>
                 </select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">语言</label>
-                <select className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
-                  <option>中文简体</option>
-                  <option>English</option>
-                  <option>日本語</option>
+              </SettingsItem>
+
+              <SettingsItem
+                label="图表类型"
+                description="K线或折线图"
+              >
+                <select
+                  value={settings.chart.chartType}
+                  onChange={(e) => {
+                    setChartSettings({ chartType: e.target.value as any });
+                    toast.success('图表类型已更新');
+                  }}
+                  className="px-3 py-1.5 text-sm border border-input bg-background rounded-md focus:outline-none focus:ring-2 focus:ring-ring"
+                >
+                  <option value="candlestick">K线图</option>
+                  <option value="line">折线图</option>
                 </select>
+              </SettingsItem>
+
+              <SettingsItem
+                label="复权方式"
+                description="股价的复权计算方法"
+              >
+                <select
+                  value={settings.chart.adjustType}
+                  onChange={(e) => {
+                    setChartSettings({ adjustType: e.target.value as any });
+                    toast.success('复权方式已更新');
+                  }}
+                  className="px-3 py-1.5 text-sm border border-input bg-background rounded-md focus:outline-none focus:ring-2 focus:ring-ring"
+                >
+                  <option value="none">不复权</option>
+                  <option value="forward">前复权</option>
+                  <option value="backward">后复权</option>
+                </select>
+              </SettingsItem>
+
+              <SettingsItem
+                label="显示 MA5 均线"
+                description="5日移动平均线"
+              >
+                <Switch
+                  checked={settings.chart.showMA5}
+                  onCheckedChange={(checked) => {
+                    setChartSettings({ showMA5: checked });
+                  }}
+                />
+              </SettingsItem>
+
+              <SettingsItem
+                label="显示 MA10 均线"
+                description="10日移动平均线"
+              >
+                <Switch
+                  checked={settings.chart.showMA10}
+                  onCheckedChange={(checked) => {
+                    setChartSettings({ showMA10: checked });
+                  }}
+                />
+              </SettingsItem>
+
+              <SettingsItem
+                label="显示成交量"
+                description="在图表下方显示成交量柱状图"
+              >
+                <Switch
+                  checked={settings.chart.showVolume}
+                  onCheckedChange={(checked) => {
+                    setChartSettings({ showVolume: checked });
+                  }}
+                />
+              </SettingsItem>
+            </SettingsSection>
+          </TabsContent>
+
+          {/* 数据管理 */}
+          <TabsContent value="data" className="space-y-4">
+            <SettingsSection
+              title="缓存统计"
+              description="查看和管理本地存储的数据"
+              icon={<Database className="h-5 w-5" />}
+            >
+              <div className="grid grid-cols-2 gap-4 p-4 bg-muted/50 rounded-lg">
+                <div>
+                  <div className="text-xs text-muted-foreground">总项目数</div>
+                  <div className="text-2xl font-bold text-foreground mt-1">
+                    {cacheStats.totalItems}
+                  </div>
+                </div>
+                <div>
+                  <div className="text-xs text-muted-foreground">配置项</div>
+                  <div className="text-2xl font-bold text-primary mt-1">
+                    {cacheStats.settingsItems}
+                  </div>
+                </div>
+                <div>
+                  <div className="text-xs text-muted-foreground">临时缓存</div>
+                  <div className="text-2xl font-bold text-orange-500 mt-1">
+                    {cacheStats.temporaryItems}
+                  </div>
+                </div>
+                <div>
+                  <div className="text-xs text-muted-foreground">总大小</div>
+                  <div className="text-2xl font-bold text-foreground mt-1">
+                    {formatSize(cacheStats.totalSize)}
+                  </div>
+                </div>
               </div>
-            </div>
-          </div>
-          
-          <div className="bg-white rounded-lg shadow-sm border p-6">
-            <div className="flex items-center gap-3 mb-4">
-              <Shield className="text-red-500" size={24} />
-              <h2 className="text-xl font-semibold">安全设置</h2>
-            </div>
-            <div className="space-y-3">
-              <button className="w-full text-left p-3 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
-                修改密码
-              </button>
-              <button className="w-full text-left p-3 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
-                双重验证
-              </button>
-              <button className="w-full text-left p-3 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
-                登录记录
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-      
-      <div className="bg-white rounded-lg shadow-sm border p-6">
-        <div className="flex items-center gap-3 mb-4">
-          <Globe className="text-indigo-500" size={24} />
-          <h2 className="text-xl font-semibold">数据源配置</h2>
-        </div>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="p-4 border border-gray-200 rounded-lg">
-            <h3 className="font-medium mb-2">API 密钥</h3>
-            <input
-              type="password"
-              placeholder="输入 API 密钥"
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
-          <div className="p-4 border border-gray-200 rounded-lg">
-            <h3 className="font-medium mb-2">更新频率</h3>
-            <select className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
-              <option>实时</option>
-              <option>每分钟</option>
-              <option>每5分钟</option>
-              <option>每小时</option>
-            </select>
-          </div>
-          <div className="p-4 border border-gray-200 rounded-lg">
-            <h3 className="font-medium mb-2">数据保存</h3>
-            <select className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
-              <option>7天</option>
-              <option>30天</option>
-              <option>90天</option>
-              <option>永久</option>
-            </select>
-          </div>
-        </div>
-      </div>
-      
-      <div className="bg-white rounded-lg shadow-sm border p-6">
-        <div className="flex items-center gap-3 mb-4">
-          <Rocket className="text-orange-500" size={24} />
-          <h2 className="text-xl font-semibold">关于与更新</h2>
-        </div>
-        <div className="space-y-4">
-          <div className="flex items-center justify-between py-2 border-b">
-            <span className="text-gray-700 font-medium">应用名称</span>
-            <span className="text-gray-600">Watch Monkey App</span>
-          </div>
-          <div className="flex items-center justify-between py-2 border-b">
-            <span className="text-gray-700 font-medium">当前版本</span>
-            <span className="text-gray-600">{appVersion}</span>
-          </div>
-          <div className="flex items-center justify-between py-2">
-            <span className="text-gray-700 font-medium">检查更新</span>
-            <UpdateButton />
-          </div>
-          <div className="mt-4 p-4 bg-gray-50 rounded-md">
-            <p className="text-sm text-gray-600">
-              应用会在启动后 3 秒自动检查更新，之后每 5 分钟自动检查一次。如果有新版本可用，将会提示您下载安装。
-            </p>
-          </div>
-        </div>
-      </div>
-      
-      <div className="flex justify-end gap-4">
-        <button className="px-6 py-2 border border-gray-300 rounded-md hover:bg-gray-50 transition-colors">
-          重置
-        </button>
-        <button className="px-6 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors">
-          保存设置
-        </button>
+
+              <Button
+                variant="outline"
+                onClick={refreshCacheStats}
+                className="w-full gap-2"
+              >
+                <RefreshCw className="h-4 w-4" />
+                刷新统计
+              </Button>
+            </SettingsSection>
+
+            <SettingsSection title="配置管理" description="导入、导出或重置配置">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <Button
+                  variant="outline"
+                  onClick={handleExport}
+                  disabled={isLoading}
+                  className="gap-2"
+                >
+                  <Download className="h-4 w-4" />
+                  导出配置
+                </Button>
+
+                <Button
+                  variant="outline"
+                  onClick={handleImport}
+                  disabled={isLoading}
+                  className="gap-2"
+                >
+                  <Upload className="h-4 w-4" />
+                  导入配置
+                </Button>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept=".json"
+                  onChange={handleFileChange}
+                  className="hidden"
+                />
+
+                <Button
+                  variant="outline"
+                  onClick={handleClearCache}
+                  disabled={isLoading}
+                  className="gap-2 text-orange-600 hover:text-orange-700 hover:bg-orange-50 dark:hover:bg-orange-950"
+                >
+                  <Trash2 className="h-4 w-4" />
+                  清空临时缓存
+                </Button>
+
+                <Button
+                  variant="outline"
+                  onClick={handleReset}
+                  disabled={isLoading}
+                  className="gap-2 text-destructive hover:bg-destructive/10"
+                >
+                  <RotateCcw className="h-4 w-4" />
+                  重置所有设置
+                </Button>
+              </div>
+
+              <div className="flex items-start gap-2 p-3 bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-lg text-sm">
+                <AlertCircle className="h-4 w-4 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" />
+                <div className="text-blue-900 dark:text-blue-100">
+                  <strong>提示:</strong> 临时缓存包括页面折叠状态、分页位置等会话级数据,清空后不影响主要配置。
+                </div>
+              </div>
+            </SettingsSection>
+          </TabsContent>
+
+          {/* 关于 */}
+          <TabsContent value="about" className="space-y-4">
+            <SettingsSection
+              title="应用信息"
+              description="查看应用版本和更新"
+              icon={<Info className="h-5 w-5" />}
+            >
+              <div className="space-y-3">
+                <div className="flex items-center justify-between py-2 border-b">
+                  <span className="text-sm font-medium text-muted-foreground">应用名称</span>
+                  <span className="text-sm font-semibold text-foreground">Watch Monkey App</span>
+                </div>
+                <div className="flex items-center justify-between py-2 border-b">
+                  <span className="text-sm font-medium text-muted-foreground">当前版本</span>
+                  <span className="text-sm font-semibold text-foreground">{appVersion}</span>
+                </div>
+                <div className="flex items-center justify-between py-2">
+                  <span className="text-sm font-medium text-muted-foreground">检查更新</span>
+                  <UpdateButton />
+                </div>
+              </div>
+
+              <div className="mt-4 p-4 bg-muted/50 rounded-lg">
+                <div className="flex items-start gap-2">
+                  <Check className="h-4 w-4 text-green-600 mt-0.5 flex-shrink-0" />
+                  <p className="text-xs text-muted-foreground">
+                    应用会在启动后 3 秒自动检查更新,之后每 5 分钟自动检查一次。如果有新版本可用,将会提示您下载安装。
+                  </p>
+                </div>
+              </div>
+            </SettingsSection>
+          </TabsContent>
+        </Tabs>
       </div>
     </div>
-  )
+  );
 }
