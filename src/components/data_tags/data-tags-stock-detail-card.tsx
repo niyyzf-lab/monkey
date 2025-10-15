@@ -259,7 +259,7 @@ export const StockDetailCard = memo<StockDetailCardProps>(function StockDetailCa
         </div>
       </CardHeader>
 
-      <CardContent className="pt-0 space-y-3">
+      <CardContent className="pt-0 space-y-2">
         {/* 业务范围 - 紧凑显示 */}
         <div className="space-y-1">
           <div className="flex items-center gap-1.5">
@@ -272,7 +272,7 @@ export const StockDetailCard = memo<StockDetailCardProps>(function StockDetailCa
         </div>
 
         {/* 板块概念 - 限制显示数量 */}
-        <div className="space-y-1.5">
+        <div className="space-y-1">
           <div className="flex items-center gap-1.5">
             <Tags className="w-3 h-3 text-purple-600" />
             <span className="text-xs font-medium text-foreground">板块概念</span>
@@ -622,7 +622,7 @@ export const StockDetailCard = memo<StockDetailCardProps>(function StockDetailCa
             </div>
             
             {/* 紧凑的标签显示区域 */}
-            <div className="space-y-1.5">
+            <div className="space-y-1">
               <TooltipProvider>
                 {Object.entries(parsedTags).map(([category, items]) => (
                   <div key={category} className="flex items-start gap-2">

@@ -1,4 +1,4 @@
-import { Search, X, ChevronDown, Database, Tag } from 'lucide-react'
+import { Search, X, ChevronDown, Database, Tag, ChevronLeft, ChevronRight } from 'lucide-react'
 import { Input } from '../ui/input'
 import { motion, AnimatePresence } from 'motion/react'
 import { memo } from 'react'
@@ -15,6 +15,7 @@ interface DataPageToolbarProps {
   showNavigationDropdown: boolean
   onToggleDropdown: () => void
   onNavigate: (path: string) => void
+  onPageChange: (page: number) => void
 }
 
 export const DataPageToolbar = memo(function DataPageToolbar({
@@ -29,6 +30,7 @@ export const DataPageToolbar = memo(function DataPageToolbar({
   showNavigationDropdown,
   onToggleDropdown,
   onNavigate,
+  onPageChange,
 }: DataPageToolbarProps) {
   return (
     <div className={`sticky top-0 z-20 flex items-center justify-between gap-4 py-3 px-6 transition-all duration-300 ${
@@ -84,21 +86,58 @@ export const DataPageToolbar = memo(function DataPageToolbar({
         </motion.div>
       </div>
 
-      {/* 右侧：统计信息 + 导航 */}
+      {/* 右侧：分页控制 + 统计信息 + 导航 */}
       <motion.div
         initial={{ opacity: 0, x: 10 }}
         animate={{ opacity: 1, x: 0 }}
         transition={{ duration: 0.3, delay: 0.2 }}
         className="flex items-center gap-3 text-sm text-muted-foreground/70 flex-shrink-0"
       >
-        <div className="flex items-center gap-2">
-          <span className="font-medium hidden @md:inline">页码</span>
-          <div className="flex items-center gap-1">
-            <span className="font-mono text-base font-semibold text-foreground/80">{currentPage}</span>
-            <span className="opacity-50">/</span>
-            <span className="font-mono opacity-70">{totalPages}</span>
-          </div>
-        </div>
+        {/* 分页控制 */}
+        {totalPages > 1 && (
+          <>
+            <div className="flex items-center gap-1">
+              <button
+                onClick={() => onPageChange(currentPage - 1)}
+                disabled={currentPage <= 1}
+                className={`p-1.5 rounded-md transition-all duration-200 ${
+                  currentPage <= 1
+                    ? 'opacity-30 cursor-not-allowed'
+                    : 'opacity-60 hover:opacity-100 hover:bg-secondary/60'
+                }`}
+                aria-label="上一页"
+              >
+                <ChevronLeft className="w-4 h-4" />
+              </button>
+              
+              <div className="flex items-center gap-2 px-2">
+                <span className="font-medium hidden @md:inline">页码</span>
+                <div className="flex items-center gap-1">
+                  <span className="font-mono text-base font-semibold text-foreground/80">{currentPage}</span>
+                  <span className="opacity-50">/</span>
+                  <span className="font-mono opacity-70">{totalPages}</span>
+                </div>
+              </div>
+              
+              <button
+                onClick={() => onPageChange(currentPage + 1)}
+                disabled={currentPage >= totalPages}
+                className={`p-1.5 rounded-md transition-all duration-200 ${
+                  currentPage >= totalPages
+                    ? 'opacity-30 cursor-not-allowed'
+                    : 'opacity-60 hover:opacity-100 hover:bg-secondary/60'
+                }`}
+                aria-label="下一页"
+              >
+                <ChevronRight className="w-4 h-4" />
+              </button>
+            </div>
+            
+            {/* 短分隔线 */}
+            <div className="h-4 w-px bg-gradient-to-b from-border/40 via-border to-border/40" />
+          </>
+        )}
+        
         <div className="hidden @lg:flex items-center gap-2">
           <span className="font-medium">
             {hasSearchTerms ? '结果' : '总计'}

@@ -7,7 +7,6 @@ import { Masonry } from 'masonic'
 import { motion } from 'motion/react'
 import { DataPageToolbar } from '@/components/data/data-page-toolbar'
 import { SearchHintBar } from '@/components/data/data-search-hint-bar'
-import { DataPagination } from '@/components/data/data-pagination'
 import { LazyStockCard } from '@/components/data/data-lazy-stock-card'
 import { MasonrySkeletonGrid } from '@/components/data/data-stock-card-skeleton'
 import { DataPageLoadingState, DataPageErrorState } from '@/components/data/data-loading-state'
@@ -334,6 +333,7 @@ function DataPage() {
         showNavigationDropdown={showNavigationDropdown}
         onToggleDropdown={() => setShowNavigationDropdown(!showNavigationDropdown)}
         onNavigate={handleNavigation}
+        onPageChange={handlePageChange}
       />
       
       {/* 搜索提示区域 */}
@@ -346,39 +346,36 @@ function DataPage() {
       )}
       
       {/* 内容区域 */}
-      <div className="px-6 py-6">
+      <div className="px-6 py-3">
         {stockData && stockData.length > 0 ? (
           filteredData.length > 0 ? (
-            <div className="w-full space-y-8">
-              {isResizing ? (
-                // 窗口调整时显示骨架屏
-                <MasonrySkeletonGrid count={currentPageData.length} columns={columns} />
-              ) : (
-                <motion.div
-                  key={`page-${currentPage}-${debouncedSearchQuery}`}
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  transition={{ duration: 0.3 }}
-                >
-                  <Masonry
-                    items={currentPageData}
-                    render={MasonryCard}
-                    columnGutter={6}
-                    columnWidth={300}
-                    maxColumnCount={columns}
-                    overscanBy={5}
-                    key={`${currentPage}-${debouncedSearchQuery}`}
-                  />
-                </motion.div>
-              )}
-            
-            {/* 分页组件 */}
-            <DataPagination
-              currentPage={currentPage}
-              totalPages={totalPages}
-              onPageChange={handlePageChange}
-            />
+            <div className="w-full">
+              <div className="masonry-wrapper">
+                {isResizing ? (
+                  // 窗口调整时显示骨架屏
+                  <MasonrySkeletonGrid count={currentPageData.length} columns={columns} />
+                ) : (
+                  <motion.div
+                    key={`page-${currentPage}-${debouncedSearchQuery}`}
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    transition={{ duration: 0.3 }}
+                    style={{ width: '100%' }}
+                  >
+                    <Masonry
+                      items={currentPageData}
+                      render={MasonryCard}
+                      columnGutter={12}
+                      rowGutter={12}
+                      columnWidth={300}
+                      maxColumnCount={columns}
+                      overscanBy={1}
+                      key={`${currentPage}-${debouncedSearchQuery}`}
+                    />
+                  </motion.div>
+                )}
+              </div>
           </div>  
         ) : (
           // 搜索无结果

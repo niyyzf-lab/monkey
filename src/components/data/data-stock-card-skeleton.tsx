@@ -42,7 +42,7 @@ export const MasonrySkeletonGrid = memo(function MasonrySkeletonGrid({
 }: MasonrySkeletonGridProps) {
   return (
     <div 
-      className="grid gap-[6px]"
+      className="grid gap-3"
       style={{
         gridTemplateColumns: `repeat(${columns}, minmax(300px, 1fr))`
       }}
