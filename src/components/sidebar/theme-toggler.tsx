@@ -4,13 +4,18 @@ import { cn } from "@/lib/utils"
 import { Moon, Sun } from "lucide-react"
 import { flushSync } from "react-dom"
 import { useSidebar } from "./sidebar-context"
+import { useSettings } from "@/hooks/use-settings"
 
 // 主题切换器组件 - 独立设计，完美融合侧边栏风格，支持深色模式
 export const ThemeToggler = React.memo(() => {
   const { isOpen } = useSidebar()
+  const { settings } = useSettings()
   const [isHovered, setIsHovered] = React.useState(false)
   const [isDark, setIsDark] = React.useState(false)
   const buttonRef = React.useRef<HTMLDivElement>(null)
+  
+  // 检查是否跟随系统主题
+  const isFollowingSystem = settings.theme === 'system'
   
   // 监听主题变化
   React.useEffect(() => {
@@ -30,7 +35,8 @@ export const ThemeToggler = React.memo(() => {
   
   // 主题切换函数，带有圆形扩散动画
   const toggleTheme = React.useCallback(async () => {
-    if (!buttonRef.current) return
+    // 如果跟随系统主题，则禁用切换
+    if (isFollowingSystem || !buttonRef.current) return
 
     // 检查浏览器是否支持 View Transitions API
     if (!document.startViewTransition) {
@@ -73,13 +79,16 @@ export const ThemeToggler = React.memo(() => {
         pseudoElement: "::view-transition-new(root)",
       }
     )
-  }, [isDark])
+  }, [isDark, isFollowingSystem])
   
   return (
     <div
       ref={buttonRef}
-      className="relative group cursor-pointer"
-      onMouseEnter={() => setIsHovered(true)}
+      className={cn(
+        "relative group",
+        isFollowingSystem ? "cursor-not-allowed opacity-50" : "cursor-pointer"
+      )}
+      onMouseEnter={() => !isFollowingSystem && setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
       onClick={toggleTheme}
     >
@@ -149,7 +158,7 @@ export const ThemeToggler = React.memo(() => {
                 delay: 0.4
               }}
             >
-              {isDark ? "浅色模式" : "深色模式"}
+              {isFollowingSystem ? "跟随系统" : (isDark ? "浅色模式" : "深色模式")}
             </motion.span>
           </motion.div>
         ) : (
@@ -209,7 +218,7 @@ export const ThemeToggler = React.memo(() => {
           transition={{ duration: 0.15 }}
         >
           <div className="bg-popover text-popover-foreground text-xs px-3 py-1.5 rounded-md shadow-lg whitespace-nowrap ml-2">
-            {isDark ? "切换到浅色" : "切换到深色"}
+            {isFollowingSystem ? "跟随系统主题" : (isDark ? "切换到浅色" : "切换到深色")}
           </div>
         </motion.div>
       )}

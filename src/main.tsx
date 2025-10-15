@@ -3,7 +3,12 @@ import ReactDOM from "react-dom/client";
 import { RouterProvider, createRouter } from '@tanstack/react-router';
 import { routeTree } from './routeTree.gen';
 import { Toaster } from 'sonner';
+import { loadSettings, saveSettings } from '@/lib/settings-manager';
 import './index.css';
+
+// 初始化主题 - 在渲染前应用,避免闪烁
+const settings = loadSettings();
+saveSettings(settings);
 
 // 创建路由实例
 const router = createRouter({ routeTree });

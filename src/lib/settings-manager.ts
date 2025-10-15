@@ -12,7 +12,7 @@ import { StatisticsDisplayMode } from '@/hooks/use-statistics-display-mode';
  */
 export interface SettingsConfig {
   // 主题设置
-  theme: 'light' | 'dark';
+  theme: 'light' | 'dark' | 'system';
   
   // 视图偏好
   viewMode: ViewMode;
@@ -38,7 +38,7 @@ export interface SettingsConfig {
  * 默认配置
  */
 export const defaultSettings: SettingsConfig = {
-  theme: 'light',
+  theme: 'system',
   viewMode: 'card',
   statisticsDisplayMode: 'auto',
   chart: {
@@ -69,6 +69,81 @@ const STORAGE_KEYS = {
 } as const;
 
 /**
+ * 获取系统主题偏好
+ */
+export function getSystemTheme(): 'light' | 'dark' {
+  if (typeof window === 'undefined') return 'light';
+  
+  try {
+    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+    return mediaQuery.matches ? 'dark' : 'light';
+  } catch {
+    return 'light';
+  }
+}
+
+/**
+ * 获取有效主题(将 'system' 解析为实际主题)
+ */
+export function getEffectiveTheme(theme: 'light' | 'dark' | 'system'): 'light' | 'dark' {
+  if (theme === 'system') {
+    return getSystemTheme();
+  }
+  return theme;
+}
+
+/**
+ * 系统主题监听器
+ */
+let themeMediaQuery: MediaQueryList | null = null;
+let themeChangeListener: ((e: MediaQueryListEvent) => void) | null = null;
+
+/**
+ * 初始化系统主题监听器
+ */
+export function initThemeListener(): () => void {
+  if (typeof window === 'undefined') {
+    return () => {};
+  }
+
+  try {
+    themeMediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+    
+    themeChangeListener = () => {
+      const settings = loadSettings();
+      if (settings.theme === 'system') {
+        // 仅当主题设置为 'system' 时才响应系统变化
+        applyTheme(settings.theme);
+      }
+    };
+
+    themeMediaQuery.addEventListener('change', themeChangeListener);
+
+    // 返回清理函数
+    return () => {
+      if (themeMediaQuery && themeChangeListener) {
+        themeMediaQuery.removeEventListener('change', themeChangeListener);
+      }
+    };
+  } catch {
+    return () => {};
+  }
+}
+
+/**
+ * 应用主题到 DOM
+ */
+function applyTheme(theme: 'light' | 'dark' | 'system'): void {
+  const effectiveTheme = getEffectiveTheme(theme);
+  
+  if (effectiveTheme === 'dark') {
+    document.documentElement.classList.add('dark');
+  } else {
+    document.documentElement.classList.remove('dark');
+  }
+}
+
+/**
  * 加载所有配置
  */
 export function loadSettings(): SettingsConfig {
@@ -77,7 +152,7 @@ export function loadSettings(): SettingsConfig {
 
     // 加载主题
     const theme = localStorage.getItem(STORAGE_KEYS.theme);
-    if (theme === 'dark' || theme === 'light') {
+    if (theme === 'dark' || theme === 'light' || theme === 'system') {
       settings.theme = theme;
     }
 
@@ -183,11 +258,7 @@ export function saveSettings(settings: SettingsConfig): void {
     localStorage.setItem(STORAGE_KEYS.sidebarState, JSON.stringify(settings.sidebarOpen));
 
     // 应用主题
-    if (settings.theme === 'dark') {
-      document.documentElement.classList.add('dark');
-    } else {
-      document.documentElement.classList.remove('dark');
-    }
+    applyTheme(settings.theme);
   } catch (error) {
     console.error('Failed to save settings:', error);
     throw error;
@@ -235,7 +306,7 @@ function isValidSettings(settings: any): settings is SettingsConfig {
   if (!settings || typeof settings !== 'object') return false;
   
   // 验证必需的字段
-  if (!['light', 'dark'].includes(settings.theme)) return false;
+  if (!['light', 'dark', 'system'].includes(settings.theme)) return false;
   if (!['card', 'table'].includes(settings.viewMode)) return false;
   if (!['auto', 'yuan'].includes(settings.statisticsDisplayMode)) return false;
   

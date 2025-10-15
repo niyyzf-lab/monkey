@@ -13,6 +13,7 @@ import {
   importSettings,
   clearAllCache,
   getCacheStats,
+  initThemeListener,
 } from '@/lib/settings-manager';
 
 export interface UseSettingsReturn {
@@ -23,7 +24,7 @@ export interface UseSettingsReturn {
   updateSettings: (updates: Partial<SettingsConfig>) => void;
   
   // 更新单个配置项
-  setTheme: (theme: 'light' | 'dark') => void;
+  setTheme: (theme: 'light' | 'dark' | 'system') => void;
   setViewMode: (mode: 'card' | 'table') => void;
   setStatisticsDisplayMode: (mode: 'auto' | 'yuan') => void;
   setChartSettings: (chart: Partial<SettingsConfig['chart']>) => void;
@@ -86,7 +87,7 @@ export function useSettings(): UseSettingsReturn {
   }, [settings, refreshCacheStats]);
 
   // 设置主题
-  const setTheme = useCallback((theme: 'light' | 'dark') => {
+  const setTheme = useCallback((theme: 'light' | 'dark' | 'system') => {
     updateSettings({ theme });
   }, [updateSettings]);
 
@@ -177,6 +178,12 @@ export function useSettings(): UseSettingsReturn {
       setIsLoading(false);
     }
   }, [refreshCacheStats]);
+
+  // 初始化系统主题监听器
+  useEffect(() => {
+    const cleanup = initThemeListener();
+    return cleanup;
+  }, []);
 
   // 监听 localStorage 变化(跨标签页同步)
   useEffect(() => {

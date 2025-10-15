@@ -61,6 +61,27 @@ function SettingsPage() {
     toast.success(`已切换到${checked ? '深色' : '浅色'}模式`);
   };
 
+  // 处理跟随系统切换
+  const handleFollowSystemToggle = (checked: boolean) => {
+    if (checked) {
+      setTheme('system');
+      toast.success('已启用跟随系统主题');
+    } else {
+      // 禁用跟随系统时,根据当前系统主题设置
+      const systemIsDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      setTheme(systemIsDark ? 'dark' : 'light');
+      toast.success(`已切换到${systemIsDark ? '深色' : '浅色'}模式`);
+    }
+  };
+
+  // 获取当前是否为深色模式(用于开关显示)
+  const isDarkMode = settings.theme === 'system' 
+    ? window.matchMedia('(prefers-color-scheme: dark)').matches
+    : settings.theme === 'dark';
+
+  // 是否跟随系统
+  const isFollowingSystem = settings.theme === 'system';
+
   // 处理导出配置
   const handleExport = () => {
     try {
@@ -172,12 +193,23 @@ function SettingsPage() {
               icon={<Palette className="h-5 w-5" />}
             >
               <SettingsItem
-                label="深色模式"
-                description="切换深色或浅色主题"
+                label="跟随系统主题"
+                description="自动根据系统设置切换主题"
               >
                 <Switch
-                  checked={settings.theme === 'dark'}
+                  checked={isFollowingSystem}
+                  onCheckedChange={handleFollowSystemToggle}
+                />
+              </SettingsItem>
+              
+              <SettingsItem
+                label="深色模式"
+                description={isFollowingSystem ? '当前由系统控制' : '手动切换深色或浅色主题'}
+              >
+                <Switch
+                  checked={isDarkMode}
                   onCheckedChange={handleThemeToggle}
+                  disabled={isFollowingSystem}
                 />
               </SettingsItem>
             </SettingsSection>

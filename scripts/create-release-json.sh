@@ -23,7 +23,6 @@ REMOTE_PASSWORD=""
 REMOTE_KEY_PATH=""
 REMOTE_PROJECT_PATH=""
 REMOTE_BUILD_COMMAND=""
-REMOTE_SYNC_METHOD=""
 REMOTE_GIT_BRANCH=""
 REMOTE_GIT_REMOTE=""
 
@@ -53,7 +52,6 @@ if [ -f "$CONFIG_FILE" ]; then
             REMOTE_KEY_PATH=$(jq -r '.build.remoteBuilds[0].privateKeyPath' "$CONFIG_FILE")
             REMOTE_PROJECT_PATH=$(jq -r '.build.remoteBuilds[0].remoteProjectPath' "$CONFIG_FILE")
             REMOTE_BUILD_COMMAND=$(jq -r '.build.remoteBuilds[0].buildCommand' "$CONFIG_FILE")
-            REMOTE_SYNC_METHOD=$(jq -r '.build.remoteBuilds[0].syncMethod' "$CONFIG_FILE")
             REMOTE_GIT_BRANCH=$(jq -r '.build.remoteBuilds[0].gitBranch // "main"' "$CONFIG_FILE")
             REMOTE_GIT_REMOTE=$(jq -r '.build.remoteBuilds[0].gitRemote // "origin"' "$CONFIG_FILE")
         fi
@@ -396,80 +394,179 @@ remote_windows_build() {
     fi
     
     echo ""
-    echo "1️⃣  同步项目文件到远程主机..."
+    echo "1️⃣  使用 Git 同步项目文件到远程主机..."
     echo ""
     
-    # 同步文件到远程
-    if [ "$REMOTE_SYNC_METHOD" = "rsync" ]; then
-        # 使用 rsync（推荐，需要远程安装 rsync）
-        if command -v rsync &> /dev/null; then
-            echo "   尝试使用 rsync 同步..."
-            RSYNC_OPTS="-avz --delete --exclude=node_modules --exclude=target --exclude=.git"
-            if [ -n "$REMOTE_KEY_PATH" ] && [ "$REMOTE_KEY_PATH" != "null" ]; then
-                rsync $RSYNC_OPTS -e "ssh -p $REMOTE_PORT -i $REMOTE_KEY_PATH" ./ "$REMOTE_USER@$REMOTE_HOST:$REMOTE_PROJECT_PATH/" 2>/dev/null
-            else
-                rsync $RSYNC_OPTS -e "ssh -p $REMOTE_PORT" ./ "$REMOTE_USER@$REMOTE_HOST:$REMOTE_PROJECT_PATH/" 2>/dev/null
-            fi
+    # 1. 确保本地已提交所有更改
+    if [ -n "$(git status --porcelain)" ]; then
+        echo "   ⚠️  检测到未提交的更改"
+        echo ""
+        git status --short
+        echo ""
+        read -p "   是否自动提交并推送这些更改？(Y/n): " AUTO_COMMIT
+        AUTO_COMMIT=${AUTO_COMMIT:-Y}
+        
+        if [[ "$AUTO_COMMIT" =~ ^[Yy]$ ]]; then
+            echo "   📝 提交更改..."
+            git add .
+            git commit -m "chore: auto commit for remote build v$VERSION" || true
+            
+            echo "   📤 推送到远程仓库..."
+            git push $REMOTE_GIT_REMOTE $REMOTE_GIT_BRANCH
             
             if [ $? -ne 0 ]; then
-                echo "   ⚠️  rsync 失败 (远程可能不支持)，回退到 tar+scp"
-                REMOTE_SYNC_METHOD="scp"
-            else
-                echo "   ✅ 文件同步成功"
+                echo "   ❌ Git 推送失败"
+                return 1
             fi
         else
-            echo "   ⚠️  本地未找到 rsync，使用 tar+scp"
-            REMOTE_SYNC_METHOD="scp"
+            echo "   ℹ️  跳过自动提交，将使用远程现有代码"
         fi
-    fi
-    
-    if [ "$REMOTE_SYNC_METHOD" = "scp" ] || [ "$REMOTE_SYNC_METHOD" = "tar" ]; then
-        # 使用 tar + scp（备用方案）
-        echo "   📦 打包项目文件..."
-        tar czf /tmp/project-sync.tar.gz --exclude=node_modules --exclude=target --exclude=.git .
-        
-        if [ $? -ne 0 ]; then
-            echo "   ❌ 打包失败"
-            return 1
-        fi
-        
-        echo "   📤 上传到远程主机..."
-        echo "      文件大小: $(du -h /tmp/project-sync.tar.gz | cut -f1)"
-        
-        # Windows 路径转换
-        REMOTE_TAR_PATH="${REMOTE_PROJECT_PATH}/project-sync.tar.gz"
-        if [[ "$REMOTE_PROJECT_PATH" =~ ^[A-Za-z]: ]]; then
-            # Windows 路径格式 (C:/...)
-            REMOTE_TAR_PATH="${REMOTE_PROJECT_PATH//\\/\/}/project-sync.tar.gz"
-        fi
-        
-        eval "$SCP_CMD /tmp/project-sync.tar.gz $REMOTE_USER@$REMOTE_HOST:\"$REMOTE_TAR_PATH\""
-        
-        if [ $? -ne 0 ]; then
-            echo "   ❌ 文件上传失败"
-            rm /tmp/project-sync.tar.gz
-            return 1
-        fi
-        
-        echo "   📦 在远程解压..."
-        # 检测远程系统类型并使用相应的解压命令
-        REMOTE_UNTAR_CMD="cd \"$REMOTE_PROJECT_PATH\" && tar xzf project-sync.tar.gz && rm project-sync.tar.gz"
-        
-        eval "$SSH_CMD $REMOTE_USER@$REMOTE_HOST \"$REMOTE_UNTAR_CMD\""
-        
-        if [ $? -ne 0 ]; then
-            echo "   ⚠️  远程解压失败，尝试手动同步关键文件..."
-            # 如果 tar 解压失败，尝试直接传输关键文件
-            sync_individual_files
-        else
-            echo "   ✅ 文件同步成功"
-        fi
-        
-        rm /tmp/project-sync.tar.gz
+    else
+        echo "   ✅ 工作区干净，无需提交"
+        echo "   📤 推送到远程仓库..."
+        git push $REMOTE_GIT_REMOTE $REMOTE_GIT_BRANCH 2>/dev/null || echo "   ℹ️  没有新的提交需要推送"
     fi
     
     echo ""
-    echo "2️⃣  在远程主机执行构建..."
+    echo "   2️⃣  在远程主机上拉取最新代码..."
+    
+    # 使用 git 命令检查是否是仓库 (更可靠)
+    REMOTE_GIT_CHECK="cd \"$REMOTE_PROJECT_PATH\" 2>nul && git rev-parse --git-dir 2>nul && echo exists || echo not_exists"
+    REMOTE_REPO_STATUS=$(eval "$SSH_CMD $REMOTE_USER@$REMOTE_HOST \"$REMOTE_GIT_CHECK\"" 2>/dev/null | grep -o "exists\|not_exists" | head -1)
+    
+    echo "   检测结果: [$REMOTE_REPO_STATUS]"
+    
+    if [ "$REMOTE_REPO_STATUS" = "exists" ]; then
+        echo "   ✅ 远程仓库已存在，拉取更新..."
+        
+        # 获取 Git 远程仓库地址
+        GIT_REMOTE_URL=$(git remote get-url $REMOTE_GIT_REMOTE 2>/dev/null)
+        
+        # 如果是 HTTP(S) URL 且有 Gitea Token，添加认证信息
+        if [[ "$GIT_REMOTE_URL" =~ ^https?:// ]] && [ -n "$GITEA_TOKEN" ] && [ "$GITEA_TOKEN" != "null" ]; then
+            GIT_AUTH_URL=$(echo "$GIT_REMOTE_URL" | sed "s|://|://$GITEA_TOKEN@|")
+            echo "   🔐 使用 Gitea Token 认证"
+            
+            # 更新远程 URL 为带 Token 的版本，并禁用凭证管理器
+            REMOTE_SET_URL="cd \"$REMOTE_PROJECT_PATH\" && git config credential.helper store && git config credential.useHttpPath true && git remote set-url $REMOTE_GIT_REMOTE $GIT_AUTH_URL"
+            eval "$SSH_CMD $REMOTE_USER@$REMOTE_HOST \"$REMOTE_SET_URL\"" 2>/dev/null
+        fi
+        
+        # 远程执行 git pull (修复分支问题)
+        # 由于已经设置了带 Token 的 URL，直接拉取即可
+        echo "   执行 Git 同步..."
+        
+        # 步骤1: fetch 远程更新
+        REMOTE_GIT_FETCH="cd \"$REMOTE_PROJECT_PATH\" && git fetch $REMOTE_GIT_REMOTE"
+        eval "$SSH_CMD $REMOTE_USER@$REMOTE_HOST \"$REMOTE_GIT_FETCH\"" 2>&1 | grep -v "Unable to persist credentials" || true
+        
+        # 步骤2: 切换到正确的分支
+        REMOTE_GIT_CHECKOUT="cd \"$REMOTE_PROJECT_PATH\" && git checkout $REMOTE_GIT_BRANCH 2>nul || git checkout -b $REMOTE_GIT_BRANCH $REMOTE_GIT_REMOTE/$REMOTE_GIT_BRANCH"
+        eval "$SSH_CMD $REMOTE_USER@$REMOTE_HOST \"$REMOTE_GIT_CHECKOUT\"" 2>&1 | grep -v "Unable to persist credentials" | grep -v "already exists" || true
+        
+        # 步骤3: 重置到远程最新状态
+        REMOTE_GIT_RESET="cd \"$REMOTE_PROJECT_PATH\" && git reset --hard $REMOTE_GIT_REMOTE/$REMOTE_GIT_BRANCH"
+        eval "$SSH_CMD $REMOTE_USER@$REMOTE_HOST \"$REMOTE_GIT_RESET\""
+        
+        if [ $? -eq 0 ]; then
+            echo "   ✅ Git 代码同步成功"
+        else
+            echo "   ❌ Git pull 失败"
+            return 1
+        fi
+    else
+        echo "   📦 远程仓库不存在，执行首次克隆..."
+        
+        # 获取 Git 远程仓库地址
+        GIT_REMOTE_URL=$(git remote get-url $REMOTE_GIT_REMOTE 2>/dev/null)
+        
+        if [ -z "$GIT_REMOTE_URL" ]; then
+            echo "   ❌ 无法获取 Git 远程仓库地址"
+            return 1
+        fi
+        
+        echo "   仓库地址: $GIT_REMOTE_URL"
+        
+        # 如果是 HTTP(S) URL 且有 Gitea Token，添加认证信息
+        if [[ "$GIT_REMOTE_URL" =~ ^https?:// ]] && [ -n "$GITEA_TOKEN" ] && [ "$GITEA_TOKEN" != "null" ]; then
+            # 在 URL 中嵌入 Token 进行认证
+            # 格式: https://token@gitea.example.com/user/repo.git
+            GIT_AUTH_URL=$(echo "$GIT_REMOTE_URL" | sed "s|://|://$GITEA_TOKEN@|")
+            echo "   🔐 使用 Gitea Token 认证"
+        else
+            GIT_AUTH_URL="$GIT_REMOTE_URL"
+        fi
+        
+        # 检查远程目录是否已存在 (Windows 兼容)
+        REMOTE_DIR_CHECK="if exist \"$REMOTE_PROJECT_PATH\" (echo exists) else (echo not_exists)"
+        REMOTE_DIR_STATUS=$(eval "$SSH_CMD $REMOTE_USER@$REMOTE_HOST \"$REMOTE_DIR_CHECK\"" 2>/dev/null | tr -d '\r\n ')
+        
+        if [ "$REMOTE_DIR_STATUS" = "exists" ]; then
+            echo "   ⚠️  远程目录已存在: $REMOTE_PROJECT_PATH"
+            echo ""
+            read -p "   目录已存在，是否删除并重新克隆？(y/N): " RECREATE_DIR
+            
+            if [[ "$RECREATE_DIR" =~ ^[Yy]$ ]]; then
+                echo "   🗑️  删除现有目录..."
+                REMOTE_RM_CMD="rmdir /s /q \"$REMOTE_PROJECT_PATH\""
+                eval "$SSH_CMD $REMOTE_USER@$REMOTE_HOST \"$REMOTE_RM_CMD\""
+            else
+                echo "   ℹ️  跳过克隆，将直接使用现有仓库"
+                echo ""
+                echo "   提示: 脚本将继续使用现有仓库进行构建"
+                echo ""
+                # 不执行克隆，直接返回继续后续流程
+                return 0
+            fi
+        fi
+        
+        # 在远程克隆仓库 (Windows 环境，使用 CMD 语法)
+        REMOTE_GIT_CLONE="git clone -b $REMOTE_GIT_BRANCH $GIT_AUTH_URL \"$REMOTE_PROJECT_PATH\""
+        eval "$SSH_CMD $REMOTE_USER@$REMOTE_HOST \"$REMOTE_GIT_CLONE\""
+        
+        if [ $? -eq 0 ]; then
+            echo "   ✅ Git 仓库克隆成功"
+            
+            # 首次克隆后需要安装依赖
+            echo ""
+            echo "   📦 首次构建，安装依赖..."
+            REMOTE_INSTALL_CMD="cd \"$REMOTE_PROJECT_PATH\" && bun install"
+            eval "$SSH_CMD $REMOTE_USER@$REMOTE_HOST \"$REMOTE_INSTALL_CMD\""
+        else
+            echo "   ❌ Git clone 失败"
+            echo ""
+            echo "   💡 可能的原因:"
+            echo "      1. 远程 Windows 机器无法访问 Git 仓库"
+            echo "      2. Git 仓库需要认证但 Token 未配置"
+            echo "      3. 远程目录已存在且不为空"
+            echo ""
+            echo "   💡 解决方案:"
+            echo "      - 确保 Windows 机器可以访问: $GIT_REMOTE_URL"
+            echo "      - 或在 Windows 上手动克隆: git clone $GIT_REMOTE_URL"
+            return 1
+        fi
+    fi
+    
+    # 同步签名密钥（Git 不会跟踪 .tauri/*.key）
+    echo ""
+    echo "   3️⃣  同步签名密钥..."
+    REMOTE_TAURI_DIR="${REMOTE_PROJECT_PATH}/.tauri"
+    
+    # 创建 .tauri 目录
+    eval "$SSH_CMD $REMOTE_USER@$REMOTE_HOST \"mkdir -p \\\"$REMOTE_TAURI_DIR\\\"\""
+    
+    # 上传签名密钥
+    if [ -f "$PRIVATE_KEY_PATH" ]; then
+        eval "$SCP_CMD \"$PRIVATE_KEY_PATH\" $REMOTE_USER@$REMOTE_HOST:\"$REMOTE_TAURI_DIR/watch-monkey.key\""
+        if [ $? -eq 0 ]; then
+            echo "   ✅ 签名密钥同步成功"
+        else
+            echo "   ⚠️  签名密钥同步失败"
+        fi
+    fi
+    
+    echo ""
+    echo "4️⃣  在远程主机执行构建..."
     echo ""
     
     # 转义构建命令中的引号
@@ -489,7 +586,7 @@ remote_windows_build() {
     echo ""
     echo "   ✅ 远程构建成功"
     echo ""
-    echo "3️⃣  下载构建产物..."
+    echo "5️⃣  下载构建产物..."
     echo ""
     
     # 下载构建产物
