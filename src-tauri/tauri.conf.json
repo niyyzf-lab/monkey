@@ -1,0 +1,62 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "watch-monkey-app",
+  "version": "0.1.0",
+  "identifier": "com.wenbo.watch-monkey-app",
+  "build": {
+    "beforeDevCommand": "bun run dev",
+    "devUrl": "http://localhost:1420",
+    "beforeBuildCommand": "bun run build",
+    "frontendDist": "../dist"
+  },
+  "app": {
+    "windows": [
+      {
+        "title": "watch-monkey-app",
+        "width": 750,
+        "height": 560,
+        "minWidth": 750,
+        "minHeight": 560,
+        "fullscreen": false,
+        "titleBarStyle": "Overlay",
+        "hiddenTitle": true,
+        "transparent": false,
+        "decorations": true,
+        "alwaysOnTop": false,
+        "resizable": true,
+        "maximizable": true,
+        "minimizable": true,
+        "closable": true
+      }
+    ],
+    "security": {
+      "csp": null,
+      "dangerousDisableAssetCspModification": false
+    },
+    "macOSPrivateApi": true,
+    "withGlobalTauri": false
+  },
+  "bundle": {
+    "active": true,
+    "targets": "all",
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ],
+    "iOS": {
+      "developmentTeam": "9W826G5A2Y"
+    },
+    "macOS": {
+      "entitlements": null,
+      "exceptionDomain": "47.113.205.191",
+      "frameworks": [],
+      "providerShortName": null,
+      "signingIdentity": null,
+      "hardenedRuntime": true,
+      "minimumSystemVersion": "10.13"
+    }
+  }
+}
