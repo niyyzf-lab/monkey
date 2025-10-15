@@ -1,21 +1,19 @@
 import { HoldingsStatistics } from '../../types/holdings';
 import { Badge } from '../ui/badge';
-import { TrendingUp, TrendingDown, ArrowLeftRight,JapaneseYen } from 'lucide-react';
+import { TrendingUp, TrendingDown, JapaneseYen } from 'lucide-react';
 import { motion } from 'motion/react';
 import { formatCurrencyValue, formatCurrencyDetail } from '../../lib/formatters';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip';
-import { useStatisticsDisplayMode } from '../../hooks/use-statistics-display-mode';
 import ClickSpark from '../ui/ClickSpark';
 import FloatingText from '../FloatingText';
 
 interface StatisticsCardsProps {
   statistics: HoldingsStatistics;
   todayTotalProfitLoss: number;
+  displayMode: 'auto' | 'yuan';
 }
 
-export function StatisticsCards({ statistics, todayTotalProfitLoss }: StatisticsCardsProps) {
-  // 显示模式：从 localStorage 读取和保存
-  const { displayMode, setDisplayMode } = useStatisticsDisplayMode();
+export function StatisticsCards({ statistics, todayTotalProfitLoss, displayMode }: StatisticsCardsProps) {
   
   const profitLossPercentage = statistics.totalCost > 0
     ? ((statistics.totalProfitLoss / statistics.totalCost) * 100).toFixed(2)
@@ -187,30 +185,9 @@ export function StatisticsCards({ statistics, todayTotalProfitLoss }: Statistics
               duration={400}
             >
             <div className="flex items-start justify-between mb-2">
-              <div className="flex items-center gap-1.5">
-                <div className={`text-[10px] font-medium uppercase tracking-wide ${
-                  isProfitable ? 'text-red-600/70 dark:text-red-50/80' : 'text-green-600/70 dark:text-green-50/80'
-                }`}>总盈亏</div>
-                {/* 切换按钮 - 控制全部4个卡片 */}
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setDisplayMode(displayMode === 'yuan' ? 'auto' : 'yuan');
-                      }}
-                      className={`p-0.5 rounded hover:bg-black/5 dark:hover:bg-white/10 transition-colors ${
-                        isProfitable ? 'text-red-600/60 dark:text-red-50/60' : 'text-green-600/60 dark:text-green-50/60'
-                      }`}
-                    >
-                      <ArrowLeftRight className="h-3 w-3" />
-                    </button>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p className="text-xs">{displayMode === 'yuan' ? '切换到智能模式（万/元）' : '切换到元模式'}</p>
-                  </TooltipContent>
-                </Tooltip>
-              </div>
+              <div className={`text-[10px] font-medium uppercase tracking-wide ${
+                isProfitable ? 'text-red-600/70 dark:text-red-50/80' : 'text-green-600/70 dark:text-green-50/80'
+              }`}>总盈亏</div>
               {isProfitable ? (
                 <TrendingUp className="h-4 w-4 text-red-600 dark:text-red-50 shrink-0" />
               ) : (

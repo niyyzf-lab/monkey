@@ -401,8 +401,8 @@ export const HoldingCard = memo(function HoldingCard({ holding, onUpdate }: Hold
                     {/* 警示徽章 + 顶部价格标签 */}
                     <div className="flex items-center justify-between text-[10px]">
                       <div className="flex items-center gap-2">
-                        {/* 警示徽章 */}
-                        {hasWarning && (
+                        {/* 止损警示徽章 */}
+                        {nearStopLoss && (
                           <motion.div
                             animate={{
                               rotate: [-1.5, 1.5, -1.5, 1.5, -1.5],
@@ -413,23 +413,10 @@ export const HoldingCard = memo(function HoldingCard({ holding, onUpdate }: Hold
                               ease: "easeInOut",
                               repeatType: "loop"
                             }}
-                            className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold ${
-                              nearStopLoss
-                                ? 'bg-amber-500 dark:bg-amber-600 text-white'
-                                : 'bg-blue-500 dark:bg-blue-600 text-white'
-                            }`}
+                            className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold bg-amber-500 dark:bg-amber-600 text-white"
                           >
-                            {nearStopLoss ? (
-                              <>
-                                <TrendingDown className="h-2.5 w-2.5" />
-                                止损预警
-                              </>
-                            ) : (
-                              <>
-                                <TrendingUp className="h-2.5 w-2.5" />
-                                止盈提示
-                              </>
-                            )}
+                            <TrendingDown className="h-2.5 w-2.5" />
+                            止损预警
                           </motion.div>
                         )}
                         
@@ -441,9 +428,30 @@ export const HoldingCard = memo(function HoldingCard({ holding, onUpdate }: Hold
                       </div>
                       
                       {/* 止盈价格 */}
-                      <div className="flex items-center gap-1 text-blue-700 dark:text-blue-400">
-                        <span className="font-medium">¥{formatNumber(holding.sellPrice!)}</span>
-                        <TrendingUp className="h-2.5 w-2.5" />
+                      <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-1 text-blue-700 dark:text-blue-400">
+                          <span className="font-medium">¥{formatNumber(holding.sellPrice!)}</span>
+                          <TrendingUp className="h-2.5 w-2.5" />
+                        </div>
+                        
+                        {/* 止盈警示徽章 */}
+                        {nearTakeProfit && (
+                          <motion.div
+                            animate={{
+                              rotate: [-1.5, 1.5, -1.5, 1.5, -1.5],
+                            }}
+                            transition={{
+                              duration: 0.8,
+                              repeat: Infinity,
+                              ease: "easeInOut",
+                              repeatType: "loop"
+                            }}
+                            className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[9px] font-bold bg-blue-500 dark:bg-blue-600 text-white"
+                          >
+                            <TrendingUp className="h-2.5 w-2.5" />
+                            止盈提示
+                          </motion.div>
+                        )}
                       </div>
                     </div>
                     

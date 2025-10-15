@@ -17,6 +17,7 @@ import { useViewPreferences } from '../../hooks/use-view-preferences';
 import { useKeyboardShortcuts } from '../../hooks/use-keyboard-shortcuts';
 import { useResizeSkeleton } from '../../hooks/use-resize-skeleton';
 import { ViewModeDock } from '../../components/holdings/hold-view-mode-dock';
+import { useStatisticsDisplayMode } from '../../hooks/use-statistics-display-mode';
 
 export const Route = createFileRoute('/hold/')({
   component: HoldPage,
@@ -41,6 +42,9 @@ function HoldPage() {
 
   // 视图偏好 - 必须在所有条件返回之前调用
   const { viewMode, setViewMode } = useViewPreferences();
+  
+  // 显示模式（万元切换）
+  const { displayMode, setDisplayMode } = useStatisticsDisplayMode();
   
   // Resize 骨架屏（节流 300ms）
   const isResizing = useResizeSkeleton(300);
@@ -200,6 +204,8 @@ function HoldPage() {
           <Toolbar
             searchQuery=""
             onSearchChange={() => {}}
+            displayMode={displayMode}
+            onDisplayModeChange={setDisplayMode}
           />
 
           <motion.div
@@ -250,6 +256,8 @@ function HoldPage() {
         <Toolbar
           searchQuery={filterState.searchQuery}
           onSearchChange={setSearchQuery}
+          displayMode={displayMode}
+          onDisplayModeChange={setDisplayMode}
         />
 
         {/* 统计卡片 - 更紧凑 */}
@@ -262,6 +270,7 @@ function HoldPage() {
               totalProfitLoss,
             }}
             todayTotalProfitLoss={todayTotalProfitLoss}
+            displayMode={displayMode}
           />
         )}
 

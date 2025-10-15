@@ -19,6 +19,7 @@ import {
   SortBy,
   SortOrder,
 } from '../../../hooks/use-holdings-filter';
+import { useEffect, useRef, useState } from 'react';
 
 interface FilterBarModernProps {
   profitFilter: ProfitFilter;
@@ -73,9 +74,32 @@ export function FilterBarModern({
   countdown = 0,
 }: FilterBarModernProps) {
   const hasActiveFilters = profitFilter !== 'all' || riskFilter !== 'all';
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [isCompact, setIsCompact] = useState(false);
+
+  // 监听容器宽度变化
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    const resizeObserver = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        const width = entry.contentRect.width;
+        // 小于 800px 时收缩,显示紧凑模式
+        setIsCompact(width < 400);
+      }
+    });
+
+    resizeObserver.observe(container);
+
+    return () => {
+      resizeObserver.disconnect();
+    };
+  }, []);
 
   return (
     <motion.div
+      ref={containerRef}
       initial={{ opacity: 0, y: -10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3 }}
@@ -84,55 +108,59 @@ export function FilterBarModern({
           <div className="flex items-center justify-between gap-2 py-1.5 px-3">
             {/* 左侧：排序快捷按钮 + 筛选 Popover */}
             <div className="flex items-center gap-1.5 flex-1 min-w-0">
-              {/* 购入时间排序按钮 - 在较大屏幕显示 */}
-              <Button
-                variant={sortBy === 'holdingDays' ? 'secondary' : 'ghost'}
-                size="sm"
-                onClick={() => {
-                  if (sortBy === 'holdingDays') {
-                    onToggleSortOrder();
-                  } else {
-                    onSortByChange('holdingDays');
-                  }
-                }}
-                className={`hidden @lg:flex h-7 px-2.5 text-xs ${
-                  sortBy === 'holdingDays' 
-                    ? 'bg-primary/15 text-primary border-primary/30' 
-                    : 'hover:bg-secondary/50'
-                }`}
-              >
-                购入时间
-                {sortBy === 'holdingDays' && (
-                  sortOrder === 'asc' ? 
-                    <ArrowUp className="h-3 w-3 ml-1" /> : 
-                    <ArrowDown className="h-3 w-3 ml-1" />
-                )}
-              </Button>
+              {/* 购入时间排序按钮 - 容器宽度 >= 800px 时显示 */}
+              {!isCompact && (
+                <Button
+                  variant={sortBy === 'holdingDays' ? 'secondary' : 'ghost'}
+                  size="sm"
+                  onClick={() => {
+                    if (sortBy === 'holdingDays') {
+                      onToggleSortOrder();
+                    } else {
+                      onSortByChange('holdingDays');
+                    }
+                  }}
+                  className={`h-7 px-2.5 text-xs ${
+                    sortBy === 'holdingDays' 
+                      ? 'bg-primary/15 text-primary border-primary/30' 
+                      : 'hover:bg-secondary/50'
+                  }`}
+                >
+                  购入时间
+                  {sortBy === 'holdingDays' && (
+                    sortOrder === 'asc' ? 
+                      <ArrowUp className="h-3 w-3 ml-1" /> : 
+                      <ArrowDown className="h-3 w-3 ml-1" />
+                  )}
+                </Button>
+              )}
 
-              {/* 今日收益排序按钮 - 在较大屏幕显示 */}
-              <Button
-                variant={sortBy === 'todayPL' ? 'secondary' : 'ghost'}
-                size="sm"
-                onClick={() => {
-                  if (sortBy === 'todayPL') {
-                    onToggleSortOrder();
-                  } else {
-                    onSortByChange('todayPL');
-                  }
-                }}
-                className={`hidden @lg:flex h-7 px-2.5 text-xs ${
-                  sortBy === 'todayPL' 
-                    ? 'bg-primary/15 text-primary border-primary/30' 
-                    : 'hover:bg-secondary/50'
-                }`}
-              >
-                今日收益
-                {sortBy === 'todayPL' && (
-                  sortOrder === 'asc' ? 
-                    <ArrowUp className="h-3 w-3 ml-1" /> : 
-                    <ArrowDown className="h-3 w-3 ml-1" />
-                )}
-              </Button>
+              {/* 今日收益排序按钮 - 容器宽度 >= 800px 时显示 */}
+              {!isCompact && (
+                <Button
+                  variant={sortBy === 'todayPL' ? 'secondary' : 'ghost'}
+                  size="sm"
+                  onClick={() => {
+                    if (sortBy === 'todayPL') {
+                      onToggleSortOrder();
+                    } else {
+                      onSortByChange('todayPL');
+                    }
+                  }}
+                  className={`h-7 px-2.5 text-xs ${
+                    sortBy === 'todayPL' 
+                      ? 'bg-primary/15 text-primary border-primary/30' 
+                      : 'hover:bg-secondary/50'
+                  }`}
+                >
+                  今日收益
+                  {sortBy === 'todayPL' && (
+                    sortOrder === 'asc' ? 
+                      <ArrowUp className="h-3 w-3 ml-1" /> : 
+                      <ArrowDown className="h-3 w-3 ml-1" />
+                  )}
+                </Button>
+              )}
 
               {/* 筛选 + 排序 Popover */}
               <Popover>
@@ -143,47 +171,50 @@ export function FilterBarModern({
                     className={`h-7 px-2.5 text-xs ${hasActiveFilters ? 'bg-primary/10 text-primary' : 'hover:bg-secondary/50'}`}
                   >
                     <Filter className="h-3 w-3 mr-1" />
-                    <span className="hidden @lg:inline">筛选</span>
-                    <span className="@lg:hidden">筛选&排序</span>
+                    {isCompact ? '筛选&排序' : '筛选'}
                     {hasActiveFilters && (
                       <div className="ml-1 w-1.5 h-1.5 bg-primary rounded-full" />
                     )}
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-64 p-3 bg-popover/98 backdrop-blur-sm" align="start">
-                  {/* 排序方式 - 仅在小屏幕显示 */}
-                  <div className="mb-3 @lg:hidden">
-                    <div className="text-xs font-medium text-muted-foreground mb-2">排序方式</div>
-                    <div className="flex flex-col gap-1">
-                      {sortOptions.map(option => (
-                        <button
-                          key={option.value}
-                          onClick={() => {
-                            if (sortBy === option.value) {
-                              onToggleSortOrder();
-                            } else {
-                              onSortByChange(option.value);
-                            }
-                          }}
-                          className={`px-2.5 py-1.5 text-sm rounded-md text-left transition-all flex items-center justify-between ${
-                            sortBy === option.value
-                              ? 'bg-primary/15 text-primary font-medium'
-                              : 'bg-secondary/20 hover:bg-secondary/50 text-muted-foreground'
-                          }`}
-                        >
-                          <span>{option.label}</span>
-                          {sortBy === option.value && (
-                            sortOrder === 'asc' ? 
-                              <ArrowUp className="h-3 w-3" /> : 
-                              <ArrowDown className="h-3 w-3" />
-                          )}
-                        </button>
-                      ))}
+                  {/* 排序方式 - 仅在紧凑模式显示 */}
+                  {isCompact && (
+                    <div className="mb-3">
+                      <div className="text-xs font-medium text-muted-foreground mb-2">排序方式</div>
+                      <div className="flex flex-col gap-1">
+                        {sortOptions.map(option => (
+                          <button
+                            key={option.value}
+                            onClick={() => {
+                              if (sortBy === option.value) {
+                                onToggleSortOrder();
+                              } else {
+                                onSortByChange(option.value);
+                              }
+                            }}
+                            className={`px-2.5 py-1.5 text-sm rounded-md text-left transition-all flex items-center justify-between ${
+                              sortBy === option.value
+                                ? 'bg-primary/15 text-primary font-medium'
+                                : 'bg-secondary/20 hover:bg-secondary/50 text-muted-foreground'
+                            }`}
+                          >
+                            <span>{option.label}</span>
+                            {sortBy === option.value && (
+                              sortOrder === 'asc' ? 
+                                <ArrowUp className="h-3 w-3" /> : 
+                                <ArrowDown className="h-3 w-3" />
+                            )}
+                          </button>
+                        ))}
+                      </div>
                     </div>
-                  </div>
+                  )}
 
-                  {/* 分隔线 - 仅在小屏幕显示 */}
-                  <div className="mb-3 @lg:hidden border-t border-border/50" />
+                  {/* 分隔线 - 仅在紧凑模式显示 */}
+                  {isCompact && (
+                    <div className="mb-3 border-t border-border/50" />
+                  )}
 
                   {/* 盈亏筛选 */}
                   <div className="mb-3">
