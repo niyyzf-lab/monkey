@@ -569,8 +569,10 @@ remote_windows_build() {
     echo "4️⃣  在远程主机执行构建..."
     echo ""
     
-    # 转义构建命令中的引号
+    # 转义构建命令中的引号和特殊字符
     ESCAPED_BUILD_CMD="${REMOTE_BUILD_COMMAND//\"/\\\"}"
+    # 转义 $ 符号以防止在 bash 中被解析
+    ESCAPED_BUILD_CMD="${ESCAPED_BUILD_CMD//\$/\\\$}"
     
     # 在远程主机执行构建
     echo "   执行: $REMOTE_BUILD_COMMAND"
