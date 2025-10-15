@@ -273,7 +273,7 @@ export function FilterBarModern({
                             onClick={() => onRiskFilterChange('nearStop')}
                             className={`flex-1 px-2.5 py-1.5 text-sm rounded-md transition-all ${
                               riskFilter === 'nearStop'
-                                ? 'bg-red-100 text-red-700 dark:bg-red-950/80 dark:text-red-400 font-medium'
+                                ? 'bg-green-100 text-green-700 dark:bg-green-950/80 dark:text-green-400 font-medium'
                                 : 'bg-secondary/40 hover:bg-secondary/60 text-muted-foreground'
                             }`}
                           >
@@ -285,7 +285,7 @@ export function FilterBarModern({
                             onClick={() => onRiskFilterChange('nearProfit')}
                             className={`flex-1 px-2.5 py-1.5 text-sm rounded-md transition-all ${
                               riskFilter === 'nearProfit'
-                                ? 'bg-green-100 text-green-700 dark:bg-green-950/80 dark:text-green-400 font-medium'
+                                ? 'bg-red-100 text-red-700 dark:bg-red-950/80 dark:text-red-400 font-medium'
                                 : 'bg-secondary/40 hover:bg-secondary/60 text-muted-foreground'
                             }`}
                           >

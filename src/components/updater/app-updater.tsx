@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, createContext, useContext } from 'react';
 import { check, type Update } from '@tauri-apps/plugin-updater';
 import { relaunch } from '@tauri-apps/plugin-process';
 import { getVersion } from '@tauri-apps/api/app';
@@ -17,7 +17,25 @@ import { toast } from 'sonner';
 // 日志前缀
 const LOG_PREFIX = '[AppUpdater]';
 
-export function AppUpdater() {
+// 创建更新器上下文
+interface UpdaterContextType {
+  checkForUpdates: (silent?: boolean) => Promise<void>;
+  isChecking: boolean;
+}
+
+const UpdaterContext = createContext<UpdaterContextType | null>(null);
+
+// 导出 hook 供其他组件使用
+export function useUpdater() {
+  const context = useContext(UpdaterContext);
+  if (!context) {
+    throw new Error('useUpdater must be used within UpdaterProvider');
+  }
+  return context;
+}
+
+// Provider 组件 - 提供全局更新功能
+export function UpdaterProvider({ children }: { children: React.ReactNode }) {
   const [update, setUpdate] = useState<Update | null>(null);
   const [isChecking, setIsChecking] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
@@ -167,34 +185,34 @@ export function AppUpdater() {
     }
   };
 
-  // 组件挂载时自动检查更新（静默）
+  // 组件挂载时自动检查更新（静默），并每5分钟检查一次
   useEffect(() => {
     console.log(`${LOG_PREFIX} 组件已挂载，将在 3 秒后自动检查更新...`);
     
-    // 延迟 3 秒后检查更新，避免影响应用启动
-    const timer = setTimeout(() => {
-      console.log(`${LOG_PREFIX} 触发自动更新检查（静默模式）`);
+    // 延迟 3 秒后首次检查更新，避免影响应用启动
+    const initialTimer = setTimeout(() => {
+      console.log(`${LOG_PREFIX} 触发首次自动更新检查（静默模式）`);
       checkForUpdates(true);
     }, 3000);
 
+    // 设置定期检查：每5分钟检查一次
+    console.log(`${LOG_PREFIX} 设置定期更新检查：每 5 分钟一次`);
+    const intervalTimer = setInterval(() => {
+      console.log(`${LOG_PREFIX} 触发定期更新检查（静默模式）`);
+      checkForUpdates(true);
+    }, 5 * 60 * 1000); // 5分钟 = 5 * 60 * 1000 毫秒
+
     return () => {
-      console.log(`${LOG_PREFIX} 组件已卸载，清除更新检查定时器`);
-      clearTimeout(timer);
+      console.log(`${LOG_PREFIX} 组件已卸载，清除所有更新检查定时器`);
+      clearTimeout(initialTimer);
+      clearInterval(intervalTimer);
     };
   }, []);
 
   return (
-    <>
-      {/* 手动检查更新按钮 */}
-      <Button
-        onClick={() => checkForUpdates(false)}
-        disabled={isChecking}
-        variant="outline"
-        size="sm"
-      >
-        {isChecking ? '检查中...' : '检查更新'}
-      </Button>
-
+    <UpdaterContext.Provider value={{ checkForUpdates, isChecking }}>
+      {children}
+      
       {/* 更新对话框 */}
       <Dialog open={showDialog} onOpenChange={setShowDialog}>
         <DialogContent className="sm:max-w-[425px]">
@@ -243,7 +261,23 @@ export function AppUpdater() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </>
+    </UpdaterContext.Provider>
+  );
+}
+
+// 检查更新按钮组件 - 供设置页面使用
+export function UpdateButton() {
+  const { checkForUpdates, isChecking } = useUpdater();
+  
+  return (
+    <Button
+      onClick={() => checkForUpdates(false)}
+      disabled={isChecking}
+      variant="outline"
+      size="sm"
+    >
+      {isChecking ? '检查中...' : '检查更新'}
+    </Button>
   );
 }
 

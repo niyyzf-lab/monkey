@@ -37,8 +37,8 @@ export function FilterSegments({
   ];
 
   const riskOptions: SegmentOption[] = [
-    ...(stats.nearStop > 0 ? [{ value: 'nearStop', label: '止损', count: stats.nearStop, variant: 'destructive' as const }] : []),
-    ...(stats.nearProfit > 0 ? [{ value: 'nearProfit', label: '止盈', count: stats.nearProfit, variant: 'profit' as const }] : []),
+    ...(stats.nearStop > 0 ? [{ value: 'nearStop', label: '止损', count: stats.nearStop, variant: 'profit' as const }] : []),
+    ...(stats.nearProfit > 0 ? [{ value: 'nearProfit', label: '止盈', count: stats.nearProfit, variant: 'destructive' as const }] : []),
   ];
 
   const SegmentedControl = ({ 
@@ -106,7 +106,7 @@ export function FilterSegments({
       case 'loss':
         return 'bg-red-100 text-red-700 dark:bg-red-950/80 dark:text-red-400';
       case 'destructive':
-        return 'bg-destructive text-destructive-foreground';
+        return 'bg-red-100 text-red-700 dark:bg-red-950/80 dark:text-red-400';
       case 'warning':
         return 'bg-yellow-100 text-yellow-700 dark:bg-yellow-950/80 dark:text-yellow-400';
       default:

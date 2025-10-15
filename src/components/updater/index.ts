@@ -1,3 +1,1 @@
-export { AppUpdater } from './app-updater';
-
-
+export { UpdaterProvider, UpdateButton, useUpdater } from './app-updater';

@@ -42,7 +42,7 @@ export function QuickPresets({
       icon: AlertTriangle,
       profitFilter: 'loss',
       riskFilter: 'nearStop',
-      variant: 'destructive',
+      variant: 'profit',
       getCount: (stats) => Math.min(stats.losing, stats.nearStop),
     },
     {
@@ -62,7 +62,7 @@ export function QuickPresets({
       icon: Star,
       profitFilter: 'all',
       riskFilter: 'nearProfit',
-      variant: 'warning',
+      variant: 'destructive',
       getCount: (stats) => stats.nearProfit,
     },
     {

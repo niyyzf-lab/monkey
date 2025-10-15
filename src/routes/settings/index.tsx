@@ -1,6 +1,6 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { User, Bell, Shield, Palette, Globe, Rocket } from 'lucide-react'
-import { AppUpdater } from '@/components/updater'
+import { UpdateButton } from '@/components/updater'
 import { getVersion } from '@tauri-apps/api/app'
 import { useState, useEffect } from 'react'
 
@@ -168,11 +168,11 @@ function SettingsPage() {
           </div>
           <div className="flex items-center justify-between py-2">
             <span className="text-gray-700 font-medium">检查更新</span>
-            <AppUpdater />
+            <UpdateButton />
           </div>
           <div className="mt-4 p-4 bg-gray-50 rounded-md">
             <p className="text-sm text-gray-600">
-              应用会在启动时自动检查更新。如果有新版本可用，将会提示您下载安装。
+              应用会在启动后 3 秒自动检查更新，之后每 5 分钟自动检查一次。如果有新版本可用，将会提示您下载安装。
             </p>
           </div>
         </div>
