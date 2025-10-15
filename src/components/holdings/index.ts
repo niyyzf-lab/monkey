@@ -6,7 +6,6 @@ export { StatisticsCards } from './hold-statistics-cards';
 export { Toolbar } from './hold-toolbar';
 export { FilterBar } from './hold-filter-bar';
 export { TableView } from './hold-table-view';
-export { CompactView } from './hold-compact-view';
 export { ViewModeDock } from './hold-view-mode-dock';
 export { StockInfoCard } from './hold-stock-info-card';
 export { default as CountUp } from './hold-count-up';
