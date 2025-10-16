@@ -74,7 +74,35 @@ git push origin release
    - 在 Gitea 上创建相同的 Release
    - 上传所有 Assets 到 Gitea
 
+## 🧪 测试配置
+
+在配置完 Secrets 后，建议先运行测试工作流验证配置是否正确：
+
+1. 进入 GitHub 仓库的 **Actions** 页面
+2. 选择 **Test Gitea Connection** 工作流
+3. 点击 **Run workflow** 按钮运行测试
+
+测试工作流会验证：
+- ✅ Secrets 是否正确设置
+- ✅ Gitea API 是否可以访问
+- ✅ 认证令牌是否有效
+- ✅ 仓库访问权限是否正确
+
+---
+
 ## 🔍 故障排查
+
+### 问题 0：GitHub Actions 多行输出错误
+**错误信息**: `Error: Invalid format '- chore: bump version to 0.2.32'`
+
+**原因**: Release Notes 包含多行文本，需要使用 EOF 分隔符
+
+**解决方案**: ✅ 已修复！新版本使用了正确的多行输出格式：
+```yaml
+echo "body<<EOF" >> $GITHUB_OUTPUT
+echo "$RELEASE_DATA" | jq -r '.body' >> $GITHUB_OUTPUT
+echo "EOF" >> $GITHUB_OUTPUT
+```
 
 ### 问题 1：Gitea API 认证失败
 **错误信息**: `401 Unauthorized`
@@ -83,6 +111,7 @@ git push origin release
 - 检查 `GITEA_TOKEN` 是否正确设置
 - 确认令牌没有过期
 - 验证令牌拥有足够的权限
+- 运行 **Test Gitea Connection** 工作流进行诊断
 
 ### 问题 2：找不到仓库
 **错误信息**: `404 Not Found`

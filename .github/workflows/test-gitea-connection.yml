@@ -1,0 +1,85 @@
+name: Test Gitea Connection
+
+on:
+  workflow_dispatch:
+
+jobs:
+  test-connection:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Test Gitea API Connection
+        env:
+          GITEA_TOKEN: ${{ secrets.GITEA_TOKEN }}
+          GITEA_URL: ${{ secrets.GITEA_URL }}
+          GITEA_REPO: ${{ secrets.GITEA_REPO }}
+        run: |
+          echo "🔍 Testing Gitea configuration..."
+          echo ""
+          
+          # 检查环境变量是否设置
+          if [ -z "$GITEA_TOKEN" ]; then
+            echo "❌ GITEA_TOKEN is not set"
+            exit 1
+          else
+            echo "✅ GITEA_TOKEN is set (${#GITEA_TOKEN} characters)"
+          fi
+          
+          if [ -z "$GITEA_URL" ]; then
+            echo "❌ GITEA_URL is not set"
+            exit 1
+          else
+            echo "✅ GITEA_URL: $GITEA_URL"
+          fi
+          
+          if [ -z "$GITEA_REPO" ]; then
+            echo "❌ GITEA_REPO is not set"
+            exit 1
+          else
+            echo "✅ GITEA_REPO: $GITEA_REPO"
+          fi
+          
+          echo ""
+          echo "🌐 Testing API connection..."
+          
+          # 测试 API 连接
+          HTTP_CODE=$(curl -s -w "%{http_code}" -o /tmp/user.json \
+            -H "Authorization: token $GITEA_TOKEN" \
+            "${GITEA_URL}/api/v1/user")
+          
+          if [ "$HTTP_CODE" == "200" ]; then
+            USERNAME=$(jq -r '.login' /tmp/user.json)
+            echo "✅ API connection successful!"
+            echo "   Authenticated as: $USERNAME"
+          else
+            echo "❌ API connection failed (HTTP $HTTP_CODE)"
+            cat /tmp/user.json
+            exit 1
+          fi
+          
+          echo ""
+          echo "📦 Testing repository access..."
+          
+          # 测试仓库访问
+          HTTP_CODE=$(curl -s -w "%{http_code}" -o /tmp/repo.json \
+            -H "Authorization: token $GITEA_TOKEN" \
+            "${GITEA_URL}/api/v1/repos/${GITEA_REPO}")
+          
+          if [ "$HTTP_CODE" == "200" ]; then
+            REPO_NAME=$(jq -r '.full_name' /tmp/repo.json)
+            REPO_PRIVATE=$(jq -r '.private' /tmp/repo.json)
+            echo "✅ Repository access successful!"
+            echo "   Repository: $REPO_NAME"
+            echo "   Private: $REPO_PRIVATE"
+          else
+            echo "❌ Repository access failed (HTTP $HTTP_CODE)"
+            cat /tmp/repo.json
+            exit 1
+          fi
+          
+          echo ""
+          echo "🎉 All tests passed! Your Gitea configuration is correct."
+          echo ""
+          echo "Next steps:"
+          echo "  1. Push to 'release' branch to trigger a real release"
+          echo "  2. Or manually trigger the 'publish' workflow"
+

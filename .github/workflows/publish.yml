@@ -123,14 +123,17 @@ jobs:
           RELEASE_DATA=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
             "https://api.github.com/repos/${{ github.repository }}/releases/latest")
           
+          # 使用简单的单行输出
           echo "tag_name=$(echo $RELEASE_DATA | jq -r '.tag_name')" >> $GITHUB_OUTPUT
           echo "name=$(echo $RELEASE_DATA | jq -r '.name')" >> $GITHUB_OUTPUT
-          echo "body=$(echo $RELEASE_DATA | jq -r '.body')" >> $GITHUB_OUTPUT
           echo "draft=$(echo $RELEASE_DATA | jq -r '.draft')" >> $GITHUB_OUTPUT
           echo "prerelease=$(echo $RELEASE_DATA | jq -r '.prerelease')" >> $GITHUB_OUTPUT
-          
-          # 保存 release ID 用于后续下载 assets
           echo "release_id=$(echo $RELEASE_DATA | jq -r '.id')" >> $GITHUB_OUTPUT
+          
+          # 使用 EOF 分隔符处理多行 body 内容
+          echo "body<<EOF" >> $GITHUB_OUTPUT
+          echo "$RELEASE_DATA" | jq -r '.body' >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
 
       - name: Download release assets
         run: |
@@ -163,50 +166,89 @@ jobs:
           IS_DRAFT="${{ steps.release_info.outputs.draft }}"
           IS_PRERELEASE="${{ steps.release_info.outputs.prerelease }}"
           
+          echo "📦 Syncing release: $RELEASE_NAME ($TAG_NAME)"
+          echo "🎯 Target: $GITEA_URL/$GITEA_REPO"
+          
           # 检查 Gitea release 是否已存在
-          EXISTING_RELEASE=$(curl -s -w "%{http_code}" -o /tmp/release.json \
+          HTTP_CODE=$(curl -s -w "%{http_code}" -o /tmp/release.json \
             -H "Authorization: token $GITEA_TOKEN" \
             "${GITEA_URL}/api/v1/repos/${GITEA_REPO}/releases/tags/${TAG_NAME}")
           
-          if [ "${EXISTING_RELEASE: -3}" == "200" ]; then
-            echo "Release already exists, deleting old one..."
+          if [ "$HTTP_CODE" == "200" ]; then
+            echo "⚠️  Release already exists, deleting old one..."
             RELEASE_ID=$(jq -r '.id' /tmp/release.json)
-            curl -X DELETE \
+            DELETE_CODE=$(curl -s -w "%{http_code}" -o /dev/null -X DELETE \
               -H "Authorization: token $GITEA_TOKEN" \
-              "${GITEA_URL}/api/v1/repos/${GITEA_REPO}/releases/${RELEASE_ID}"
+              "${GITEA_URL}/api/v1/repos/${GITEA_REPO}/releases/${RELEASE_ID}")
+            
+            if [ "$DELETE_CODE" != "204" ]; then
+              echo "❌ Failed to delete old release (HTTP $DELETE_CODE)"
+              exit 1
+            fi
+            echo "✅ Old release deleted"
           fi
           
+          # 准备 JSON payload，正确处理多行内容
+          BODY_JSON=$(echo "$RELEASE_BODY" | jq -Rs .)
+          
           # 创建新的 release
-          echo "Creating new Gitea release..."
-          CREATE_RESPONSE=$(curl -X POST \
+          echo "🚀 Creating new Gitea release..."
+          CREATE_RESPONSE=$(curl -s -w "\n%{http_code}" \
             -H "Authorization: token $GITEA_TOKEN" \
             -H "Content-Type: application/json" \
             "${GITEA_URL}/api/v1/repos/${GITEA_REPO}/releases" \
             -d @- <<EOF
           {
-            "tag_name": "${TAG_NAME}",
-            "name": "${RELEASE_NAME}",
-            "body": $(echo "$RELEASE_BODY" | jq -Rs .),
-            "draft": ${IS_DRAFT},
-            "prerelease": ${IS_PRERELEASE}
+            "tag_name": "$TAG_NAME",
+            "name": "$RELEASE_NAME",
+            "body": $BODY_JSON,
+            "draft": $IS_DRAFT,
+            "prerelease": $IS_PRERELEASE
           }
           EOF
           )
           
-          GITEA_RELEASE_ID=$(echo "$CREATE_RESPONSE" | jq -r '.id')
-          echo "Created Gitea release with ID: $GITEA_RELEASE_ID"
+          # 分离响应体和状态码
+          HTTP_CODE=$(echo "$CREATE_RESPONSE" | tail -n1)
+          RESPONSE_BODY=$(echo "$CREATE_RESPONSE" | sed '$d')
+          
+          if [ "$HTTP_CODE" != "201" ]; then
+            echo "❌ Failed to create release (HTTP $HTTP_CODE)"
+            echo "Response: $RESPONSE_BODY"
+            exit 1
+          fi
+          
+          GITEA_RELEASE_ID=$(echo "$RESPONSE_BODY" | jq -r '.id')
+          echo "✅ Created Gitea release with ID: $GITEA_RELEASE_ID"
           
           # 上传所有 assets
+          echo "📤 Uploading assets..."
+          ASSET_COUNT=0
           for asset in release-assets/*; do
             if [ -f "$asset" ]; then
               filename=$(basename "$asset")
-              echo "Uploading $filename..."
-              curl -X POST \
+              filesize=$(ls -lh "$asset" | awk '{print $5}')
+              echo "  ⏳ Uploading $filename ($filesize)..."
+              
+              UPLOAD_CODE=$(curl -s -w "%{http_code}" -o /dev/null \
                 -H "Authorization: token $GITEA_TOKEN" \
                 -F "attachment=@${asset}" \
-                "${GITEA_URL}/api/v1/repos/${GITEA_REPO}/releases/${GITEA_RELEASE_ID}/assets?name=${filename}"
+                "${GITEA_URL}/api/v1/repos/${GITEA_REPO}/releases/${GITEA_RELEASE_ID}/assets?name=${filename}")
+              
+              if [ "$UPLOAD_CODE" == "201" ]; then
+                echo "  ✅ Uploaded $filename"
+                ASSET_COUNT=$((ASSET_COUNT + 1))
+              else
+                echo "  ❌ Failed to upload $filename (HTTP $UPLOAD_CODE)"
+              fi
             fi
           done
           
-          echo "✅ Successfully synced release to Gitea!"
+          echo ""
+          echo "🎉 Successfully synced release to Gitea!"
+          echo "📊 Summary:"
+          echo "  - Release: $RELEASE_NAME"
+          echo "  - Tag: $TAG_NAME"
+          echo "  - Assets uploaded: $ASSET_COUNT"
+          echo "  - URL: $GITEA_URL/$GITEA_REPO/releases/tag/$TAG_NAME"
 
