@@ -226,19 +226,24 @@ HAS_EXISTING_BUILD=0
 # 检查是否有构建产物
 if [ -d "$BUNDLE_DIR" ]; then
     BUILD_COUNT=0
+    # Tauri 标准命名格式
     [ -f "$BUNDLE_DIR/macos/${APP_NAME}.app.tar.gz" ] && BUILD_COUNT=$((BUILD_COUNT + 1))
-    [ -f "$BUNDLE_DIR/appimage/${APP_NAME}.AppImage.tar.gz" ] && BUILD_COUNT=$((BUILD_COUNT + 1))
-    [ -f "$BUNDLE_DIR/nsis/${APP_NAME}.nsis.zip" ] && BUILD_COUNT=$((BUILD_COUNT + 1))
+    [ -f "$BUNDLE_DIR/appimage/${APP_NAME}.AppImage" ] && BUILD_COUNT=$((BUILD_COUNT + 1))
+    [ -f "$BUNDLE_DIR/nsis/${APP_NAME}-setup.exe" ] && BUILD_COUNT=$((BUILD_COUNT + 1))
+    [ -f "$BUNDLE_DIR/msi/${APP_NAME}.msi" ] && BUILD_COUNT=$((BUILD_COUNT + 1))
     
     # 检查是否有带版本号的构建产物
     BUILD_COUNT_VERSIONED=0
     if compgen -G "$BUNDLE_DIR/macos/${APP_NAME}_*.app.tar.gz" > /dev/null 2>&1; then
         BUILD_COUNT_VERSIONED=$((BUILD_COUNT_VERSIONED + 1))
     fi
-    if compgen -G "$BUNDLE_DIR/appimage/${APP_NAME}_*.AppImage.tar.gz" > /dev/null 2>&1; then
+    if compgen -G "$BUNDLE_DIR/appimage/${APP_NAME}_*.AppImage" > /dev/null 2>&1; then
         BUILD_COUNT_VERSIONED=$((BUILD_COUNT_VERSIONED + 1))
     fi
-    if compgen -G "$BUNDLE_DIR/nsis/${APP_NAME}_*.nsis.zip" > /dev/null 2>&1; then
+    if compgen -G "$BUNDLE_DIR/nsis/${APP_NAME}_*-setup.exe" > /dev/null 2>&1; then
+        BUILD_COUNT_VERSIONED=$((BUILD_COUNT_VERSIONED + 1))
+    fi
+    if compgen -G "$BUNDLE_DIR/msi/${APP_NAME}_*.msi" > /dev/null 2>&1; then
         BUILD_COUNT_VERSIONED=$((BUILD_COUNT_VERSIONED + 1))
     fi
     
@@ -258,20 +263,28 @@ if [ -d "$BUNDLE_DIR" ]; then
                 echo "   • macOS: $(basename "$file")"
             fi
         done
-        if [ -f "$BUNDLE_DIR/appimage/${APP_NAME}.AppImage.tar.gz" ]; then
-            echo "   • Linux: ${APP_NAME}.AppImage.tar.gz"
+        if [ -f "$BUNDLE_DIR/appimage/${APP_NAME}.AppImage" ]; then
+            echo "   • Linux: ${APP_NAME}.AppImage"
         fi
-        for file in "$BUNDLE_DIR/appimage/${APP_NAME}_"*".AppImage.tar.gz"; do
+        for file in "$BUNDLE_DIR/appimage/${APP_NAME}_"*".AppImage"; do
             if [ -f "$file" ]; then
                 echo "   • Linux: $(basename "$file")"
             fi
         done
-        if [ -f "$BUNDLE_DIR/nsis/${APP_NAME}.nsis.zip" ]; then
-            echo "   • Windows: ${APP_NAME}.nsis.zip"
+        if [ -f "$BUNDLE_DIR/nsis/${APP_NAME}-setup.exe" ]; then
+            echo "   • Windows NSIS: ${APP_NAME}-setup.exe"
         fi
-        for file in "$BUNDLE_DIR/nsis/${APP_NAME}_"*".nsis.zip"; do
+        for file in "$BUNDLE_DIR/nsis/${APP_NAME}_"*"-setup.exe"; do
             if [ -f "$file" ]; then
-                echo "   • Windows: $(basename "$file")"
+                echo "   • Windows NSIS: $(basename "$file")"
+            fi
+        done
+        if [ -f "$BUNDLE_DIR/msi/${APP_NAME}.msi" ]; then
+            echo "   • Windows MSI: ${APP_NAME}.msi"
+        fi
+        for file in "$BUNDLE_DIR/msi/${APP_NAME}_"*".msi"; do
+            if [ -f "$file" ]; then
+                echo "   • Windows MSI: $(basename "$file")"
             fi
         done
     fi
@@ -592,17 +605,117 @@ remote_windows_build() {
     echo ""
     
     # 下载构建产物
-    mkdir -p "$BUNDLE_DIR/nsis"
+    mkdir -p "$BUNDLE_DIR/nsis" "$BUNDLE_DIR/msi"
     
-    # 下载 Windows 构建文件
-    eval "$SCP_CMD $REMOTE_USER@$REMOTE_HOST:$REMOTE_PROJECT_PATH/src-tauri/target/release/bundle/nsis/*.nsis.zip $BUNDLE_DIR/nsis/" 2>/dev/null
-    eval "$SCP_CMD $REMOTE_USER@$REMOTE_HOST:$REMOTE_PROJECT_PATH/src-tauri/target/release/bundle/nsis/*.nsis.zip.sig $BUNDLE_DIR/nsis/" 2>/dev/null
+    # 使用 SSH 直接传输文件（避免路径转换问题）
+    REMOTE_NSIS_PATH="${REMOTE_PROJECT_PATH}/src-tauri/target/release/bundle/nsis"
+    REMOTE_MSI_PATH="${REMOTE_PROJECT_PATH}/src-tauri/target/release/bundle/msi"
     
-    if [ $? -eq 0 ]; then
-        echo "   ✅ Windows 构建产物下载成功"
+    echo "   下载 NSIS 安装包..."
+    # 通过 SSH 列出文件
+    NSIS_FILES=$(eval "$SSH_CMD $REMOTE_USER@$REMOTE_HOST \"cd \\\"$REMOTE_NSIS_PATH\\\" 2>nul && dir /b 2>nul\"" 2>/dev/null | tr -d '\r')
+    
+    NSIS_SUCCESS=0
+    NSIS_EXE_COUNT=0
+    NSIS_SIG_COUNT=0
+    
+    if [ -n "$NSIS_FILES" ]; then
+        while IFS= read -r filename; do
+            if [ -n "$filename" ]; then
+                # 只下载 .exe 和 .sig 文件
+                if [[ "$filename" == *"-setup.exe"* ]]; then
+                    # 使用 SSH type 命令传输文件
+                    eval "$SSH_CMD $REMOTE_USER@$REMOTE_HOST \"type \\\"$REMOTE_NSIS_PATH\\$filename\\\"\"" > "$BUNDLE_DIR/nsis/$filename" 2>/dev/null
+                    if [ $? -eq 0 ] && [ -s "$BUNDLE_DIR/nsis/$filename" ]; then
+                        filesize=$(ls -lh "$BUNDLE_DIR/nsis/$filename" | awk '{print $5}')
+                        echo "      ✅ $filename ($filesize)"
+                        
+                        # 统计下载的文件类型
+                        if [[ "$filename" == *".sig" ]]; then
+                            NSIS_SIG_COUNT=$((NSIS_SIG_COUNT + 1))
+                        else
+                            NSIS_EXE_COUNT=$((NSIS_EXE_COUNT + 1))
+                        fi
+                    else
+                        echo "      ❌ $filename (下载失败)"
+                    fi
+                fi
+            fi
+        done <<< "$NSIS_FILES"
+        
+        # 检查是否同时下载了 .exe 和 .sig
+        if [ $NSIS_EXE_COUNT -gt 0 ] && [ $NSIS_SIG_COUNT -gt 0 ]; then
+            NSIS_SUCCESS=1
+        fi
+    fi
+    
+    if [ $NSIS_SUCCESS -eq 1 ]; then
+        echo "   ✅ NSIS 安装包下载成功 (exe: $NSIS_EXE_COUNT, sig: $NSIS_SIG_COUNT)"
+    else
+        echo "   ⚠️  NSIS 安装包下载失败 (exe: $NSIS_EXE_COUNT, sig: $NSIS_SIG_COUNT)"
+        if [ $NSIS_SIG_COUNT -eq 0 ]; then
+            echo "      提示: 未找到 .sig 签名文件，请检查构建是否正确生成签名"
+        fi
+    fi
+    
+    echo ""
+    echo "   下载 MSI 安装包..."
+    # 通过 SSH 列出文件
+    MSI_FILES=$(eval "$SSH_CMD $REMOTE_USER@$REMOTE_HOST \"cd \\\"$REMOTE_MSI_PATH\\\" 2>nul && dir /b 2>nul\"" 2>/dev/null | tr -d '\r')
+    
+    MSI_SUCCESS=0
+    MSI_MSI_COUNT=0
+    MSI_SIG_COUNT=0
+    
+    if [ -n "$MSI_FILES" ]; then
+        while IFS= read -r filename; do
+            if [ -n "$filename" ]; then
+                # 只下载 .msi 和 .sig 文件
+                if [[ "$filename" == *.msi* ]]; then
+                    # 使用 SSH type 命令传输文件
+                    eval "$SSH_CMD $REMOTE_USER@$REMOTE_HOST \"type \\\"$REMOTE_MSI_PATH\\$filename\\\"\"" > "$BUNDLE_DIR/msi/$filename" 2>/dev/null
+                    if [ $? -eq 0 ] && [ -s "$BUNDLE_DIR/msi/$filename" ]; then
+                        filesize=$(ls -lh "$BUNDLE_DIR/msi/$filename" | awk '{print $5}')
+                        echo "      ✅ $filename ($filesize)"
+                        
+                        # 统计下载的文件类型
+                        if [[ "$filename" == *".sig" ]]; then
+                            MSI_SIG_COUNT=$((MSI_SIG_COUNT + 1))
+                        else
+                            MSI_MSI_COUNT=$((MSI_MSI_COUNT + 1))
+                        fi
+                    else
+                        echo "      ❌ $filename (下载失败)"
+                    fi
+                fi
+            fi
+        done <<< "$MSI_FILES"
+        
+        # 检查是否同时下载了 .msi 和 .sig
+        if [ $MSI_MSI_COUNT -gt 0 ] && [ $MSI_SIG_COUNT -gt 0 ]; then
+            MSI_SUCCESS=1
+        fi
+    fi
+    
+    if [ $MSI_SUCCESS -eq 1 ]; then
+        echo "   ✅ MSI 安装包下载成功 (msi: $MSI_MSI_COUNT, sig: $MSI_SIG_COUNT)"
+    else
+        echo "   ⚠️  MSI 安装包下载失败 (msi: $MSI_MSI_COUNT, sig: $MSI_SIG_COUNT)"
+        if [ $MSI_SIG_COUNT -eq 0 ]; then
+            echo "      提示: 未找到 .sig 签名文件，请检查构建是否正确生成签名"
+        fi
+    fi
+    
+    echo ""
+    
+    # 只要有一个成功就算成功
+    if [ $NSIS_SUCCESS -eq 1 ] || [ $MSI_SUCCESS -eq 1 ]; then
         return 0
     else
-        echo "   ⚠️  Windows 构建产物下载失败或不存在"
+        echo "   ❌ Windows 构建产物下载失败"
+        echo "   提示: 请检查远程路径是否正确"
+        echo "   NSIS: $REMOTE_NSIS_PATH"
+        echo "   MSI: $REMOTE_MSI_PATH"
         return 1
     fi
 }
@@ -814,30 +927,44 @@ rename_build_files() {
         renamed=1
     fi
     
-    # Linux 构建文件
-    if [ -f "$BUNDLE_DIR/appimage/${APP_NAME}.AppImage.tar.gz" ]; then
-        local new_name="${APP_NAME}_${VERSION}_amd64.AppImage.tar.gz"
+    # Linux 构建文件 (AppImage)
+    if [ -f "$BUNDLE_DIR/appimage/${APP_NAME}.AppImage" ]; then
+        local new_name="${APP_NAME}_${VERSION}_amd64.AppImage"
         echo "📝 重命名 Linux 构建文件:"
-        echo "   ${APP_NAME}.AppImage.tar.gz → $new_name"
-        mv "$BUNDLE_DIR/appimage/${APP_NAME}.AppImage.tar.gz" "$BUNDLE_DIR/appimage/$new_name"
+        echo "   ${APP_NAME}.AppImage → $new_name"
+        mv "$BUNDLE_DIR/appimage/${APP_NAME}.AppImage" "$BUNDLE_DIR/appimage/$new_name"
         
-        if [ -f "$BUNDLE_DIR/appimage/${APP_NAME}.AppImage.tar.gz.sig" ]; then
-            mv "$BUNDLE_DIR/appimage/${APP_NAME}.AppImage.tar.gz.sig" "$BUNDLE_DIR/appimage/$new_name.sig"
-            echo "   ${APP_NAME}.AppImage.tar.gz.sig → $new_name.sig"
+        if [ -f "$BUNDLE_DIR/appimage/${APP_NAME}.AppImage.sig" ]; then
+            mv "$BUNDLE_DIR/appimage/${APP_NAME}.AppImage.sig" "$BUNDLE_DIR/appimage/$new_name.sig"
+            echo "   ${APP_NAME}.AppImage.sig → $new_name.sig"
         fi
         renamed=1
     fi
     
-    # Windows 构建文件
-    if [ -f "$BUNDLE_DIR/nsis/${APP_NAME}.nsis.zip" ]; then
-        local new_name="${APP_NAME}_${VERSION}_x64-setup.nsis.zip"
-        echo "📝 重命名 Windows 构建文件:"
-        echo "   ${APP_NAME}.nsis.zip → $new_name"
-        mv "$BUNDLE_DIR/nsis/${APP_NAME}.nsis.zip" "$BUNDLE_DIR/nsis/$new_name"
+    # Windows NSIS 构建文件
+    if [ -f "$BUNDLE_DIR/nsis/${APP_NAME}-setup.exe" ]; then
+        local new_name="${APP_NAME}_${VERSION}_x64-setup.exe"
+        echo "📝 重命名 Windows NSIS 构建文件:"
+        echo "   ${APP_NAME}-setup.exe → $new_name"
+        mv "$BUNDLE_DIR/nsis/${APP_NAME}-setup.exe" "$BUNDLE_DIR/nsis/$new_name"
         
-        if [ -f "$BUNDLE_DIR/nsis/${APP_NAME}.nsis.zip.sig" ]; then
-            mv "$BUNDLE_DIR/nsis/${APP_NAME}.nsis.zip.sig" "$BUNDLE_DIR/nsis/$new_name.sig"
-            echo "   ${APP_NAME}.nsis.zip.sig → $new_name.sig"
+        if [ -f "$BUNDLE_DIR/nsis/${APP_NAME}-setup.exe.sig" ]; then
+            mv "$BUNDLE_DIR/nsis/${APP_NAME}-setup.exe.sig" "$BUNDLE_DIR/nsis/$new_name.sig"
+            echo "   ${APP_NAME}-setup.exe.sig → $new_name.sig"
+        fi
+        renamed=1
+    fi
+    
+    # Windows MSI 构建文件
+    if [ -f "$BUNDLE_DIR/msi/${APP_NAME}.msi" ]; then
+        local new_name="${APP_NAME}_${VERSION}_x64.msi"
+        echo "📝 重命名 Windows MSI 构建文件:"
+        echo "   ${APP_NAME}.msi → $new_name"
+        mv "$BUNDLE_DIR/msi/${APP_NAME}.msi" "$BUNDLE_DIR/msi/$new_name"
+        
+        if [ -f "$BUNDLE_DIR/msi/${APP_NAME}.msi.sig" ]; then
+            mv "$BUNDLE_DIR/msi/${APP_NAME}.msi.sig" "$BUNDLE_DIR/msi/$new_name.sig"
+            echo "   ${APP_NAME}.msi.sig → $new_name.sig"
         fi
         renamed=1
     fi
@@ -914,14 +1041,14 @@ EOF
     PLATFORM_COUNT=$((PLATFORM_COUNT + 1))
 fi
 
-# Linux x64
+# Linux x64 (AppImage)
 LINUX_SIG=""
-if [ -f "$BUNDLE_DIR/appimage/${APP_NAME}_${VERSION}_amd64.AppImage.tar.gz.sig" ]; then
-    LINUX_SIG=$(read_sig "$BUNDLE_DIR/appimage/${APP_NAME}_${VERSION}_amd64.AppImage.tar.gz.sig")
-    LINUX_FILE="${APP_NAME}_${VERSION}_amd64.AppImage.tar.gz"
-elif [ -f "$BUNDLE_DIR/appimage/${APP_NAME}.AppImage.tar.gz.sig" ]; then
-    LINUX_SIG=$(read_sig "$BUNDLE_DIR/appimage/${APP_NAME}.AppImage.tar.gz.sig")
-    LINUX_FILE="${APP_NAME}.AppImage.tar.gz"
+if [ -f "$BUNDLE_DIR/appimage/${APP_NAME}_${VERSION}_amd64.AppImage.sig" ]; then
+    LINUX_SIG=$(read_sig "$BUNDLE_DIR/appimage/${APP_NAME}_${VERSION}_amd64.AppImage.sig")
+    LINUX_FILE="${APP_NAME}_${VERSION}_amd64.AppImage"
+elif [ -f "$BUNDLE_DIR/appimage/${APP_NAME}.AppImage.sig" ]; then
+    LINUX_SIG=$(read_sig "$BUNDLE_DIR/appimage/${APP_NAME}.AppImage.sig")
+    LINUX_FILE="${APP_NAME}.AppImage"
 fi
 
 if [ -n "$LINUX_SIG" ]; then
@@ -936,14 +1063,14 @@ EOF
     PLATFORM_COUNT=$((PLATFORM_COUNT + 1))
 fi
 
-# Windows x64
+# Windows x64 (NSIS) - Tauri 更新器优先使用 NSIS
 WINDOWS_SIG=""
-if [ -f "$BUNDLE_DIR/nsis/${APP_NAME}_${VERSION}_x64-setup.nsis.zip.sig" ]; then
-    WINDOWS_SIG=$(read_sig "$BUNDLE_DIR/nsis/${APP_NAME}_${VERSION}_x64-setup.nsis.zip.sig")
-    WINDOWS_FILE="${APP_NAME}_${VERSION}_x64-setup.nsis.zip"
-elif [ -f "$BUNDLE_DIR/nsis/${APP_NAME}.nsis.zip.sig" ]; then
-    WINDOWS_SIG=$(read_sig "$BUNDLE_DIR/nsis/${APP_NAME}.nsis.zip.sig")
-    WINDOWS_FILE="${APP_NAME}.nsis.zip"
+if [ -f "$BUNDLE_DIR/nsis/${APP_NAME}_${VERSION}_x64-setup.exe.sig" ]; then
+    WINDOWS_SIG=$(read_sig "$BUNDLE_DIR/nsis/${APP_NAME}_${VERSION}_x64-setup.exe.sig")
+    WINDOWS_FILE="${APP_NAME}_${VERSION}_x64-setup.exe"
+elif [ -f "$BUNDLE_DIR/nsis/${APP_NAME}-setup.exe.sig" ]; then
+    WINDOWS_SIG=$(read_sig "$BUNDLE_DIR/nsis/${APP_NAME}-setup.exe.sig")
+    WINDOWS_FILE="${APP_NAME}-setup.exe"
 fi
 
 if [ -n "$WINDOWS_SIG" ]; then
@@ -954,8 +1081,23 @@ if [ -n "$WINDOWS_SIG" ]; then
       "url": "$RELEASE_URL/$WINDOWS_FILE$URL_TOKEN_PARAM"
     }
 EOF
-    echo "  ✅ 找到 Windows x64 构建: $WINDOWS_FILE"
+    echo "  ✅ 找到 Windows x64 构建 (NSIS): $WINDOWS_FILE"
     PLATFORM_COUNT=$((PLATFORM_COUNT + 1))
+fi
+
+# Windows x64 MSI (备用)
+WINDOWS_MSI_SIG=""
+if [ -f "$BUNDLE_DIR/msi/${APP_NAME}_${VERSION}_x64.msi.sig" ]; then
+    WINDOWS_MSI_SIG=$(read_sig "$BUNDLE_DIR/msi/${APP_NAME}_${VERSION}_x64.msi.sig")
+    WINDOWS_MSI_FILE="${APP_NAME}_${VERSION}_x64.msi"
+elif [ -f "$BUNDLE_DIR/msi/${APP_NAME}.msi.sig" ]; then
+    WINDOWS_MSI_SIG=$(read_sig "$BUNDLE_DIR/msi/${APP_NAME}.msi.sig")
+    WINDOWS_MSI_FILE="${APP_NAME}.msi"
+fi
+
+# MSI 也添加到平台信息（作为额外的下载选项，但不用于自动更新）
+if [ -n "$WINDOWS_MSI_SIG" ]; then
+    echo "  ✅ 找到 Windows x64 构建 (MSI): $WINDOWS_MSI_FILE"
 fi
 
 cat >> latest.json <<EOF
@@ -1005,6 +1147,11 @@ if [ -n "$WINDOWS_SIG" ]; then
     echo "      • $WINDOWS_FILE.sig"
 fi
 
+if [ -n "$WINDOWS_MSI_SIG" ]; then
+    echo "      • $WINDOWS_MSI_FILE (可选)"
+    echo "      • $WINDOWS_MSI_FILE.sig (可选)"
+fi
+
 echo ""
 echo "   4. 上传 latest.json 文件"
 echo ""
@@ -1038,9 +1185,16 @@ if [ -n "$LINUX_SIG" ]; then
 fi
 
 if [ -n "$WINDOWS_SIG" ]; then
-    echo "Windows x64:"
+    echo "Windows x64 (NSIS):"
     echo "  📦 $BUNDLE_DIR/nsis/$WINDOWS_FILE"
     echo "  🔑 $BUNDLE_DIR/nsis/$WINDOWS_FILE.sig"
+    echo ""
+fi
+
+if [ -n "$WINDOWS_MSI_SIG" ]; then
+    echo "Windows x64 (MSI):"
+    echo "  📦 $BUNDLE_DIR/msi/$WINDOWS_MSI_FILE"
+    echo "  🔑 $BUNDLE_DIR/msi/$WINDOWS_MSI_FILE.sig"
     echo ""
 fi
 
@@ -1214,10 +1368,16 @@ if [ $SHOULD_UPLOAD -eq 1 ]; then
         upload_file "$BUNDLE_DIR/appimage/$LINUX_FILE.sig"
     fi
     
-    # 上传 Windows 文件
+    # 上传 Windows NSIS 文件
     if [ -n "$WINDOWS_SIG" ]; then
         upload_file "$BUNDLE_DIR/nsis/$WINDOWS_FILE"
         upload_file "$BUNDLE_DIR/nsis/$WINDOWS_FILE.sig"
+    fi
+    
+    # 上传 Windows MSI 文件（可选）
+    if [ -n "$WINDOWS_MSI_SIG" ]; then
+        upload_file "$BUNDLE_DIR/msi/$WINDOWS_MSI_FILE"
+        upload_file "$BUNDLE_DIR/msi/$WINDOWS_MSI_FILE.sig"
     fi
     
     # 上传 latest.json
