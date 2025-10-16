@@ -1,0 +1,197 @@
+name: 'Update Gitea JSON URLs'
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag_name:
+        description: 'Release tag to update (e.g., v0.2.37)'
+        required: true
+        type: string
+  workflow_run:
+    workflows: ["publish"]
+    types:
+      - completed
+
+jobs:
+  update-gitea-json:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set release tag
+        id: set_tag
+        run: |
+          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+            TAG_NAME="${{ github.event.inputs.tag_name }}"
+          else
+            # 从 GitHub 获取最新的 release tag
+            TAG_NAME=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+              "https://api.github.com/repos/${{ github.repository }}/releases/latest" | jq -r '.tag_name')
+          fi
+          
+          echo "tag_name=$TAG_NAME" >> $GITHUB_OUTPUT
+          echo "📌 Processing tag: $TAG_NAME"
+
+      - name: Download JSON files from Gitea
+        env:
+          GITEA_TOKEN: ${{ secrets.GITEA_TOKEN }}
+          GITEA_URL: ${{ secrets.GITEA_URL }}
+          GITEA_REPO: ${{ secrets.GITEA_REPO }}
+          TAG_NAME: ${{ steps.set_tag.outputs.tag_name }}
+        run: |
+          mkdir -p gitea-json-files
+          
+          echo "📥 Downloading JSON files from Gitea release $TAG_NAME..."
+          
+          # 获取 Gitea release 信息
+          RELEASE_DATA=$(curl -s -H "Authorization: token $GITEA_TOKEN" \
+            "${GITEA_URL}/api/v1/repos/${GITEA_REPO}/releases/tags/${TAG_NAME}")
+          
+          RELEASE_ID=$(echo "$RELEASE_DATA" | jq -r '.id')
+          
+          if [ "$RELEASE_ID" == "null" ] || [ -z "$RELEASE_ID" ]; then
+            echo "❌ Release $TAG_NAME not found in Gitea"
+            exit 1
+          fi
+          
+          echo "✅ Found release ID: $RELEASE_ID"
+          
+          # 获取所有附件
+          ATTACHMENTS=$(echo "$RELEASE_DATA" | jq -r '.assets')
+          
+          # 下载所有 .json 文件
+          echo "$ATTACHMENTS" | jq -r '.[] | select(.name | endswith(".json")) | "\(.id) \(.name) \(.browser_download_url)"' | \
+          while read attachment_id filename download_url; do
+            echo "  📄 Downloading $filename..."
+            curl -L -H "Authorization: token $GITEA_TOKEN" \
+              "$download_url" \
+              -o "gitea-json-files/$filename"
+            
+            if [ -f "gitea-json-files/$filename" ]; then
+              echo "  ✅ Downloaded $filename ($(ls -lh "gitea-json-files/$filename" | awk '{print $5}'))"
+            else
+              echo "  ❌ Failed to download $filename"
+            fi
+          done
+          
+          echo ""
+          echo "📊 Downloaded files:"
+          ls -lh gitea-json-files/
+
+      - name: Update URLs in JSON files
+        env:
+          GITEA_URL: ${{ secrets.GITEA_URL }}
+          GITEA_REPO: ${{ secrets.GITEA_REPO }}
+          GITEA_TOKEN: ${{ secrets.GITEA_TOKEN }}
+        run: |
+          GITHUB_REPO="${{ github.repository }}"
+          
+          echo "🔄 Updating URLs in JSON files..."
+          echo "  From: https://github.com/${GITHUB_REPO}/releases/download/"
+          echo "  To: ${GITEA_URL}/${GITEA_REPO}/releases/download/"
+          echo "  Token: ${GITEA_TOKEN:0:8}..."
+          echo ""
+          
+          JSON_COUNT=0
+          
+          find gitea-json-files -name "*.json" -type f | while read -r json_file; do
+            echo "  📝 Processing $(basename "$json_file")..."
+            
+            # 先移除可能存在的旧 token 参数
+            sed -i.bak 's/\?token=[^"]*//g' "$json_file"
+            
+            # 替换 GitHub URL 为 Gitea URL
+            sed -i.bak \
+              "s|https://github.com/${GITHUB_REPO}/releases/download/|${GITEA_URL}/${GITEA_REPO}/releases/download/|g" \
+              "$json_file"
+            
+            # 在所有下载 URL 后添加 token
+            if [ -n "$GITEA_TOKEN" ]; then
+              # 匹配 Gitea 下载 URL 并添加 token
+              sed -i.bak \
+                "s|\(${GITEA_URL}/${GITEA_REPO}/releases/download/[^\"]*\)|\1?token=${GITEA_TOKEN}|g" \
+                "$json_file"
+            fi
+            
+            # 删除所有备份文件
+            rm -f "${json_file}.bak"
+            
+            echo "  ✅ Updated $(basename "$json_file")"
+            JSON_COUNT=$((JSON_COUNT + 1))
+            
+            # 显示更新后的内容（用于调试）
+            echo "  📄 Content preview:"
+            cat "$json_file" | jq -r '.platforms | to_entries[] | "    Platform: \(.key), URL: \(.value.url)"' 2>/dev/null || \
+            grep -o "\"url\"[^,}]*" "$json_file" | head -n 2 | sed 's/^/    /'
+            echo ""
+          done
+          
+          echo "✅ Updated $JSON_COUNT JSON files"
+
+      - name: Upload updated JSON files back to Gitea
+        env:
+          GITEA_TOKEN: ${{ secrets.GITEA_TOKEN }}
+          GITEA_URL: ${{ secrets.GITEA_URL }}
+          GITEA_REPO: ${{ secrets.GITEA_REPO }}
+          TAG_NAME: ${{ steps.set_tag.outputs.tag_name }}
+        run: |
+          echo "📤 Uploading updated JSON files back to Gitea..."
+          
+          # 获取 release ID
+          RELEASE_DATA=$(curl -s -H "Authorization: token $GITEA_TOKEN" \
+            "${GITEA_URL}/api/v1/repos/${GITEA_REPO}/releases/tags/${TAG_NAME}")
+          
+          RELEASE_ID=$(echo "$RELEASE_DATA" | jq -r '.id')
+          
+          echo "Release ID: $RELEASE_ID"
+          
+          # 删除旧的 JSON 附件
+          echo "🗑️  Deleting old JSON attachments..."
+          echo "$RELEASE_DATA" | jq -r '.assets[] | select(.name | endswith(".json")) | "\(.id) \(.name)"' | \
+          while read attachment_id filename; do
+            echo "  Deleting $filename (ID: $attachment_id)..."
+            DELETE_CODE=$(curl -s -w "%{http_code}" -o /dev/null -X DELETE \
+              -H "Authorization: token $GITEA_TOKEN" \
+              "${GITEA_URL}/api/v1/repos/${GITEA_REPO}/releases/${RELEASE_ID}/assets/${attachment_id}")
+            
+            if [ "$DELETE_CODE" == "204" ]; then
+              echo "  ✅ Deleted $filename"
+            else
+              echo "  ⚠️  Failed to delete $filename (HTTP $DELETE_CODE)"
+            fi
+          done
+          
+          echo ""
+          echo "📤 Uploading updated JSON files..."
+          
+          UPLOAD_COUNT=0
+          
+          find gitea-json-files -name "*.json" -type f | while read -r json_file; do
+            filename=$(basename "$json_file")
+            filesize=$(ls -lh "$json_file" | awk '{print $5}')
+            
+            echo "  ⏳ Uploading $filename ($filesize)..."
+            
+            UPLOAD_CODE=$(curl -s -w "%{http_code}" -o /dev/null \
+              -H "Authorization: token $GITEA_TOKEN" \
+              -F "attachment=@${json_file}" \
+              "${GITEA_URL}/api/v1/repos/${GITEA_REPO}/releases/${RELEASE_ID}/assets?name=${filename}")
+            
+            if [ "$UPLOAD_CODE" == "201" ]; then
+              echo "  ✅ Uploaded $filename"
+              UPLOAD_COUNT=$((UPLOAD_COUNT + 1))
+            else
+              echo "  ❌ Failed to upload $filename (HTTP $UPLOAD_CODE)"
+            fi
+          done
+          
+          echo ""
+          echo "🎉 Successfully updated Gitea JSON files!"
+          echo "📊 Summary:"
+          echo "  - Release: $TAG_NAME"
+          echo "  - Files updated: $UPLOAD_COUNT"
+          echo "  - URL: ${GITEA_URL}/${GITEA_REPO}/releases/tag/${TAG_NAME}"
+
