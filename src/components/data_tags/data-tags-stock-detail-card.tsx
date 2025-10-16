@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { StockCompanyInfo } from '@/types/stock_details';
 import { updateStockCustomTags } from '@/api/stock-details-api';
-import { ExternalLink, Building, Globe, Tags, TrendingUp, Edit3, Plus, X, Trash2, Check } from 'lucide-react';
+import { ExternalLink, Building, Globe, Tags, Edit3, Plus, X, Trash2, Check } from 'lucide-react';
 import { useState, useMemo, useCallback, memo } from 'react';
 import { toast } from 'sonner';
 
@@ -238,79 +238,80 @@ export const StockDetailCard = memo<StockDetailCardProps>(function StockDetailCa
   }, [isSaving, tagsToString, editingParsedTags, stockInfo.stock_code, stockInfo.stock_name, onTagsUpdate]);
 
   return (
-    <div className="h-fit w-full group">
-    <Card className="border-border/50 h-fit w-full overflow-hidden relative transition-all duration-300 hover:shadow-lg hover:border-primary/30">
-      <CardHeader className="pb-3 space-y-1">
+    <div className="h-fit w-full">
+    <Card className="border-border/50 h-fit w-full overflow-hidden relative transition-all duration-200 hover:shadow-xl hover:border-primary/40 hover:scale-[1.01]">
+      <CardHeader className="pb-3 space-y-1.5">
         <div className="flex items-start justify-between gap-2">
           <div className="flex-1 min-w-0">
-            <CardTitle className="text-base font-semibold leading-tight truncate">
+            <CardTitle className="text-base font-semibold leading-tight truncate text-foreground">
               {stockInfo.company_name}
             </CardTitle>
-            <CardDescription className="text-xs text-muted-foreground mt-0.5">
-              {stockInfo.stock_name} · {stockInfo.stock_code}.{stockInfo.exchange}
+            <CardDescription className="text-xs text-muted-foreground mt-1 flex items-center gap-1.5">
+              <span className="font-medium text-foreground/70">{stockInfo.stock_name}</span>
+              <span className="text-muted-foreground/50">·</span>
+              <span className="font-mono text-xs">{stockInfo.stock_code}.{stockInfo.exchange}</span>
             </CardDescription>
           </div>
-          <div className="flex items-center gap-1 shrink-0">
-            <TrendingUp className="w-3 h-3 text-green-600 group-hover:text-green-700 transition-colors" />
-            <Badge variant="secondary" className="text-xs px-2 py-0.5 h-5 group-hover:bg-primary/10 transition-colors">
+          <div className="flex items-center gap-1.5 shrink-0">
+            <Badge variant="secondary" className="text-xs px-2 py-0.5 h-5 font-medium bg-primary/10 text-primary border-primary/20">
               {stockInfo.exchange}
             </Badge>
           </div>
         </div>
       </CardHeader>
 
-      <CardContent className="pt-0 space-y-2">
-        {/* 业务范围 - 紧凑显示 */}
-        <div className="space-y-1">
+      <CardContent className="pt-0 space-y-3">
+        {/* 业务范围 - 优化显示 */}
+        <div className="space-y-1.5">
           <div className="flex items-center gap-1.5">
-            <Building className="w-3 h-3 text-blue-600" />
-            <span className="text-xs font-medium text-foreground">业务范围</span>
+            <Building className="w-3.5 h-3.5 text-blue-600 dark:text-blue-500" />
+            <span className="text-xs font-semibold text-foreground/90">业务范围</span>
           </div>
-          <p className="text-xs text-muted-foreground leading-relaxed line-clamp-2">
+          <p className="text-xs text-muted-foreground/80 leading-relaxed line-clamp-2 pl-5">
             {stockInfo.business_scope}
           </p>
         </div>
 
-        {/* 板块概念 - 限制显示数量 */}
-        <div className="space-y-1">
+        {/* 板块概念 - 优化显示 */}
+        <div className="space-y-1.5">
           <div className="flex items-center gap-1.5">
-            <Tags className="w-3 h-3 text-purple-600" />
-            <span className="text-xs font-medium text-foreground">板块概念</span>
+            <Tags className="w-3.5 h-3.5 text-purple-600 dark:text-purple-500" />
+            <span className="text-xs font-semibold text-foreground/90">板块概念</span>
           </div>
-          <div className="flex flex-wrap gap-1">
-            {stockInfo.sectors_concepts.slice(0, 4).map((concept, index) => (
-              <Badge key={index} variant="outline" className="text-xs px-1.5 py-0.5 h-5 font-normal">
+          <div className="flex flex-wrap gap-1.5 pl-5">
+            {stockInfo.sectors_concepts.slice(0, 5).map((concept, index) => (
+              <Badge key={index} variant="outline" className="text-xs px-2 py-0.5 h-5 font-normal border-border/60 hover:bg-accent/50 transition-colors">
                 {concept}
               </Badge>
             ))}
-            {stockInfo.sectors_concepts.length > 4 && (
-              <Badge variant="outline" className="text-xs px-1.5 py-0.5 h-5 font-normal text-muted-foreground">
-                +{stockInfo.sectors_concepts.length - 4}
+            {stockInfo.sectors_concepts.length > 5 && (
+              <Badge variant="outline" className="text-xs px-2 py-0.5 h-5 font-normal text-muted-foreground/60 border-dashed">
+                +{stockInfo.sectors_concepts.length - 5}
               </Badge>
             )}
           </div>
         </div>
 
-        {/* 公司描述 - 更紧凑 */}
+        {/* 公司描述 - 优化显示 */}
         <div className="space-y-1">
-          <p className="text-xs text-muted-foreground leading-relaxed line-clamp-2">
+          <p className="text-xs text-muted-foreground/70 leading-relaxed line-clamp-3">
             {stockInfo.company_description}
           </p>
         </div>
 
-        {/* 底部信息 */}
-        <div className="flex items-center justify-between pt-2 border-t border-border/50">
+        {/* 底部信息 - 优化样式 */}
+        <div className="flex items-center justify-between pt-2.5 mt-1 border-t border-border/40">
           <a
             href={stockInfo.official_website}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center gap-1 text-xs text-blue-600 hover:text-blue-700 transition-colors"
+            className="inline-flex items-center gap-1.5 text-xs text-blue-600 dark:text-blue-500 hover:text-blue-700 dark:hover:text-blue-400 transition-colors group/link"
           >
-            <Globe className="w-3 h-3" />
-            <span>官网</span>
-            <ExternalLink className="w-2.5 h-2.5" />
+            <Globe className="w-3.5 h-3.5" />
+            <span className="font-medium">官网</span>
+            <ExternalLink className="w-3 h-3 opacity-60 group-hover/link:opacity-100 transition-opacity" />
           </a>
-          <div className="text-xs text-muted-foreground">
+          <div className="text-xs text-muted-foreground/60 font-mono">
             {new Date(stockInfo.updated_at).toLocaleDateString('zh-CN', { 
               month: 'short', 
               day: 'numeric' 
@@ -321,10 +322,10 @@ export const StockDetailCard = memo<StockDetailCardProps>(function StockDetailCa
         {/* 自定义标签 - 仅在有数据时显示 */}
         {Object.keys(parsedTags).length > 0 && (
           <div className="pt-3 border-t border-border/30">
-            <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center justify-between mb-2.5">
               <div className="flex items-center gap-1.5">
-                <Tags className="w-3 h-3 text-amber-600" />
-                <span className="text-xs font-medium text-foreground">自定义标签</span>
+                <Tags className="w-3.5 h-3.5 text-amber-600 dark:text-amber-500" />
+                <span className="text-xs font-semibold text-foreground/90">自定义标签</span>
               </div>
               <Dialog open={isEditDialogOpen} onOpenChange={(open) => {
                 setIsEditDialogOpen(open);
@@ -621,38 +622,38 @@ export const StockDetailCard = memo<StockDetailCardProps>(function StockDetailCa
               </Dialog>
             </div>
             
-            {/* 紧凑的标签显示区域 */}
-            <div className="space-y-1">
+            {/* 优化的标签显示区域 */}
+            <div className="space-y-2 pl-5">
               <TooltipProvider>
                 {Object.entries(parsedTags).map(([category, items]) => (
                   <div key={category} className="flex items-start gap-2">
                     {/* 分类文本 */}
-                    <span className="text-xs font-medium text-muted-foreground shrink-0 mt-0.5 min-w-fit">
+                    <span className="text-xs font-semibold text-muted-foreground/80 shrink-0 mt-0.5 min-w-fit">
                       {category}:
                     </span>
                     
-                    {/* 标签列表 - 紧凑横向排列 */}
-                    <div className="flex flex-wrap gap-1 min-w-0">
+                    {/* 标签列表 - 横向排列 */}
+                    <div className="flex flex-wrap gap-1.5 min-w-0">
                       {items.map((item, index) => (
                         <Tooltip key={`${category}-${item.name}-${index}`}>
                           <TooltipTrigger asChild>
                             <Badge 
                               variant="secondary" 
-                              className="text-xs font-normal cursor-help hover:bg-accent/80 transition-colors"
+                              className="text-xs font-normal cursor-help hover:bg-accent/70 hover:border-primary/30 transition-all px-2 py-0.5"
                             >
                               {item.name}
                               {item.detail && (
-                                <span className="ml-1 text-muted-foreground">•</span>
+                                <span className="ml-1 text-muted-foreground/70">•</span>
                               )}
                             </Badge>
                           </TooltipTrigger>
                           <TooltipContent 
                             side="top" 
                             className="max-w-xs"
-                            sideOffset={4}
+                            sideOffset={5}
                           >
                             <div className="space-y-1">
-                              <div className="font-medium text-xs">{category} / {item.name}</div>
+                              <div className="font-semibold text-xs">{category} / {item.name}</div>
                               {item.detail && (
                                 <div className="text-xs text-muted-foreground leading-relaxed">
                                   {item.detail}

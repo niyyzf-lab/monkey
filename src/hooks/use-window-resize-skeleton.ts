@@ -1,36 +1,49 @@
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useRef } from 'react'
 
 /**
  * Hook to show skeleton during window resize
+ * 使用 requestAnimationFrame 节流优化性能
  * @param delay - Delay in ms before hiding skeleton after resize stops
  * @returns isResizing - Whether the window is currently being resized
  */
 export function useWindowResizeSkeleton(delay: number = 300): boolean {
   const [isResizing, setIsResizing] = useState(false)
-
-  const handleResize = useCallback(() => {
-    setIsResizing(true)
-  }, [])
+  const timeoutRef = useRef<NodeJS.Timeout|null>(null)
+  const rafRef = useRef<number>(0)
 
   useEffect(() => {
-    let timeoutId: NodeJS.Timeout
+    const handleResize = () => {
+      // 取消之前的 RAF 和超时
+      if (rafRef.current) {
+        cancelAnimationFrame(rafRef.current)
+      }
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current)
+      }
 
-    const handleResizeEnd = () => {
-      clearTimeout(timeoutId)
-      timeoutId = setTimeout(() => {
-        setIsResizing(false)
-      }, delay)
+      // 使用 RAF 节流状态更新
+      rafRef.current = requestAnimationFrame(() => {
+        setIsResizing(true)
+        
+        // 设置延迟隐藏
+        timeoutRef.current = setTimeout(() => {
+          setIsResizing(false)
+        }, delay)
+      })
     }
 
     window.addEventListener('resize', handleResize)
-    window.addEventListener('resize', handleResizeEnd)
 
     return () => {
       window.removeEventListener('resize', handleResize)
-      window.removeEventListener('resize', handleResizeEnd)
-      clearTimeout(timeoutId)
+      if (rafRef.current) {
+        cancelAnimationFrame(rafRef.current)
+      }
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current)
+      }
     }
-  }, [handleResize, delay])
+  }, [delay])
 
   return isResizing
 }

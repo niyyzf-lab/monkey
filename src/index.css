@@ -166,6 +166,55 @@
   body {
     @apply bg-background text-foreground;
   }
+  
+  /* 优化滚动性能 */
+  * {
+    /* 移除全局平滑滚动，避免与虚拟滚动冲突 */
+    scroll-behavior: auto;
+  }
+  
+  /* 优化滚动容器 */
+  .overflow-y-auto,
+  .overflow-auto {
+    /* iOS 动量滚动 */
+    -webkit-overflow-scrolling: touch;
+    /* 滚动条样式 */
+    scrollbar-width: thin;
+    scrollbar-color: oklch(0.708 0 0 / 0.3) transparent;
+  }
+  
+  /* Webkit 滚动条样式 */
+  .overflow-y-auto::-webkit-scrollbar,
+  .overflow-auto::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  
+  .overflow-y-auto::-webkit-scrollbar-track,
+  .overflow-auto::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  
+  .overflow-y-auto::-webkit-scrollbar-thumb,
+  .overflow-auto::-webkit-scrollbar-thumb {
+    background-color: oklch(0.708 0 0 / 0.3);
+    border-radius: 4px;
+  }
+  
+  .overflow-y-auto::-webkit-scrollbar-thumb:hover,
+  .overflow-auto::-webkit-scrollbar-thumb:hover {
+    background-color: oklch(0.708 0 0 / 0.5);
+  }
+  
+  .dark .overflow-y-auto::-webkit-scrollbar-thumb,
+  .dark .overflow-auto::-webkit-scrollbar-thumb {
+    background-color: oklch(0.985 0 0 / 0.2);
+  }
+  
+  .dark .overflow-y-auto::-webkit-scrollbar-thumb:hover,
+  .dark .overflow-auto::-webkit-scrollbar-thumb:hover {
+    background-color: oklch(0.985 0 0 / 0.3);
+  }
 }
 
 
@@ -224,11 +273,17 @@
 .masonry-grid > div {
   outline: none;
   border: none;
+  /* 性能优化 */
+  contain: layout style paint;
+  content-visibility: auto;
 }
 
 .masonry-grid .masonry-item {
-  transition: transform 0.3s ease, opacity 0.3s ease;
-  will-change: transform, opacity;
+  transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), 
+              opacity 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  /* GPU 加速 */
+  transform: translateZ(0);
+  backface-visibility: hidden;
 }
 
 /* 高级标签动画性能优化 */
@@ -236,16 +291,30 @@
   .custom-tags-container {
     contain: layout style paint;
     transform: translateZ(0);
-    will-change: transform;
   }
 
   .badge-hover-effect {
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    will-change: transform, box-shadow;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   }
 
   .masonry-grid .masonry-item:hover {
-    transform: translateY(-2px);
+    transform: translate3d(0, -2px, 0);
+  }
+  
+  /* 卡片加载动画 */
+  @keyframes cardFadeIn {
+    from {
+      opacity: 0;
+      transform: translate3d(0, 10px, 0);
+    }
+    to {
+      opacity: 1;
+      transform: translate3d(0, 0, 0);
+    }
+  }
+  
+  .card-fade-in {
+    animation: cardFadeIn 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   }
 }
 

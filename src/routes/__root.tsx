@@ -80,7 +80,7 @@ function RootLayoutContent() {
   }
 
   const menuItems = [
-    { id: 'feel', path: '/feel', icon: HatGlasses, label: '看看猴子在干嘛', description: '观猴感主界面' },
+    { id: 'feel', path: '/feel', icon: HatGlasses, label: '猴园儿', description: '观猴感主界面' },
     { id: 'pick', path: '/pick', icon: Banana, label: '猴の自选', description: '猴子的自选股' },
     { id: 'hold', path: '/hold', icon: HandMetal, label: '猴の持仓', description: '查看猴子的持仓' },
     { id: 'chat', path: '/chat', icon: MessageSquareHeart, label: '与猴聊聊天', description: '与猴子聊天互动' },
