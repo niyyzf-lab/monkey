@@ -6,7 +6,9 @@ import { StatisticsCards } from '../../components/holdings/hold-statistics-cards
 import { VirtualizedGridNew } from '../../components/holdings/hold-virtualized-grid-new';
 import { HoldingsSkeleton } from '../../components/holdings/hold-holdings-skeleton';
 import { HoldingsCardSkeleton } from '../../components/holdings/hold-holdings-card-skeleton';
-import { Toolbar } from '../../components/holdings/hold-toolbar';
+import { UnifiedPageHeader } from '../../components/common/unified-page-header';
+import { ArrowLeftRight } from 'lucide-react';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../../components/ui/tooltip';
 import { FilterBarModern } from '../../components/holdings/filter-bar-modern';
 import { TableView } from '../../components/holdings/hold-table-view';
 import { Button } from '../../components/ui/button';
@@ -200,14 +202,34 @@ function HoldPage() {
   if (error) {
     return (
       <div className="h-full overflow-y-auto">
-        <div className="max-w-[1800px] mx-auto p-4 space-y-4">
-          <Toolbar
-            searchQuery=""
-            onSearchChange={() => {}}
-            displayMode={displayMode}
-            onDisplayModeChange={setDisplayMode}
+        <TooltipProvider>
+          <UnifiedPageHeader
+            title="猴の持仓"
+            subtitle="查看猴子的持仓"
+            tools={
+              displayMode && setDisplayMode ? (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      onClick={() => setDisplayMode(displayMode === 'yuan' ? 'auto' : 'yuan')}
+                      className="h-9 px-2.5 flex items-center gap-1.5 rounded-md text-muted-foreground/60 hover:text-foreground hover:bg-muted/50 transition-all duration-200"
+                    >
+                      <ArrowLeftRight className="h-3.5 w-3.5" />
+                      <span className="hidden @sm:inline text-xs">
+                        {displayMode === 'yuan' ? '元' : '智能'}
+                      </span>
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p className="text-xs">{displayMode === 'yuan' ? '切换到智能模式（万/元）' : '切换到元模式'}</p>
+                  </TooltipContent>
+                </Tooltip>
+              ) : null
+            }
           />
+        </TooltipProvider>
 
+        <div className="max-w-[1800px] mx-auto p-4 space-y-4">
           <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
@@ -244,6 +266,39 @@ function HoldPage() {
 
   return (
     <div className="h-full overflow-y-auto bg-background" data-scroll-container>
+      {/* 顶部工具栏 - 统一标题栏（浮动） */}
+      <TooltipProvider>
+        <UnifiedPageHeader
+          title="猴の持仓"
+          subtitle="查看猴子的持仓"
+            tools={
+              displayMode && setDisplayMode ? (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      onClick={() => setDisplayMode(displayMode === 'yuan' ? 'auto' : 'yuan')}
+                      className="h-9 px-2.5 flex items-center gap-1.5 rounded-md text-muted-foreground/60 hover:text-foreground hover:bg-muted/50 transition-all duration-200"
+                    >
+                      <ArrowLeftRight className="h-3.5 w-3.5" />
+                      <span className="hidden @sm:inline text-xs">
+                        {displayMode === 'yuan' ? '元' : '智能'}
+                      </span>
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p className="text-xs">{displayMode === 'yuan' ? '切换到智能模式（万/元）' : '切换到元模式'}</p>
+                  </TooltipContent>
+                </Tooltip>
+              ) : null
+            }
+            searchConfig={{
+              value: filterState.searchQuery,
+              onChange: setSearchQuery,
+              placeholder: '搜索...',
+            }}
+          />
+        </TooltipProvider>
+
       {/* 底部视图模式 Dock - 小屏显示 */}
       <AnimatePresence>
         {showDock && (
@@ -252,14 +307,6 @@ function HoldPage() {
       </AnimatePresence>
       
       <div className="@container max-w-[1850px] mx-auto px-4 pb-4 space-y-4" data-holdings-container>
-        {/* 顶部工具栏 - 悬浮 */}
-        <Toolbar
-          searchQuery={filterState.searchQuery}
-          onSearchChange={setSearchQuery}
-          displayMode={displayMode}
-          onDisplayModeChange={setDisplayMode}
-        />
-
         {/* 统计卡片 - 更紧凑 */}
         {hasHoldings && (
           <StatisticsCards 

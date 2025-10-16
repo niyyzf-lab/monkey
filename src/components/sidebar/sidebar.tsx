@@ -28,7 +28,7 @@ export const Sidebar = React.memo(React.forwardRef<HTMLDivElement, SidebarProps>
         ref={ref}
         className={cn(
           "flex h-full flex-col bg-sidebar/95 backdrop-blur-xl border-r border-sidebar-border",
-          "overflow-hidden pt-6 shadow-lg select-none relative",
+          "overflow-hidden shadow-lg select-none relative",
           isMobile && "fixed top-0 left-0 z-50 h-screen-safe",
           className
         )}

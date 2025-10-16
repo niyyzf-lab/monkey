@@ -1,4 +1,5 @@
 import { createFileRoute } from '@tanstack/react-router'
+import { UnifiedPageHeader } from '@/components/common/unified-page-header'
 
 export const Route = createFileRoute('/chat/')({
   component: ChatPage,
@@ -6,10 +7,15 @@ export const Route = createFileRoute('/chat/')({
 
 function ChatPage() {
   return (
-    <div className="h-full flex flex-col">
-      <div className="border-b pb-4 mb-6 select-none" data-tauri-drag-region>
-        <h1 className="text-3xl font-bold text-gray-900" data-tauri-drag-region>与猴聊天</h1>
-        <p className="text-gray-600 mt-2" data-tauri-drag-region>与猴子聊天互动</p>
+    <div className="h-full overflow-y-auto">
+      {/* 页面标题 - 统一标题栏（浮动） */}
+      <UnifiedPageHeader
+        title="与猴聊聊天"
+        subtitle="与猴子聊天互动"
+      />
+      
+      <div className="max-w-[1600px] mx-auto p-4 lg:p-6 space-y-6">
+        {/* 页面内容预留 */}
       </div>
     </div>
   )

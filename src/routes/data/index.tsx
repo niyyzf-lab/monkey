@@ -2,13 +2,14 @@ import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { useEffect, useState, useMemo, useCallback, useRef } from 'react'
 import { fetchStockDetails } from '@/api/stock-details-api'
 import { StockInfoArray } from '@/types/stock_details'
-import { Search, X, Database } from 'lucide-react'
-import { DataToolbar } from '@/components/data'
+import { Search, X, Database, ChevronDown, Tag } from 'lucide-react'
 import { DataSearchHint } from '@/components/data'
 import { DataMasonryContainer } from '@/components/data'
 import { DataLoadingState, DataErrorState } from '@/components/data'
 import { useSearchParser } from '@/hooks/use-search-parser'
 import { getSimplePinyin } from '@/lib/pinyin-utils'
+import { UnifiedPageHeader } from '@/components/common/unified-page-header'
+import { motion, AnimatePresence } from 'motion/react'
 
 export const Route = createFileRoute('/data/')({
   component: DataPage,
@@ -31,9 +32,6 @@ function DataPage() {
   // 搜索状态
   const [searchQuery, setSearchQuery] = useState('')
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('')
-  
-  // 滚动状态
-  const [isScrolled, setIsScrolled] = useState(false)
 
   // 搜索防抖效果 - 300ms延迟
   useEffect(() => {
@@ -44,23 +42,8 @@ function DataPage() {
     return () => clearTimeout(timer)
   }, [searchQuery])
 
-  // 合并滚动和可见性监听 - 优化性能
+  // 可见性监听 - 优化性能
   useEffect(() => {
-    const scrollContainer = scrollContainerRef.current
-    let ticking = false
-    
-    const handleScroll = () => {
-      if (!ticking) {
-        window.requestAnimationFrame(() => {
-          if (scrollContainer) {
-            setIsScrolled(scrollContainer.scrollTop > 10)
-          }
-          ticking = false
-        })
-        ticking = true
-      }
-    }
-    
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible') {
         if (stockData && stockData.length > 0 && loading) {
@@ -69,15 +52,9 @@ function DataPage() {
       }
     }
 
-    if (scrollContainer) {
-      scrollContainer.addEventListener('scroll', handleScroll, { passive: true })
-    }
     document.addEventListener('visibilitychange', handleVisibilityChange)
     
     return () => {
-      if (scrollContainer) {
-        scrollContainer.removeEventListener('scroll', handleScroll)
-      }
       document.removeEventListener('visibilitychange', handleVisibilityChange)
     }
   }, [stockData, loading])
@@ -234,19 +211,95 @@ function DataPage() {
 
   return (
     <div className="@container h-screen-safe flex flex-col relative">
-      {/* 顶部工具栏 */}
-      <DataToolbar
-        searchQuery={searchQuery}
-        onSearchChange={setSearchQuery}
-        onClearSearch={clearSearch}
-        totalItems={totalItems}
-        filteredItems={filteredItems}
-        hasSearchTerms={hasSearchTerms}
-        isScrolled={isScrolled}
-        showNavigationDropdown={showNavigationDropdown}
-        onToggleDropdown={() => setShowNavigationDropdown(!showNavigationDropdown)}
-        onNavigate={handleNavigation}
-      />
+      {/* 顶部工具栏 - 统一标题栏（浮动） */}
+      <UnifiedPageHeader
+          title="猴の数据"
+          subtitle="给猴子提供价值"
+          tools={
+            <div className="flex items-center gap-3 text-sm text-muted-foreground/70">
+              {/* 统计信息 */}
+              <div className="hidden @lg:flex items-center gap-2">
+                {hasSearchTerms ? (
+                  <>
+                    <span className="font-medium">显示</span>
+                    <span className="font-mono font-semibold text-primary">
+                      {filteredItems.toLocaleString()}
+                    </span>
+                    <span className="text-muted-foreground/50">/</span>
+                    <span className="font-mono text-muted-foreground/60">
+                      {totalItems.toLocaleString()}
+                    </span>
+                  </>
+                ) : (
+                  <>
+                    <span className="font-medium">总计</span>
+                    <span className="font-mono font-medium text-foreground/70">
+                      {totalItems.toLocaleString()}
+                    </span>
+                  </>
+                )}
+              </div>
+
+              {/* 短分隔线 */}
+              <div className="h-4 w-px bg-gradient-to-b from-border/40 via-border to-border/40" />
+
+              {/* 导航下拉菜单 */}
+              <div className="relative" data-dropdown-container>
+                <button
+                  onClick={() => setShowNavigationDropdown(!showNavigationDropdown)}
+                  className="p-1.5 rounded-md opacity-40 hover:opacity-80 transition-all duration-200 
+                           hover:bg-secondary/60 focus:outline-none"
+                  aria-label="导航"
+                >
+                  <ChevronDown
+                    className={`w-3.5 h-3.5 transition-transform duration-200 ${
+                      showNavigationDropdown ? 'rotate-180' : ''
+                    }`}
+                  />
+                </button>
+
+                {/* 下拉菜单 */}
+                <AnimatePresence>
+                  {showNavigationDropdown && (
+                    <motion.div
+                      initial={{ opacity: 0, y: -10, scale: 0.95 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: -10, scale: 0.95 }}
+                      transition={{ duration: 0.15 }}
+                      className="absolute right-0 top-full mt-2 w-40 bg-popover/98 border-2 border-border/80 
+                               rounded-md shadow-2xl backdrop-blur-sm z-[100]"
+                    >
+                      <div className="py-1">
+                        <button
+                          onClick={() => handleNavigation('/data')}
+                          className="w-full px-3 py-1.5 text-left text-xs hover:bg-accent hover:text-accent-foreground 
+                                   transition-colors duration-150 flex items-center gap-2"
+                        >
+                          <Database className="w-3 h-3" />
+                          <span>数据库</span>
+                        </button>
+                        <button
+                          onClick={() => handleNavigation('/data/tags')}
+                          className="w-full px-3 py-1.5 text-left text-xs hover:bg-accent hover:text-accent-foreground 
+                                   transition-colors duration-150 flex items-center gap-2"
+                        >
+                          <Tag className="w-3 h-3" />
+                          <span>标签</span>
+                        </button>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+            </div>
+          }
+          searchConfig={{
+            value: searchQuery,
+            onChange: setSearchQuery,
+            onClear: clearSearch,
+            placeholder: '搜索...',
+          }}
+        />
       
       {/* 搜索提示区域 */}
       {stockData && debouncedSearchQuery && (

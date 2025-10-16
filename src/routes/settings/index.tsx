@@ -24,8 +24,8 @@ import { useSettings } from '@/hooks/use-settings';
 import { UpdateButton } from '@/components/updater';
 import { getVersion } from '@tauri-apps/api/app';
 import { toast } from 'sonner';
-import { motion } from 'motion/react';
 import { API_BASE_URL } from '@/api/api';
+import { UnifiedPageHeader } from '@/components/common/unified-page-header';
 
 export const Route = createFileRoute('/settings/')({
   component: SettingsPage,
@@ -216,18 +216,13 @@ function SettingsPage() {
 
   return (
     <div className="h-full overflow-y-auto">
+      {/* 页面标题 - 统一标题栏（浮动） */}
+      <UnifiedPageHeader
+        title="倒腾"
+        subtitle="管理应用的所有配置和偏好设置"
+      />
+      
       <div className="max-w-4xl mx-auto p-6 space-y-6">
-        {/* 页面标题 */}
-        <motion.div
-          initial={{ opacity: 0, y: -10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.3 }}
-          className="border-b pb-4 select-none"
-          data-tauri-drag-region
-        >
-          <h1 className="text-3xl font-bold text-foreground" data-tauri-drag-region>倒腾</h1>
-          <p className="text-muted-foreground mt-2" data-tauri-drag-region>管理应用的所有配置和偏好设置</p>
-        </motion.div>
 
         {/* 标签页 */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">

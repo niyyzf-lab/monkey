@@ -3,7 +3,6 @@ import { motion } from 'motion/react'
 import { Circle } from 'lucide-react'
 import { useMemo } from 'react'
 import {
-  FeelPageHeader,
   MarketPulseCard,
   MarketSentimentCard,
   FundFlowCard,
@@ -11,6 +10,7 @@ import {
   HotSectorsCard,
 } from '@/components/feel'
 import { MOCK_MARKET_DATA, ANIMATION_DELAYS } from '@/constants/market-config'
+import { UnifiedPageHeader } from '@/components/common/unified-page-header'
 
 export const Route = createFileRoute('/feel/')({
   component: FeelPage,
@@ -28,9 +28,13 @@ function FeelPage() {
 
   return (
     <div className="h-full overflow-y-auto bg-background">
+      {/* 页面标题 - 统一标题栏（浮动） */}
+      <UnifiedPageHeader
+        title="猴园儿"
+        subtitle="观猴感主界面"
+      />
+      
       <div className="max-w-[1600px] mx-auto p-4 lg:p-6 xl:p-8 space-y-6 lg:space-y-8">
-        {/* 页面标题 */}
-        <FeelPageHeader />
 
         {/* 杂志式布局 */}
         <div className="space-y-4 lg:space-y-6">
