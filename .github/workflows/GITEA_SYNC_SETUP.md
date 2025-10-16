@@ -76,17 +76,44 @@ git push origin release
 
 ## 🧪 测试配置
 
-在配置完 Secrets 后，建议先运行测试工作流验证配置是否正确：
+在配置完 Secrets 后，**强烈建议**先运行测试工作流验证配置是否正确。
+
+### 基础配置测试
 
 1. 进入 GitHub 仓库的 **Actions** 页面
 2. 选择 **Test Gitea Connection** 工作流
-3. 点击 **Run workflow** 按钮运行测试
+3. 点击 **Run workflow** 按钮
+4. **不勾选**"运行完整测试"选项
+5. 点击运行
 
-测试工作流会验证：
-- ✅ Secrets 是否正确设置
+基础测试会验证：
+- ✅ 所有 Secrets 是否正确设置
 - ✅ Gitea API 是否可以访问
 - ✅ 认证令牌是否有效
 - ✅ 仓库访问权限是否正确
+- ✅ Token 权限是否足够
+- ✅ 查看现有的 Releases
+
+### 完整 Release 测试（推荐）
+
+基础测试通过后，建议运行完整测试：
+
+1. 再次进入 **Actions** → **Test Gitea Connection**
+2. 点击 **Run workflow**
+3. **勾选** ✅ "运行完整测试（包括创建测试 Release）"
+4. 点击运行
+
+完整测试会执行：
+- ✅ 基础配置测试（同上）
+- ✅ 创建测试文件（txt 和 json）
+- ✅ 创建真实的测试 Release
+- ✅ 上传文件到 Release
+- ✅ 验证 Release 和文件完整性
+- ✅ 提供 Gitea Release 的直接链接
+
+测试完成后，会在 Gitea 上创建一个带 `test-release-*` 标签的测试 Release，你可以：
+- 在 Gitea 中查看和验证
+- 测试完成后手动删除（工作流会提供删除链接）
 
 ---
 

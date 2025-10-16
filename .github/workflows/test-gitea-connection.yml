@@ -2,64 +2,93 @@ name: Test Gitea Connection
 
 on:
   workflow_dispatch:
+    inputs:
+      run_full_test:
+        description: '运行完整测试（包括创建测试 Release）'
+        required: false
+        type: boolean
+        default: false
 
 jobs:
   test-connection:
     runs-on: ubuntu-latest
     steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
       - name: Test Gitea API Connection
         env:
           GITEA_TOKEN: ${{ secrets.GITEA_TOKEN }}
           GITEA_URL: ${{ secrets.GITEA_URL }}
           GITEA_REPO: ${{ secrets.GITEA_REPO }}
         run: |
-          echo "🔍 Testing Gitea configuration..."
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo "🔍 Gitea 配置测试"
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
           echo ""
           
-          # 检查环境变量是否设置
+          # ============================================
+          # 步骤 1: 检查环境变量
+          # ============================================
+          echo "📋 步骤 1/5: 检查环境变量"
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          
           if [ -z "$GITEA_TOKEN" ]; then
-            echo "❌ GITEA_TOKEN is not set"
+            echo "❌ GITEA_TOKEN 未设置"
             exit 1
           else
-            echo "✅ GITEA_TOKEN is set (${#GITEA_TOKEN} characters)"
+            echo "✅ GITEA_TOKEN 已设置 (${#GITEA_TOKEN} 字符)"
           fi
           
           if [ -z "$GITEA_URL" ]; then
-            echo "❌ GITEA_URL is not set"
+            echo "❌ GITEA_URL 未设置"
             exit 1
           else
             echo "✅ GITEA_URL: $GITEA_URL"
           fi
           
           if [ -z "$GITEA_REPO" ]; then
-            echo "❌ GITEA_REPO is not set"
+            echo "❌ GITEA_REPO 未设置"
             exit 1
           else
             echo "✅ GITEA_REPO: $GITEA_REPO"
           fi
           
           echo ""
-          echo "🌐 Testing API connection..."
           
-          # 测试 API 连接
+          # ============================================
+          # 步骤 2: 测试 API 连接和认证
+          # ============================================
+          echo "📋 步骤 2/5: 测试 API 连接和认证"
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          
           HTTP_CODE=$(curl -s -w "%{http_code}" -o /tmp/user.json \
             -H "Authorization: token $GITEA_TOKEN" \
             "${GITEA_URL}/api/v1/user")
           
           if [ "$HTTP_CODE" == "200" ]; then
             USERNAME=$(jq -r '.login' /tmp/user.json)
-            echo "✅ API connection successful!"
-            echo "   Authenticated as: $USERNAME"
+            USER_ID=$(jq -r '.id' /tmp/user.json)
+            USER_EMAIL=$(jq -r '.email' /tmp/user.json)
+            echo "✅ API 连接成功！"
+            echo "   用户名: $USERNAME"
+            echo "   用户 ID: $USER_ID"
+            echo "   邮箱: $USER_EMAIL"
           else
-            echo "❌ API connection failed (HTTP $HTTP_CODE)"
+            echo "❌ API 连接失败 (HTTP $HTTP_CODE)"
+            echo "响应内容:"
             cat /tmp/user.json
             exit 1
           fi
           
           echo ""
-          echo "📦 Testing repository access..."
           
-          # 测试仓库访问
+          # ============================================
+          # 步骤 3: 测试仓库访问权限
+          # ============================================
+          echo "📋 步骤 3/5: 测试仓库访问权限"
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          
           HTTP_CODE=$(curl -s -w "%{http_code}" -o /tmp/repo.json \
             -H "Authorization: token $GITEA_TOKEN" \
             "${GITEA_URL}/api/v1/repos/${GITEA_REPO}")
@@ -67,19 +96,288 @@ jobs:
           if [ "$HTTP_CODE" == "200" ]; then
             REPO_NAME=$(jq -r '.full_name' /tmp/repo.json)
             REPO_PRIVATE=$(jq -r '.private' /tmp/repo.json)
-            echo "✅ Repository access successful!"
-            echo "   Repository: $REPO_NAME"
-            echo "   Private: $REPO_PRIVATE"
+            REPO_DEFAULT_BRANCH=$(jq -r '.default_branch' /tmp/repo.json)
+            REPO_SIZE=$(jq -r '.size' /tmp/repo.json)
+            echo "✅ 仓库访问成功！"
+            echo "   仓库全名: $REPO_NAME"
+            echo "   私有仓库: $REPO_PRIVATE"
+            echo "   默认分支: $REPO_DEFAULT_BRANCH"
+            echo "   仓库大小: $REPO_SIZE KB"
           else
-            echo "❌ Repository access failed (HTTP $HTTP_CODE)"
+            echo "❌ 仓库访问失败 (HTTP $HTTP_CODE)"
+            echo "响应内容:"
             cat /tmp/repo.json
             exit 1
           fi
           
           echo ""
-          echo "🎉 All tests passed! Your Gitea configuration is correct."
+          
+          # ============================================
+          # 步骤 4: 检查现有 Releases
+          # ============================================
+          echo "📋 步骤 4/5: 检查现有 Releases"
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          
+          HTTP_CODE=$(curl -s -w "%{http_code}" -o /tmp/releases.json \
+            -H "Authorization: token $GITEA_TOKEN" \
+            "${GITEA_URL}/api/v1/repos/${GITEA_REPO}/releases?page=1&limit=5")
+          
+          if [ "$HTTP_CODE" == "200" ]; then
+            RELEASE_COUNT=$(jq '. | length' /tmp/releases.json)
+            echo "✅ Releases 列表获取成功"
+            echo "   最近 Releases 数量: $RELEASE_COUNT"
+            
+            if [ "$RELEASE_COUNT" -gt 0 ]; then
+              echo ""
+              echo "   最近的 Releases:"
+              jq -r '.[] | "   - \(.tag_name): \(.name)"' /tmp/releases.json | head -5
+            fi
+          else
+            echo "⚠️  无法获取 Releases 列表 (HTTP $HTTP_CODE)"
+            echo "   这可能是正常的（仓库还没有 Releases）"
+          fi
+          
           echo ""
-          echo "Next steps:"
-          echo "  1. Push to 'release' branch to trigger a real release"
-          echo "  2. Or manually trigger the 'publish' workflow"
+          
+          # ============================================
+          # 步骤 5: 测试 Token 权限
+          # ============================================
+          echo "📋 步骤 5/5: 测试 Token 权限"
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          
+          # 测试是否有写入权限（通过获取仓库的 permissions）
+          PERMISSIONS=$(jq -r '.permissions' /tmp/repo.json)
+          CAN_PUSH=$(echo $PERMISSIONS | jq -r '.push')
+          CAN_ADMIN=$(echo $PERMISSIONS | jq -r '.admin')
+          
+          echo "✅ Token 权限检查："
+          echo "   Push 权限: $CAN_PUSH"
+          echo "   Admin 权限: $CAN_ADMIN"
+          
+          if [ "$CAN_PUSH" != "true" ]; then
+            echo ""
+            echo "⚠️  警告: Token 没有 Push 权限"
+            echo "   创建 Release 可能会失败"
+            echo "   请确保 Token 具有 'write:repository' 权限"
+          fi
+          
+          echo ""
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo "🎉 基础配置测试全部通过！"
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+
+      - name: Full Release Test
+        if: ${{ github.event.inputs.run_full_test == 'true' }}
+        env:
+          GITEA_TOKEN: ${{ secrets.GITEA_TOKEN }}
+          GITEA_URL: ${{ secrets.GITEA_URL }}
+          GITEA_REPO: ${{ secrets.GITEA_REPO }}
+        run: |
+          echo ""
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo "🧪 完整 Release 同步测试"
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo ""
+          
+          TEST_TAG="test-release-$(date +%s)"
+          TEST_RELEASE_NAME="Test Release $(date +%Y-%m-%d-%H-%M-%S)"
+          
+          echo "📝 测试信息:"
+          echo "   Tag: $TEST_TAG"
+          echo "   Release 名称: $TEST_RELEASE_NAME"
+          echo ""
+          
+          # ============================================
+          # 创建测试文件
+          # ============================================
+          echo "📋 步骤 1/4: 创建测试文件"
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          
+          mkdir -p test-assets
+          
+          # 创建一个小的测试文件
+          echo "This is a test file for Gitea Release sync" > test-assets/test-file.txt
+          echo "Timestamp: $(date)" >> test-assets/test-file.txt
+          echo "Workflow run: ${{ github.run_number }}" >> test-assets/test-file.txt
+          
+          # 创建一个 JSON 测试文件
+          cat > test-assets/test-config.json <<EOF
+          {
+            "test": true,
+            "timestamp": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
+            "workflow_run": "${{ github.run_number }}",
+            "repository": "$GITEA_REPO"
+          }
+          EOF
+          
+          echo "✅ 创建了以下测试文件:"
+          ls -lh test-assets/
+          
+          echo ""
+          
+          # ============================================
+          # 创建测试 Release
+          # ============================================
+          echo "📋 步骤 2/4: 创建测试 Release"
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          
+          RELEASE_BODY="## 🧪 这是一个测试 Release
+
+          本 Release 由 GitHub Actions 自动创建，用于测试 Gitea Release 同步功能。
+          
+          ### 测试信息
+          - **工作流运行**: #${{ github.run_number }}
+          - **创建时间**: $(date)
+          - **测试标签**: \`$TEST_TAG\`
+          
+          ### ✅ 测试项目
+          - [x] API 认证
+          - [x] 仓库权限
+          - [x] Release 创建
+          - [x] 文件上传
+          
+          > ⚠️ 这是一个测试 Release，可以安全删除。"
+          
+          BODY_JSON=$(echo "$RELEASE_BODY" | jq -Rs .)
+          
+          CREATE_RESPONSE=$(curl -s -w "\n%{http_code}" \
+            -H "Authorization: token $GITEA_TOKEN" \
+            -H "Content-Type: application/json" \
+            "${GITEA_URL}/api/v1/repos/${GITEA_REPO}/releases" \
+            -d @- <<EOF
+          {
+            "tag_name": "$TEST_TAG",
+            "name": "$TEST_RELEASE_NAME",
+            "body": $BODY_JSON,
+            "draft": false,
+            "prerelease": true
+          }
+          EOF
+          )
+          
+          HTTP_CODE=$(echo "$CREATE_RESPONSE" | tail -n1)
+          RESPONSE_BODY=$(echo "$CREATE_RESPONSE" | sed '$d')
+          
+          if [ "$HTTP_CODE" == "201" ]; then
+            RELEASE_ID=$(echo "$RESPONSE_BODY" | jq -r '.id')
+            RELEASE_URL=$(echo "$RESPONSE_BODY" | jq -r '.html_url')
+            echo "✅ 测试 Release 创建成功！"
+            echo "   Release ID: $RELEASE_ID"
+            echo "   Release URL: $RELEASE_URL"
+          else
+            echo "❌ Release 创建失败 (HTTP $HTTP_CODE)"
+            echo "响应内容:"
+            echo "$RESPONSE_BODY" | jq '.'
+            exit 1
+          fi
+          
+          echo ""
+          
+          # ============================================
+          # 上传测试文件
+          # ============================================
+          echo "📋 步骤 3/4: 上传测试文件"
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          
+          UPLOAD_SUCCESS=0
+          UPLOAD_FAILED=0
+          
+          for asset in test-assets/*; do
+            if [ -f "$asset" ]; then
+              filename=$(basename "$asset")
+              filesize=$(ls -lh "$asset" | awk '{print $5}')
+              echo "⏳ 上传: $filename ($filesize)"
+              
+              UPLOAD_CODE=$(curl -s -w "%{http_code}" -o /tmp/upload.json \
+                -H "Authorization: token $GITEA_TOKEN" \
+                -F "attachment=@${asset}" \
+                "${GITEA_URL}/api/v1/repos/${GITEA_REPO}/releases/${RELEASE_ID}/assets?name=${filename}")
+              
+              if [ "$UPLOAD_CODE" == "201" ]; then
+                ASSET_ID=$(jq -r '.id' /tmp/upload.json)
+                echo "   ✅ 上传成功 (Asset ID: $ASSET_ID)"
+                UPLOAD_SUCCESS=$((UPLOAD_SUCCESS + 1))
+              else
+                echo "   ❌ 上传失败 (HTTP $UPLOAD_CODE)"
+                cat /tmp/upload.json
+                UPLOAD_FAILED=$((UPLOAD_FAILED + 1))
+              fi
+            fi
+          done
+          
+          echo ""
+          echo "上传结果:"
+          echo "   ✅ 成功: $UPLOAD_SUCCESS"
+          echo "   ❌ 失败: $UPLOAD_FAILED"
+          
+          if [ $UPLOAD_FAILED -gt 0 ]; then
+            echo ""
+            echo "⚠️  部分文件上传失败"
+          fi
+          
+          echo ""
+          
+          # ============================================
+          # 验证 Release
+          # ============================================
+          echo "📋 步骤 4/4: 验证 Release"
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          
+          VERIFY_CODE=$(curl -s -w "%{http_code}" -o /tmp/verify.json \
+            -H "Authorization: token $GITEA_TOKEN" \
+            "${GITEA_URL}/api/v1/repos/${GITEA_REPO}/releases/${RELEASE_ID}")
+          
+          if [ "$VERIFY_CODE" == "200" ]; then
+            ASSET_COUNT=$(jq '.assets | length' /tmp/verify.json)
+            echo "✅ Release 验证成功"
+            echo "   Assets 数量: $ASSET_COUNT"
+            echo ""
+            echo "   已上传的文件:"
+            jq -r '.assets[] | "   - \(.name) (\(.size) bytes)"' /tmp/verify.json
+          else
+            echo "❌ Release 验证失败 (HTTP $VERIFY_CODE)"
+          fi
+          
+          echo ""
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo "🎉 完整测试完成！"
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo ""
+          echo "📝 测试 Release 信息:"
+          echo "   URL: $RELEASE_URL"
+          echo "   Tag: $TEST_TAG"
+          echo ""
+          echo "⚠️  提示: 这是一个测试 Release，您可以在 Gitea 中手动删除它"
+          echo "   删除链接: $GITEA_URL/$GITEA_REPO/releases"
+          echo ""
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+
+      - name: Test Summary
+        if: always()
+        run: |
+          echo ""
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo "📊 测试总结"
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo ""
+          echo "✅ 基础配置测试: 通过"
+          
+          if [ "${{ github.event.inputs.run_full_test }}" == "true" ]; then
+            echo "✅ 完整 Release 测试: 已执行"
+            echo ""
+            echo "🎯 下一步操作:"
+            echo "   1. 检查 Gitea 仓库中的测试 Release"
+            echo "   2. 验证文件是否正确上传"
+            echo "   3. 删除测试 Release（可选）"
+            echo "   4. 准备进行真实的版本发布"
+          else
+            echo "⏭️  完整 Release 测试: 未执行"
+            echo ""
+            echo "💡 提示: 重新运行此工作流并勾选"
+            echo "   '运行完整测试' 选项以测试完整的"
+            echo "   Release 创建和文件上传功能"
+          fi
+          
+          echo ""
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 
