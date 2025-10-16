@@ -727,164 +727,110 @@ remote_windows_build() {
     # API 基础 URL
     API_BASE="${GITEA_URL}/api/v1"
     
-    # 在远程 Windows 上创建上传脚本
-    UPLOAD_SCRIPT_PATH="C:/Users/$REMOTE_USER/Desktop/gitea-upload-temp.ps1"
+    # 步骤1: 检查或创建 Release
+    echo "   📦 检查/创建 Release v$VERSION..."
+    CHECK_RELEASE_CMD="powershell -Command \"
+        \\\$Headers = @{ 'Authorization' = 'token $GITEA_TOKEN' };
+        try {
+            \\\$Release = Invoke-RestMethod -Uri '$API_BASE/repos/$OWNER/$REPO/releases/tags/v$VERSION' -Headers \\\$Headers -Method Get;
+            Write-Output \\\"RELEASE_ID:\\\$(\\\$Release.id)\\\";
+        } catch {
+            \\\$CreateData = @{ tag_name = 'v$VERSION'; name = 'v$VERSION'; body = 'Release v$VERSION'; draft = \\\$false; prerelease = \\\$false } | ConvertTo-Json;
+            \\\$Release = Invoke-RestMethod -Uri '$API_BASE/repos/$OWNER/$REPO/releases' -Headers \\\$Headers -Method Post -Body \\\$CreateData -ContentType 'application/json';
+            Write-Output \\\"RELEASE_ID:\\\$(\\\$Release.id)\\\";
+        }
+    \""
     
-    # 生成 PowerShell 上传脚本
-    cat > /tmp/gitea-upload.ps1 << 'UPLOAD_SCRIPT_EOF'
-param(
-    [string]$GiteaUrl,
-    [string]$Token,
-    [string]$Owner,
-    [string]$Repo,
-    [string]$Version,
-    [string]$NsisPath,
-    [string]$MsiPath
-)
-
-$ErrorActionPreference = "Stop"
-$ApiBase = "$GiteaUrl/api/v1"
-$Headers = @{ "Authorization" = "token $Token" }
-
-# 检查或创建 Release
-Write-Host "   📦 检查 Release v$Version..."
-$ReleaseUrl = "$ApiBase/repos/$Owner/$Repo/releases/tags/v$Version"
-$Release = $null
-
-try {
-    $Release = Invoke-RestMethod -Uri $ReleaseUrl -Headers $Headers -Method Get
-    Write-Host "   ✅ Release 已存在 (ID: $($Release.id))"
-} catch {
-    Write-Host "   📝 创建新 Release..."
-    $CreateData = @{
-        tag_name = "v$Version"
-        name = "v$Version"
-        body = "Release v$Version - Windows Build"
-        draft = $false
-        prerelease = $false
-    } | ConvertTo-Json
+    RELEASE_OUTPUT=$(eval "$SSH_CMD $REMOTE_USER@$REMOTE_HOST \"$CHECK_RELEASE_CMD\"" 2>&1)
+    RELEASE_ID=$(echo "$RELEASE_OUTPUT" | grep "RELEASE_ID:" | cut -d: -f2 | tr -d '\r\n ')
     
-    $Release = Invoke-RestMethod -Uri "$ApiBase/repos/$Owner/$Repo/releases" `
-        -Headers $Headers `
-        -Method Post `
-        -Body $CreateData `
-        -ContentType "application/json"
-    Write-Host "   ✅ Release 创建成功 (ID: $($Release.id))"
-}
-
-$ReleaseId = $Release.id
-
-# 上传文件函数
-function Upload-File {
-    param([string]$FilePath)
-    
-    if (-not (Test-Path $FilePath)) {
-        Write-Host "   ⚠️  文件不存在: $FilePath"
-        return $null
-    }
-    
-    $FileName = Split-Path $FilePath -Leaf
-    $FileSize = (Get-Item $FilePath).Length
-    Write-Host "   📤 上传 $FileName ($([math]::Round($FileSize/1MB, 2)) MB)..."
-    
-    # 检查文件是否已存在
-    $Assets = Invoke-RestMethod -Uri "$ApiBase/repos/$Owner/$Repo/releases/$ReleaseId/assets" -Headers $Headers
-    $ExistingAsset = $Assets | Where-Object { $_.name -eq $FileName }
-    
-    if ($ExistingAsset) {
-        Write-Host "      删除已存在的文件..."
-        Invoke-RestMethod -Uri "$ApiBase/repos/$Owner/$Repo/releases/$ReleaseId/assets/$($ExistingAsset.id)" `
-            -Headers $Headers `
-            -Method Delete | Out-Null
-    }
-    
-    # 上传文件
-    $UploadUrl = "$ApiBase/repos/$Owner/$Repo/releases/$ReleaseId/assets?name=$FileName"
-    $FileBytes = [System.IO.File]::ReadAllBytes($FilePath)
-    
-    $Response = Invoke-RestMethod -Uri $UploadUrl `
-        -Headers $Headers `
-        -Method Post `
-        -Body $FileBytes `
-        -ContentType "application/octet-stream"
-    
-    Write-Host "      ✅ 上传成功"
-    return @{
-        name = $FileName
-        url = $Response.browser_download_url
-        size = $FileSize
-    }
-}
-
-# 收集所有需要上传的文件
-$Files = @()
-$Files += Get-ChildItem -Path $NsisPath -Filter "*-setup.exe*" -File
-$Files += Get-ChildItem -Path $MsiPath -Filter "*.msi*" -File
-
-# 上传所有文件并收集信息
-$UploadedFiles = @()
-foreach ($File in $Files) {
-    $Result = Upload-File -FilePath $File.FullName
-    if ($Result) {
-        $UploadedFiles += $Result
-    }
-}
-
-# 输出 JSON 格式的结果（用于本地解析）
-Write-Host ""
-Write-Host "UPLOAD_RESULT_JSON_START"
-$UploadedFiles | ConvertTo-Json -Depth 10
-Write-Host "UPLOAD_RESULT_JSON_END"
-UPLOAD_SCRIPT_EOF
-
-    # 上传脚本到远程（使用 base64 编码避免转义问题）
-    echo "   📝 准备上传脚本..."
-    SCRIPT_BASE64=$(base64 < /tmp/gitea-upload.ps1)
-    
-    # 在远程解码并保存脚本
-    DECODE_CMD="powershell -Command \"\$bytes = [System.Convert]::FromBase64String('$SCRIPT_BASE64'); [System.IO.File]::WriteAllBytes('$UPLOAD_SCRIPT_PATH', \$bytes)\""
-    eval "$SSH_CMD $REMOTE_USER@$REMOTE_HOST \"$DECODE_CMD\"" 2>/dev/null
-    
-    if [ $? -ne 0 ]; then
-        echo "   ❌ 脚本上传失败"
-        rm -f /tmp/gitea-upload.ps1
+    if [ -z "$RELEASE_ID" ]; then
+        echo "   ❌ 无法获取 Release ID"
+        echo "$RELEASE_OUTPUT"
         return 1
     fi
     
-    # 执行上传脚本
-    echo "   🚀 执行上传..."
-    UPLOAD_OUTPUT=$(eval "$SSH_CMD $REMOTE_USER@$REMOTE_HOST \"powershell -ExecutionPolicy Bypass -File '$UPLOAD_SCRIPT_PATH' -GiteaUrl '$GITEA_URL' -Token '$GITEA_TOKEN' -Owner '$OWNER' -Repo '$REPO' -Version '$VERSION' -NsisPath '$REMOTE_NSIS_PATH' -MsiPath '$REMOTE_MSI_PATH'\"" 2>&1)
-    UPLOAD_EXIT=$?
+    echo "   ✅ Release ID: $RELEASE_ID"
+    echo ""
     
-    # 显示上传过程
-    echo "$UPLOAD_OUTPUT" | grep -v "UPLOAD_RESULT_JSON"
+    # 步骤2: 列出需要上传的文件
+    echo "   📋 查找构建文件..."
+    LIST_FILES_CMD="powershell -Command \"
+        \\\$files = @();
+        \\\$files += Get-ChildItem -Path '$REMOTE_NSIS_PATH' -Filter '*-setup.exe*' -File -ErrorAction SilentlyContinue;
+        \\\$files += Get-ChildItem -Path '$REMOTE_MSI_PATH' -Filter '*.msi*' -File -ErrorAction SilentlyContinue;
+        \\\$files | ForEach-Object { Write-Output \\\$_.FullName };
+    \""
     
-    # 清理远程临时脚本
-    eval "$SSH_CMD $REMOTE_USER@$REMOTE_HOST \"del '$UPLOAD_SCRIPT_PATH' 2>nul\"" 2>/dev/null || true
-    rm -f /tmp/gitea-upload.ps1
+    FILE_LIST=$(eval "$SSH_CMD $REMOTE_USER@$REMOTE_HOST \"$LIST_FILES_CMD\"" 2>/dev/null | tr -d '\r')
     
-    if [ $UPLOAD_EXIT -eq 0 ]; then
-        # 解析上传结果
-        UPLOAD_JSON=$(echo "$UPLOAD_OUTPUT" | sed -n '/UPLOAD_RESULT_JSON_START/,/UPLOAD_RESULT_JSON_END/p' | grep -v "UPLOAD_RESULT_JSON")
+    if [ -z "$FILE_LIST" ]; then
+        echo "   ⚠️  未找到构建文件"
+        return 1
+    fi
+    
+    echo "   找到文件:"
+    echo "$FILE_LIST" | while read -r file; do
+        [ -n "$file" ] && echo "      - $(basename "$file")"
+    done
+    echo ""
+    
+    # 步骤3: 上传每个文件
+    UPLOAD_SUCCESS=0
+    UPLOADED_FILES=""
+    
+    echo "$FILE_LIST" | while read -r REMOTE_FILE; do
+        [ -z "$REMOTE_FILE" ] && continue
         
-        if [ -z "$UPLOAD_JSON" ] || [ "$UPLOAD_JSON" = "null" ]; then
-            echo ""
-            echo "   ⚠️  未获取到上传结果信息"
-            echo "   💡  文件可能已上传，但无法解析返回数据"
-            return 1
+        FILE_NAME=$(basename "$REMOTE_FILE")
+        echo "   📤 上传 $FILE_NAME..."
+        
+        # 删除已存在的文件
+        DELETE_ASSET_CMD="powershell -Command \"
+            \\\$Headers = @{ 'Authorization' = 'token $GITEA_TOKEN' };
+            try {
+                \\\$Assets = Invoke-RestMethod -Uri '$API_BASE/repos/$OWNER/$REPO/releases/$RELEASE_ID/assets' -Headers \\\$Headers;
+                \\\$Existing = \\\$Assets | Where-Object { \\\$_.name -eq '$FILE_NAME' };
+                if (\\\$Existing) {
+                    Invoke-RestMethod -Uri '$API_BASE/repos/$OWNER/$REPO/releases/$RELEASE_ID/assets/\$(\\\$Existing.id)' -Headers \\\$Headers -Method Delete | Out-Null;
+                }
+            } catch {}
+        \""
+        eval "$SSH_CMD $REMOTE_USER@$REMOTE_HOST \"$DELETE_ASSET_CMD\"" 2>/dev/null
+        
+        # 上传文件
+        UPLOAD_FILE_CMD="powershell -Command \"
+            \\\$Headers = @{ 'Authorization' = 'token $GITEA_TOKEN' };
+            \\\$FileBytes = [System.IO.File]::ReadAllBytes('$REMOTE_FILE');
+            \\\$UploadUrl = '$API_BASE/repos/$OWNER/$REPO/releases/$RELEASE_ID/assets?name=$FILE_NAME';
+            try {
+                \\\$Response = Invoke-RestMethod -Uri \\\$UploadUrl -Headers \\\$Headers -Method Post -Body \\\$FileBytes -ContentType 'application/octet-stream';
+                Write-Output \\\"SUCCESS:\\\$(\\\$Response.browser_download_url)\\\";
+            } catch {
+                Write-Output \\\"FAILED:\\\$_\\\";
+            }
+        \""
+        
+        UPLOAD_RESULT=$(eval "$SSH_CMD $REMOTE_USER@$REMOTE_HOST \"$UPLOAD_FILE_CMD\"" 2>&1)
+        
+        if echo "$UPLOAD_RESULT" | grep -q "SUCCESS:"; then
+            FILE_URL=$(echo "$UPLOAD_RESULT" | grep "SUCCESS:" | cut -d: -f2- | tr -d '\r\n ')
+            echo "      ✅ 成功: $FILE_URL"
+            UPLOADED_FILES="${UPLOADED_FILES}${FILE_NAME}|${FILE_URL}\n"
+        else
+            echo "      ❌ 失败"
         fi
-        
-        # 保存到临时文件供后续使用
-        echo "$UPLOAD_JSON" > /tmp/windows-upload-result.json
-        
+    done
+    
+    # 保存上传结果（简化版）
+    if [ -n "$UPLOADED_FILES" ]; then
+        echo "$UPLOADED_FILES" > /tmp/windows-upload-result.txt
         echo ""
         echo "   ✅ Windows 构建产物上传成功"
-        echo "   📊 上传结果已保存"
         return 0
     else
         echo ""
         echo "   ❌ Windows 构建产物上传失败"
-        echo "   💡  请检查网络连接和 Gitea Token 权限"
         return 1
     fi
 }
@@ -1239,47 +1185,39 @@ WINDOWS_MSI_SIG=""
 WINDOWS_MSI_FILE=""
 
 # 检查是否有远程上传的 Windows 文件信息
-if [ -f "/tmp/windows-upload-result.json" ] && command -v jq &> /dev/null; then
+if [ -f "/tmp/windows-upload-result.txt" ]; then
     echo "  🌐 使用远程 Windows 构建..."
     
     # 从上传结果中提取 NSIS 文件
-    NSIS_URL=$(jq -r '.[] | select(.name | contains("-setup.exe") and (contains(".sig") | not)) | .url' /tmp/windows-upload-result.json 2>/dev/null | head -1)
-    NSIS_SIG_URL=$(jq -r '.[] | select(.name | contains("-setup.exe.sig")) | .url' /tmp/windows-upload-result.json 2>/dev/null | head -1)
-    
-    if [ -n "$NSIS_URL" ] && [ -n "$NSIS_SIG_URL" ] && [ "$NSIS_URL" != "null" ] && [ "$NSIS_SIG_URL" != "null" ]; then
-        # 下载签名文件到本地以读取签名
-        TEMP_SIG="/tmp/nsis-temp.sig"
-        curl -s -H "Authorization: token $GITEA_TOKEN" "$NSIS_SIG_URL" -o "$TEMP_SIG" 2>/dev/null
+    while IFS='|' read -r FILE_NAME FILE_URL; do
+        [ -z "$FILE_NAME" ] && continue
         
-        if [ -f "$TEMP_SIG" ] && [ -s "$TEMP_SIG" ]; then
-            WINDOWS_SIG=$(read_sig "$TEMP_SIG")
-            WINDOWS_FILE=$(basename "$NSIS_URL")
-            rm -f "$TEMP_SIG"
+        if [[ "$FILE_NAME" == *"-setup.exe.sig"* ]]; then
+            # 下载签名文件到本地以读取签名
+            TEMP_SIG="/tmp/nsis-temp.sig"
+            curl -s -H "Authorization: token $GITEA_TOKEN" "$FILE_URL" -o "$TEMP_SIG" 2>/dev/null
+            
+            if [ -f "$TEMP_SIG" ] && [ -s "$TEMP_SIG" ]; then
+                WINDOWS_SIG=$(read_sig "$TEMP_SIG")
+                rm -f "$TEMP_SIG"
+            fi
+        elif [[ "$FILE_NAME" == *"-setup.exe" ]]; then
+            WINDOWS_FILE="$FILE_NAME"
             echo "      NSIS: $WINDOWS_FILE"
-        else
-            echo "      ⚠️  无法下载 NSIS 签名文件"
-            rm -f "$TEMP_SIG"
-        fi
-    fi
-    
-    # 从上传结果中提取 MSI 文件
-    MSI_URL=$(jq -r '.[] | select(.name | contains(".msi") and (contains(".sig") | not)) | .url' /tmp/windows-upload-result.json 2>/dev/null | head -1)
-    MSI_SIG_URL=$(jq -r '.[] | select(.name | contains(".msi.sig")) | .url' /tmp/windows-upload-result.json 2>/dev/null | head -1)
-    
-    if [ -n "$MSI_URL" ] && [ -n "$MSI_SIG_URL" ] && [ "$MSI_URL" != "null" ] && [ "$MSI_SIG_URL" != "null" ]; then
-        TEMP_MSI_SIG="/tmp/msi-temp.sig"
-        curl -s -H "Authorization: token $GITEA_TOKEN" "$MSI_SIG_URL" -o "$TEMP_MSI_SIG" 2>/dev/null
-        
-        if [ -f "$TEMP_MSI_SIG" ] && [ -s "$TEMP_MSI_SIG" ]; then
-            WINDOWS_MSI_SIG=$(read_sig "$TEMP_MSI_SIG")
-            WINDOWS_MSI_FILE=$(basename "$MSI_URL")
-            rm -f "$TEMP_MSI_SIG"
+        elif [[ "$FILE_NAME" == *".msi.sig" ]]; then
+            # 下载 MSI 签名文件
+            TEMP_MSI_SIG="/tmp/msi-temp.sig"
+            curl -s -H "Authorization: token $GITEA_TOKEN" "$FILE_URL" -o "$TEMP_MSI_SIG" 2>/dev/null
+            
+            if [ -f "$TEMP_MSI_SIG" ] && [ -s "$TEMP_MSI_SIG" ]; then
+                WINDOWS_MSI_SIG=$(read_sig "$TEMP_MSI_SIG")
+                rm -f "$TEMP_MSI_SIG"
+            fi
+        elif [[ "$FILE_NAME" == *".msi" ]]; then
+            WINDOWS_MSI_FILE="$FILE_NAME"
             echo "      MSI: $WINDOWS_MSI_FILE"
-        else
-            echo "      ⚠️  无法下载 MSI 签名文件"
-            rm -f "$TEMP_MSI_SIG"
         fi
-    fi
+    done < /tmp/windows-upload-result.txt
 else
     # 使用本地构建文件
     if [ -f "$BUNDLE_DIR/nsis/${APP_NAME}_${VERSION}_x64-setup.exe.sig" ]; then
@@ -1586,15 +1524,15 @@ if [ $SHOULD_UPLOAD -eq 1 ]; then
     fi
     
     # 上传 Windows NSIS 文件（仅当使用本地构建时）
-    if [ -n "$WINDOWS_SIG" ] && [ ! -f "/tmp/windows-upload-result.json" ]; then
+    if [ -n "$WINDOWS_SIG" ] && [ ! -f "/tmp/windows-upload-result.txt" ]; then
         upload_file "$BUNDLE_DIR/nsis/$WINDOWS_FILE"
         upload_file "$BUNDLE_DIR/nsis/$WINDOWS_FILE.sig"
-    elif [ -f "/tmp/windows-upload-result.json" ]; then
+    elif [ -f "/tmp/windows-upload-result.txt" ]; then
         echo "   ⏭️  跳过 Windows 文件上传（已在远程主机上传）"
     fi
     
     # 上传 Windows MSI 文件（可选，仅当使用本地构建时）
-    if [ -n "$WINDOWS_MSI_SIG" ] && [ ! -f "/tmp/windows-upload-result.json" ]; then
+    if [ -n "$WINDOWS_MSI_SIG" ] && [ ! -f "/tmp/windows-upload-result.txt" ]; then
         upload_file "$BUNDLE_DIR/msi/$WINDOWS_MSI_FILE"
         upload_file "$BUNDLE_DIR/msi/$WINDOWS_MSI_FILE.sig"
     fi
@@ -1692,8 +1630,7 @@ fi
 # ============================================
 # 清理临时文件
 # ============================================
-rm -f /tmp/windows-upload-result.json 2>/dev/null || true
+rm -f /tmp/windows-upload-result.txt 2>/dev/null || true
 rm -f /tmp/nsis-temp.sig 2>/dev/null || true
 rm -f /tmp/msi-temp.sig 2>/dev/null || true
-rm -f /tmp/gitea-upload.ps1 2>/dev/null || true
 
