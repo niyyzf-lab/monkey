@@ -35,15 +35,16 @@ export function Toolbar({
         isScrolled 
           ? 'backdrop-blur-xl bg-background/98 shadow-md border-b border-border/80' 
           : 'backdrop-blur-md bg-background/80'
-      }`}>
+      }`} data-tauri-drag-region>
         {/* 左侧：标题 */}
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3" data-tauri-drag-region>
           <motion.div
             initial={{ opacity: 0, x: -10 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.3 }}
+            data-tauri-drag-region
           >
-            <h1 className="text-lg font-semibold whitespace-nowrap">持仓管理</h1>
+            <h1 className="text-lg font-semibold whitespace-nowrap" data-tauri-drag-region>持仓管理</h1>
           </motion.div>
         </div>
 

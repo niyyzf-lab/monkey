@@ -6,6 +6,7 @@ import { formatCurrencyValue, formatCurrencyDetail } from '../../lib/formatters'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip';
 import ClickSpark from '../ui/ClickSpark';
 import FloatingText from '../FloatingText';
+import * as React from 'react';
 
 interface StatisticsCardsProps {
   statistics: HoldingsStatistics;
@@ -14,6 +15,23 @@ interface StatisticsCardsProps {
 }
 
 export function StatisticsCards({ statistics, todayTotalProfitLoss, displayMode }: StatisticsCardsProps) {
+  // 监听暗色模式
+  const [isDark, setIsDark] = React.useState(false);
+  
+  React.useEffect(() => {
+    const updateTheme = () => {
+      setIsDark(document.documentElement.classList.contains("dark"));
+    };
+    updateTheme();
+    
+    const observer = new MutationObserver(updateTheme);
+    observer.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ["class"],
+    });
+    
+    return () => observer.disconnect();
+  }, []);
   
   const profitLossPercentage = statistics.totalCost > 0
     ? ((statistics.totalProfitLoss / statistics.totalCost) * 100).toFixed(2)
@@ -178,7 +196,7 @@ export function StatisticsCards({ statistics, todayTotalProfitLoss, displayMode 
             }`}
           >
             <ClickSpark
-              sparkColor='rgb(255 255 255)'
+              sparkColor={isDark ? 'rgb(255 255 255)' : (isProfitable ? 'rgb(220 38 38)' : 'rgb(22 163 74)')}
               sparkSize={10}
               sparkRadius={15}
               sparkCount={8}
@@ -257,7 +275,7 @@ export function StatisticsCards({ statistics, todayTotalProfitLoss, displayMode 
             }`}
           >
             <ClickSpark
-              sparkColor='rgb(255 255 255)'
+              sparkColor={isDark ? 'rgb(255 255 255)' : (isTodayProfitable ? 'rgb(220 38 38)' : 'rgb(22 163 74)')}
               sparkSize={10}
               sparkRadius={15}
               sparkCount={8}

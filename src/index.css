@@ -285,13 +285,14 @@
   max-height: calc(var(--vh, 1vh) * 100);
 }
 
-/* Tauri 拖拽区域样式 - 父元素可拖拽，子元素可交互 */
+/* Tauri 拖拽区域样式 - 元素及其所有子元素都可拖拽窗口 */
 [data-tauri-drag-region] {
   -webkit-app-region: drag;
   app-region: drag;
 }
 
+/* 让所有子元素继承拖拽属性 */
 [data-tauri-drag-region] * {
-  -webkit-app-region: no-drag;
-  app-region: no-drag;
+  -webkit-app-region: inherit;
+  app-region: inherit;
 }

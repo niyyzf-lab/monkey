@@ -25,10 +25,10 @@ export const FeelPageHeader = memo(() => {
       className="mb-6 select-none"
       data-tauri-drag-region
     >
-      <h1 className="text-3xl lg:text-4xl font-bold tracking-tight">
+      <h1 className="text-3xl lg:text-4xl font-bold tracking-tight" data-tauri-drag-region>
         观猴感
       </h1>
-      <p className="text-sm text-muted-foreground mt-1">
+      <p className="text-sm text-muted-foreground mt-1" data-tauri-drag-region>
         {formattedDate} · {currentTime}
       </p>
     </motion.div>

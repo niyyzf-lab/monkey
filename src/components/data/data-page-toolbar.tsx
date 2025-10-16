@@ -37,17 +37,18 @@ export const DataPageToolbar = memo(function DataPageToolbar({
       isScrolled 
         ? 'backdrop-blur-xl bg-background/98 shadow-md border-b border-border/80' 
         : 'backdrop-blur-md bg-background/80'
-    }`}>
+    }`} data-tauri-drag-region>
       {/* 左侧：标题 + 搜索 */}
-      <div className="flex items-center gap-3 flex-1 min-w-0">
+      <div className="flex items-center gap-3 flex-1 min-w-0" data-tauri-drag-region>
         <motion.div
           initial={{ opacity: 0, x: -10 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ duration: 0.3 }}
+          data-tauri-drag-region
         >
-          <div className="space-y-0.5">
-            <h1 className="text-lg font-semibold whitespace-nowrap">猴の数据库</h1>
-            <p className="text-xs text-muted-foreground/70 hidden @sm:block">给猴子提供价值</p>
+          <div className="space-y-0.5" data-tauri-drag-region>
+            <h1 className="text-lg font-semibold whitespace-nowrap" data-tauri-drag-region>猴の数据库</h1>
+            <p className="text-xs text-muted-foreground/70 hidden @sm:block" data-tauri-drag-region>给猴子提供价值</p>
           </div>
         </motion.div>
 

@@ -48,37 +48,37 @@ export function TagsHeader({
   }
   
   return (
-    <div className="sticky top-0 z-10 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b">
-      <div className="px-6 py-3">
+    <div className="sticky top-0 z-10 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b" data-tauri-drag-region>
+      <div className="px-6 py-3" data-tauri-drag-region>
         {/* 主标题行 */}
-        <div className="flex items-center justify-between gap-4">
-          <div className="flex items-center gap-3 flex-1 min-w-0">
+        <div className="flex items-center justify-between gap-4" data-tauri-drag-region>
+          <div className="flex items-center gap-3 flex-1 min-w-0" data-tauri-drag-region>
             {/* 标题和图标 */}
-            <div className="flex items-center gap-2">
-              <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-primary/10">
-                <Tag className="h-4 w-4 text-primary" />
+            <div className="flex items-center gap-2" data-tauri-drag-region>
+              <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-primary/10" data-tauri-drag-region>
+                <Tag className="h-4 w-4 text-primary" data-tauri-drag-region />
               </div>
-              <div>
-                <div className="flex items-center gap-2">
-                  <h1 className="text-lg font-semibold tracking-tight">
+              <div data-tauri-drag-region>
+                <div className="flex items-center gap-2" data-tauri-drag-region>
+                  <h1 className="text-lg font-semibold tracking-tight" data-tauri-drag-region>
                     标签分类管理
                   </h1>
                   {hasProblems && (
-                    <AlertTriangle className="h-4 w-4 text-amber-500 animate-pulse" />
+                    <AlertTriangle className="h-4 w-4 text-amber-500 animate-pulse" data-tauri-drag-region />
                   )}
                 </div>
               </div>
             </div>
             
             {/* 统计信息 - 紧凑徽章 */}
-            <div className="hidden md:flex items-center gap-1.5 ml-2">
-              <Badge variant="secondary" className="gap-1 h-6 text-xs font-medium">
-                <Layers className="h-3 w-3" />
+            <div className="hidden md:flex items-center gap-1.5 ml-2" data-tauri-drag-region>
+              <Badge variant="secondary" className="gap-1 h-6 text-xs font-medium" data-tauri-drag-region>
+                <Layers className="h-3 w-3" data-tauri-drag-region />
                 {filteredCategoriesCount}
               </Badge>
               
-              <Badge variant="secondary" className="gap-1 h-6 text-xs font-medium border-emerald-200/50 bg-emerald-50/50 text-emerald-700">
-                <CheckCircle2 className="h-3 w-3" />
+              <Badge variant="secondary" className="gap-1 h-6 text-xs font-medium border-emerald-200/50 bg-emerald-50/50 text-emerald-700" data-tauri-drag-region>
+                <CheckCircle2 className="h-3 w-3" data-tauri-drag-region />
                 {totalTagsCount}
               </Badge>
 
@@ -87,8 +87,9 @@ export function TagsHeader({
                 <Badge 
                   variant="secondary" 
                   className="gap-1 h-6 text-xs font-medium bg-destructive/10 text-destructive border-destructive/20"
+                  data-tauri-drag-region
                 >
-                  <AlertTriangle className="h-3 w-3" />
+                  <AlertTriangle className="h-3 w-3" data-tauri-drag-region />
                   {tagStatistics.errorTagsCount}
                 </Badge>
               )}
@@ -97,8 +98,9 @@ export function TagsHeader({
                 <Badge 
                   variant="secondary" 
                   className="gap-1 h-6 text-xs font-medium bg-amber-50/50 text-amber-700 border-amber-200/50"
+                  data-tauri-drag-region
                 >
-                  <AlertTriangle className="h-3 w-3" />
+                  <AlertTriangle className="h-3 w-3" data-tauri-drag-region />
                   {tagStatistics.warningTagsCount}
                 </Badge>
               )}

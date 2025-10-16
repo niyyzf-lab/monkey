@@ -383,13 +383,15 @@ function HoldingDetailPage() {
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
           className="flex items-center gap-4"
+          data-tauri-drag-region
         >
           <Button
             variant="outline"
             size="sm"
             onClick={() => navigate({ to: '/hold' })}
+            data-tauri-drag-region
           >
-            <ArrowLeft className="h-4 w-4 mr-2" />
+            <ArrowLeft className="h-4 w-4 mr-2" data-tauri-drag-region />
             返回持仓列表
           </Button>
         </motion.div>

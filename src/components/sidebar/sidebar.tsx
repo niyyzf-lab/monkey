@@ -60,7 +60,7 @@ export const Sidebar = React.memo(React.forwardRef<HTMLDivElement, SidebarProps>
         <div className={cn(
           "h-16 border-b border-sidebar-border flex items-center relative overflow-hidden",
           isOpen ? "justify-start px-4" : "justify-center"
-        )}>
+        )} data-tauri-drag-region>
           <AnimatePresence mode="wait">
             {isOpen ? (
               <motion.div
@@ -75,6 +75,7 @@ export const Sidebar = React.memo(React.forwardRef<HTMLDivElement, SidebarProps>
                   mass: 0.8
                 }}
                 className="flex items-center gap-3"
+                data-tauri-drag-region
               >
                 <CoolMode>
                   <motion.div 
@@ -89,6 +90,7 @@ export const Sidebar = React.memo(React.forwardRef<HTMLDivElement, SidebarProps>
                     }}
                     whileHover={{ scale: 1.15, rotate: 10 }}
                     whileTap={{ scale: 0.9, rotate: -10 }}
+                    data-tauri-drag-region
                   >
                     🐒
                   </motion.div>
@@ -104,11 +106,12 @@ export const Sidebar = React.memo(React.forwardRef<HTMLDivElement, SidebarProps>
                     damping: 30,
                     delay: 0.12
                   }}
+                  data-tauri-drag-region
                 >
-                  <h1 className="text-sm font-semibold text-sidebar-foreground leading-tight whitespace-nowrap">
+                  <h1 className="text-sm font-semibold text-sidebar-foreground leading-tight whitespace-nowrap" data-tauri-drag-region>
                     观猴投研平台
                   </h1>
-                  <span className="text-xs text-muted-foreground mt-0.5 whitespace-nowrap">
+                  <span className="text-xs text-muted-foreground mt-0.5 whitespace-nowrap" data-tauri-drag-region>
                     专业版
                   </span>
                 </motion.div>
@@ -125,6 +128,7 @@ export const Sidebar = React.memo(React.forwardRef<HTMLDivElement, SidebarProps>
                   damping: 22,
                   mass: 0.7
                 }}
+                data-tauri-drag-region
               >
                 <CoolMode>
                   <motion.div 
@@ -132,6 +136,7 @@ export const Sidebar = React.memo(React.forwardRef<HTMLDivElement, SidebarProps>
                     whileHover={{ scale: 1.3, rotate: 15 }}
                     whileTap={{ scale: 0.9, rotate: -15 }}
                     transition={{ type: "spring", stiffness: 500, damping: 20 }}
+                    data-tauri-drag-region
                   >
                     🐒
                   </motion.div>

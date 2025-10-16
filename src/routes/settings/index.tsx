@@ -12,6 +12,9 @@ import {
   Check,
   AlertCircle,
   RefreshCw,
+  Wifi,
+  WifiOff,
+  Loader2,
 } from 'lucide-react';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
@@ -22,6 +25,7 @@ import { UpdateButton } from '@/components/updater';
 import { getVersion } from '@tauri-apps/api/app';
 import { toast } from 'sonner';
 import { motion } from 'motion/react';
+import { API_BASE_URL } from '@/api/api';
 
 export const Route = createFileRoute('/settings/')({
   component: SettingsPage,
@@ -47,6 +51,10 @@ function SettingsPage() {
   const [appVersion, setAppVersion] = useState<string>('加载中...');
   const [activeTab, setActiveTab] = useState('appearance');
   const fileInputRef = useRef<HTMLInputElement>(null);
+  
+  // 服务器测试状态
+  const [serverStatus, setServerStatus] = useState<'idle' | 'testing' | 'success' | 'error'>('idle');
+  const [serverError, setServerError] = useState<string>('');
 
   // 加载应用版本
   useState(() => {
@@ -150,6 +158,62 @@ function SettingsPage() {
     return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
   };
 
+  // 测试服务器连接
+  const handleTestServer = async () => {
+    setServerStatus('testing');
+    setServerError('');
+    
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10秒超时
+      
+      const response = await fetch(`${API_BASE_URL}/webhook/stock-details`, {
+        method: 'GET',
+        signal: controller.signal,
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+      
+      clearTimeout(timeoutId);
+      
+      if (response.ok) {
+        setServerStatus('success');
+        toast.success('服务器连接成功！');
+      } else {
+        let errorText = '';
+        try {
+          const contentType = response.headers.get('content-type');
+          if (contentType && contentType.includes('application/json')) {
+            const errorJson = await response.json();
+            errorText = JSON.stringify(errorJson, null, 2);
+          } else {
+            errorText = await response.text();
+          }
+        } catch {
+          errorText = '';
+        }
+        
+        setServerStatus('error');
+        const errorMessage = `服务器返回错误: ${response.status} ${response.statusText}${errorText ? '\n\n响应内容:\n' + errorText : ''}`;
+        setServerError(errorMessage);
+        toast.error('服务器连接失败');
+      }
+    } catch (error) {
+      setServerStatus('error');
+      if (error instanceof Error) {
+        if (error.name === 'AbortError') {
+          setServerError(`连接超时\n\n无法在 10 秒内连接到服务器\n服务器地址: ${API_BASE_URL}\n\n请检查:\n1. 服务器是否正在运行\n2. 服务器地址是否正确\n3. 网络连接是否正常`);
+        } else {
+          setServerError(`连接错误: ${error.message}\n\n服务器地址: ${API_BASE_URL}\n\n可能的原因:\n1. 服务器未启动\n2. 防火墙拦截\n3. 网络配置问题`);
+        }
+      } else {
+        setServerError(`未知错误\n\n无法连接到服务器: ${API_BASE_URL}\n\n请检查服务器是否正常运行`);
+      }
+      toast.error('服务器连接失败');
+    }
+  };
+
   return (
     <div className="h-full overflow-y-auto">
       <div className="max-w-4xl mx-auto p-6 space-y-6">
@@ -161,8 +225,8 @@ function SettingsPage() {
           className="border-b pb-4 select-none"
           data-tauri-drag-region
         >
-          <h1 className="text-3xl font-bold text-foreground">倒腾</h1>
-          <p className="text-muted-foreground mt-2">管理应用的所有配置和偏好设置</p>
+          <h1 className="text-3xl font-bold text-foreground" data-tauri-drag-region>倒腾</h1>
+          <p className="text-muted-foreground mt-2" data-tauri-drag-region>管理应用的所有配置和偏好设置</p>
         </motion.div>
 
         {/* 标签页 */}
@@ -373,6 +437,69 @@ function SettingsPage() {
 
           {/* 数据管理 */}
           <TabsContent value="data" className="space-y-4">
+            <SettingsSection
+              title="服务器连接"
+              description="测试与后端服务器的连接状态"
+              icon={<Wifi className="h-5 w-5" />}
+            >
+              <div className="space-y-4">
+                <div className="flex items-center justify-between p-4 bg-muted/50 rounded-lg">
+                  <div className="flex-1">
+                    <div className="text-sm font-medium text-foreground">服务器地址</div>
+                    <div className="text-xs text-muted-foreground mt-1 font-mono">
+                      {API_BASE_URL}
+                    </div>
+                  </div>
+                  <div className="flex-shrink-0 ml-4">
+                    {serverStatus === 'idle' && <Wifi className="h-5 w-5 text-muted-foreground" />}
+                    {serverStatus === 'testing' && <Loader2 className="h-5 w-5 text-blue-500 animate-spin" />}
+                    {serverStatus === 'success' && <Wifi className="h-5 w-5 text-green-500" />}
+                    {serverStatus === 'error' && <WifiOff className="h-5 w-5 text-red-500" />}
+                  </div>
+                </div>
+
+                <Button
+                  onClick={handleTestServer}
+                  disabled={serverStatus === 'testing'}
+                  className="w-full gap-2"
+                  variant={serverStatus === 'success' ? 'outline' : 'default'}
+                >
+                  {serverStatus === 'testing' ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      测试中...
+                    </>
+                  ) : (
+                    <>
+                      <Wifi className="h-4 w-4" />
+                      测试服务器连接
+                    </>
+                  )}
+                </Button>
+
+                {serverStatus === 'success' && (
+                  <div className="flex items-start gap-2 p-3 bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-800 rounded-lg text-sm">
+                    <Check className="h-4 w-4 text-green-600 dark:text-green-400 mt-0.5 flex-shrink-0" />
+                    <div className="text-green-900 dark:text-green-100">
+                      <strong>连接成功!</strong> 服务器运行正常。
+                    </div>
+                  </div>
+                )}
+
+                {serverStatus === 'error' && serverError && (
+                  <div className="flex items-start gap-2 p-3 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800 rounded-lg text-sm">
+                    <AlertCircle className="h-4 w-4 text-red-600 dark:text-red-400 mt-0.5 flex-shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <div className="text-red-900 dark:text-red-100 font-semibold mb-1">连接失败</div>
+                      <div className="text-red-800 dark:text-red-200 whitespace-pre-wrap break-all font-mono text-xs">
+                        {serverError}
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </SettingsSection>
+
             <SettingsSection
               title="缓存统计"
               description="查看和管理本地存储的数据"
