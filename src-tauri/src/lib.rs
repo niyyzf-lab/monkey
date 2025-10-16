@@ -2,8 +2,6 @@
 mod stock_data;
 mod tag_processor;
 mod tauri_commands;
-#[cfg(target_os = "macos")]
-mod traffic_lights;
 
 use tauri_commands::*;
 
@@ -27,12 +25,6 @@ pub fn run() {
             search_and_filter,
             get_data_statistics
         ]);
-
-    // 注册红绿灯按钮定制插件 (仅 macOS)
-    #[cfg(target_os = "macos")]
-    {
-        builder = builder.plugin(traffic_lights::init());
-    }
 
     #[cfg(debug_assertions)] // only enable instrumentation in development builds
     {

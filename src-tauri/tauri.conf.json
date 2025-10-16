@@ -20,6 +20,10 @@
         "fullscreen": false,
         "titleBarStyle": "Overlay",
         "hiddenTitle": true,
+        "trafficLightPosition": {
+          "x":10,
+          "y": 860
+        },
         "transparent": false,
         "decorations": true,
         "alwaysOnTop": false,

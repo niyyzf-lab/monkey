@@ -39,6 +39,7 @@ function SettingsPage() {
     setStatisticsDisplayMode,
     setChartSettings,
     setSidebarOpen,
+    setTrafficLightsPosition,
     resetSettings,
     exportConfig,
     importConfig,
@@ -323,6 +324,41 @@ function SettingsPage() {
                     toast.success(`侧边栏默认${checked ? '展开' : '折叠'}`);
                   }}
                 />
+              </SettingsItem>
+            </SettingsSection>
+
+            <SettingsSection
+              title="窗口控制"
+              description="设置窗口控制按钮的位置"
+            >
+              <SettingsItem
+                label="红绿灯位置"
+                description="选择 macOS 风格窗口控制按钮的显示位置"
+              >
+                <select
+                  value={settings.trafficLightsPosition}
+                  onChange={(e) => {
+                    const position = e.target.value as 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right';
+                    setTrafficLightsPosition(position);
+                    const positionNames: Record<string, string> = {
+                      'top-left': '左上角',
+                      'top-right': '右上角',
+                      'bottom-left': '左下角',
+                      'bottom-right': '右下角',
+                    };
+                    toast.success(`红绿灯位置已设置为${positionNames[position]},页面即将刷新...`);
+                    // 延迟刷新页面以应用新位置
+                    setTimeout(() => {
+                      window.location.reload();
+                    }, 800);
+                  }}
+                  className="px-3 py-1.5 text-sm border border-input bg-background rounded-md focus:outline-none focus:ring-2 focus:ring-ring"
+                >
+                  <option value="top-left">左上角</option>
+                  <option value="top-right">右上角</option>
+                  <option value="bottom-left">左下角</option>
+                  <option value="bottom-right">右下角</option>
+                </select>
               </SettingsItem>
             </SettingsSection>
           </TabsContent>

@@ -2,6 +2,7 @@ import * as React from "react"
 import { motion, AnimatePresence } from "motion/react"
 import { cn } from "@/lib/utils"
 import { CoolMode } from "@/components/ui/cool-mode"
+import { MacTrafficLights } from "@/components/common/mac-traffic-lights"
 import { useSidebar } from "./sidebar-context"
 import { resetMenuItemCounter } from "./sidebar-menu"
 
@@ -24,38 +25,42 @@ export const Sidebar = React.memo(React.forwardRef<HTMLDivElement, SidebarProps>
     }
 
     return (
-      <motion.div
-        ref={ref}
-        className={cn(
-          "flex h-full flex-col bg-sidebar/95 backdrop-blur-xl border-r border-sidebar-border",
-          "overflow-hidden shadow-lg select-none relative",
-          isMobile && "fixed top-0 left-0 z-50 h-screen-safe",
-          className
-        )}
-        animate={{
-          width: getWidth(),
-          opacity: isMobile ? (isOpen ? 1 : 0) : 1,
-          x: isMobile && !isOpen ? -220 : 0,
-        }}
-        transition={{
-          width: {
-            type: "spring",
-            stiffness: 350,
-            damping: 26,
-            mass: 0.75
-          },
-          opacity: {
-            duration: 0.2,
-            ease: [0.32, 0.72, 0, 1]
-          },
-          x: {
-            type: "spring",
-            stiffness: 350,
-            damping: 26,
-            mass: 0.75
-          }
-        }}
-      >
+      <>
+        {/* macOS 风格红绿灯按钮 */}
+        <MacTrafficLights />
+        
+        <motion.div
+          ref={ref}
+          className={cn(
+            "flex h-full flex-col bg-sidebar/95 backdrop-blur-xl border-r border-sidebar-border",
+            "overflow-hidden shadow-lg select-none relative",
+            isMobile && "fixed top-0 left-0 z-50 h-screen-safe",
+            className
+          )}
+          animate={{
+            width: getWidth(),
+            opacity: isMobile ? (isOpen ? 1 : 0) : 1,
+            x: isMobile && !isOpen ? -220 : 0,
+          }}
+          transition={{
+            width: {
+              type: "spring",
+              stiffness: 350,
+              damping: 26,
+              mass: 0.75
+            },
+            opacity: {
+              duration: 0.2,
+              ease: [0.32, 0.72, 0, 1]
+            },
+            x: {
+              type: "spring",
+              stiffness: 350,
+              damping: 26,
+              mass: 0.75
+            }
+          }}
+        >
         {/* 头部区域 - 展开左对齐，收缩居中 */}
         <div className={cn(
           "h-16 border-b border-sidebar-border flex items-center relative overflow-hidden",
@@ -90,7 +95,7 @@ export const Sidebar = React.memo(React.forwardRef<HTMLDivElement, SidebarProps>
                     }}
                     whileHover={{ scale: 1.15, rotate: 10 }}
                     whileTap={{ scale: 0.9, rotate: -10 }}
-                    data-tauri-drag-region
+                    data-tauri-drag-region={false}
                   >
                     🐒
                   </motion.div>
@@ -136,7 +141,7 @@ export const Sidebar = React.memo(React.forwardRef<HTMLDivElement, SidebarProps>
                     whileHover={{ scale: 1.3, rotate: 15 }}
                     whileTap={{ scale: 0.9, rotate: -15 }}
                     transition={{ type: "spring", stiffness: 500, damping: 20 }}
-                    data-tauri-drag-region
+                    data-tauri-drag-region={false}
                   >
                     🐒
                   </motion.div>
@@ -154,6 +159,7 @@ export const Sidebar = React.memo(React.forwardRef<HTMLDivElement, SidebarProps>
           {children}
         </div>
       </motion.div>
+      </>
     )
   }
 ))

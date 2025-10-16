@@ -32,6 +32,9 @@ export interface SettingsConfig {
   
   // 侧边栏状态
   sidebarOpen: boolean;
+  
+  // 红绿灯位置
+  trafficLightsPosition: 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right';
 }
 
 /**
@@ -50,6 +53,7 @@ export const defaultSettings: SettingsConfig = {
     showVolume: true,
   },
   sidebarOpen: true,
+  trafficLightsPosition: 'top-left',
 };
 
 /**
@@ -66,6 +70,7 @@ const STORAGE_KEYS = {
   showMA10: 'chart_showMA10',
   showVolume: 'chart_showVolume',
   sidebarState: 'sidebar-state',
+  trafficLightsPosition: 'traffic-lights-position',
 } as const;
 
 /**
@@ -219,6 +224,13 @@ export function loadSettings(): SettingsConfig {
       settings.sidebarOpen = JSON.parse(sidebarState);
     }
 
+    // 加载红绿灯位置
+    const trafficLightsPosition = localStorage.getItem(STORAGE_KEYS.trafficLightsPosition);
+    if (trafficLightsPosition === 'top-left' || trafficLightsPosition === 'top-right' || 
+        trafficLightsPosition === 'bottom-left' || trafficLightsPosition === 'bottom-right') {
+      settings.trafficLightsPosition = trafficLightsPosition;
+    }
+
     return settings;
   } catch (error) {
     console.error('Failed to load settings:', error);
@@ -256,6 +268,9 @@ export function saveSettings(settings: SettingsConfig): void {
 
     // 保存侧边栏状态
     localStorage.setItem(STORAGE_KEYS.sidebarState, JSON.stringify(settings.sidebarOpen));
+
+    // 保存红绿灯位置
+    localStorage.setItem(STORAGE_KEYS.trafficLightsPosition, settings.trafficLightsPosition);
 
     // 应用主题
     applyTheme(settings.theme);
@@ -318,6 +333,9 @@ function isValidSettings(settings: any): settings is SettingsConfig {
   
   // 验证侧边栏状态
   if (typeof settings.sidebarOpen !== 'boolean') return false;
+  
+  // 验证红绿灯位置
+  if (!['top-left', 'top-right', 'bottom-left', 'bottom-right'].includes(settings.trafficLightsPosition)) return false;
   
   return true;
 }

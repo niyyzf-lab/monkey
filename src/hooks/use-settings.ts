@@ -29,6 +29,7 @@ export interface UseSettingsReturn {
   setStatisticsDisplayMode: (mode: 'auto' | 'yuan') => void;
   setChartSettings: (chart: Partial<SettingsConfig['chart']>) => void;
   setSidebarOpen: (open: boolean) => void;
+  setTrafficLightsPosition: (position: 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right') => void;
   
   // 配置管理
   resetSettings: () => void;
@@ -114,6 +115,11 @@ export function useSettings(): UseSettingsReturn {
   // 设置侧边栏状态
   const setSidebarOpen = useCallback((sidebarOpen: boolean) => {
     updateSettings({ sidebarOpen });
+  }, [updateSettings]);
+
+  // 设置红绿灯位置
+  const setTrafficLightsPosition = useCallback((trafficLightsPosition: 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right') => {
+    updateSettings({ trafficLightsPosition });
   }, [updateSettings]);
 
   // 重置配置
@@ -211,6 +217,7 @@ export function useSettings(): UseSettingsReturn {
     setStatisticsDisplayMode,
     setChartSettings,
     setSidebarOpen,
+    setTrafficLightsPosition,
     resetSettings,
     exportConfig,
     importConfig,
