@@ -35,43 +35,43 @@ jobs:
           echo "tag_name=$TAG_NAME" >> $GITHUB_OUTPUT
           echo "📌 Processing tag: $TAG_NAME"
 
-      - name: Download JSON files from Gitea
+      - name: Download JSON files from GitHub
         env:
-          GITEA_TOKEN: ${{ secrets.GITEA_TOKEN }}
-          GITEA_URL: ${{ secrets.GITEA_URL }}
-          GITEA_REPO: ${{ secrets.GITEA_REPO }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAG_NAME: ${{ steps.set_tag.outputs.tag_name }}
         run: |
-          mkdir -p gitea-json-files
+          mkdir -p github-json-files
           
-          echo "📥 Downloading JSON files from Gitea release $TAG_NAME..."
+          echo "📥 Downloading JSON files from GitHub release $TAG_NAME..."
           
-          # 获取 Gitea release 信息
-          RELEASE_DATA=$(curl -s -H "Authorization: token $GITEA_TOKEN" \
-            "${GITEA_URL}/api/v1/repos/${GITEA_REPO}/releases/tags/${TAG_NAME}")
+          # 获取 GitHub release 信息
+          RELEASE_DATA=$(curl -s -H "Authorization: token $GITHUB_TOKEN" \
+            "https://api.github.com/repos/${{ github.repository }}/releases/tags/${TAG_NAME}")
           
           RELEASE_ID=$(echo "$RELEASE_DATA" | jq -r '.id')
           
           if [ "$RELEASE_ID" == "null" ] || [ -z "$RELEASE_ID" ]; then
-            echo "❌ Release $TAG_NAME not found in Gitea"
+            echo "❌ Release $TAG_NAME not found in GitHub"
             exit 1
           fi
           
-          echo "✅ Found release ID: $RELEASE_ID"
+          echo "✅ Found GitHub release ID: $RELEASE_ID"
           
-          # 获取所有附件
-          ATTACHMENTS=$(echo "$RELEASE_DATA" | jq -r '.assets')
+          # 获取所有 assets
+          ASSETS=$(curl -s -H "Authorization: token $GITHUB_TOKEN" \
+            "https://api.github.com/repos/${{ github.repository }}/releases/$RELEASE_ID/assets")
           
           # 下载所有 .json 文件
-          echo "$ATTACHMENTS" | jq -r '.[] | select(.name | endswith(".json")) | "\(.id) \(.name) \(.browser_download_url)"' | \
-          while read attachment_id filename download_url; do
+          echo "$ASSETS" | jq -r '.[] | select(.name | endswith(".json")) | "\(.id) \(.name)"' | \
+          while read asset_id filename; do
             echo "  📄 Downloading $filename..."
-            curl -L -H "Authorization: token $GITEA_TOKEN" \
-              "$download_url" \
-              -o "gitea-json-files/$filename"
+            curl -L -H "Authorization: token $GITHUB_TOKEN" \
+              -H "Accept: application/octet-stream" \
+              "https://api.github.com/repos/${{ github.repository }}/releases/assets/$asset_id" \
+              -o "github-json-files/$filename"
             
-            if [ -f "gitea-json-files/$filename" ]; then
-              echo "  ✅ Downloaded $filename ($(ls -lh "gitea-json-files/$filename" | awk '{print $5}'))"
+            if [ -f "github-json-files/$filename" ]; then
+              echo "  ✅ Downloaded $filename ($(ls -lh "github-json-files/$filename" | awk '{print $5}'))"
             else
               echo "  ❌ Failed to download $filename"
             fi
@@ -79,7 +79,7 @@ jobs:
           
           echo ""
           echo "📊 Downloaded files:"
-          ls -lh gitea-json-files/
+          ls -lh github-json-files/
 
       - name: Update URLs in JSON files
         env:
@@ -97,35 +97,58 @@ jobs:
           
           JSON_COUNT=0
           
-          find gitea-json-files -name "*.json" -type f | while read -r json_file; do
-            echo "  📝 Processing $(basename "$json_file")..."
+          # 使用 for 循环而不是 while read，避免子 shell 问题
+          for json_file in github-json-files/*.json; do
+            if [ ! -f "$json_file" ]; then
+              echo "⚠️  No JSON files found"
+              continue
+            fi
             
-            # 先移除可能存在的旧 token 参数
-            sed -i.bak 's/\?token=[^"]*//g' "$json_file"
+            filename=$(basename "$json_file")
+            echo "  📝 Processing $filename..."
             
-            # 替换 GitHub URL 为 Gitea URL
-            sed -i.bak \
-              "s|https://github.com/${GITHUB_REPO}/releases/download/|${GITEA_URL}/${GITEA_REPO}/releases/download/|g" \
-              "$json_file"
+            # 显示原始内容
+            echo "  📄 Original content (first 5 lines):"
+            head -n 5 "$json_file" | sed 's/^/    /'
+            echo ""
             
-            # 在所有下载 URL 后添加 token
+            # 一次性完成所有替换，使用 -e 参数链式执行多个替换
+            # 1. 移除旧的 token 参数
+            # 2. 替换 GitHub URL 为 Gitea URL  
+            # 3. 添加新的 token 参数
             if [ -n "$GITEA_TOKEN" ]; then
-              # 匹配 Gitea 下载 URL 并添加 token
               sed -i.bak \
-                "s|\(${GITEA_URL}/${GITEA_REPO}/releases/download/[^\"]*\)|\1?token=${GITEA_TOKEN}|g" \
+                -e 's/?token=[^"]*//g' \
+                -e "s|https://github.com/${GITHUB_REPO}/releases/download/|${GITEA_URL}/${GITEA_REPO}/releases/download/|g" \
+                -e "s|\(${GITEA_URL}/${GITEA_REPO}/releases/download/[^\"?]*\)|\1?token=${GITEA_TOKEN}|g" \
+                "$json_file"
+            else
+              sed -i.bak \
+                -e 's/?token=[^"]*//g' \
+                -e "s|https://github.com/${GITHUB_REPO}/releases/download/|${GITEA_URL}/${GITEA_REPO}/releases/download/|g" \
                 "$json_file"
             fi
             
-            # 删除所有备份文件
+            # 删除备份文件
             rm -f "${json_file}.bak"
             
-            echo "  ✅ Updated $(basename "$json_file")"
+            # 验证文件仍然有效
+            if [ ! -s "$json_file" ]; then
+              echo "  ❌ Error: $filename is empty after update!"
+              exit 1
+            fi
+            
+            echo "  ✅ Updated $filename"
             JSON_COUNT=$((JSON_COUNT + 1))
             
             # 显示更新后的内容（用于调试）
-            echo "  📄 Content preview:"
-            cat "$json_file" | jq -r '.platforms | to_entries[] | "    Platform: \(.key), URL: \(.value.url)"' 2>/dev/null || \
-            grep -o "\"url\"[^,}]*" "$json_file" | head -n 2 | sed 's/^/    /'
+            echo "  📄 Updated content preview:"
+            if command -v jq &> /dev/null; then
+              cat "$json_file" | jq -r '.platforms | to_entries[] | "    Platform: \(.key)\n    URL: \(.value.url)"' 2>/dev/null || \
+              grep -o "\"url\"[^,}]*" "$json_file" | head -n 3 | sed 's/^/    /'
+            else
+              grep -o "\"url\"[^,}]*" "$json_file" | head -n 3 | sed 's/^/    /'
+            fi
             echo ""
           done
           
@@ -165,11 +188,16 @@ jobs:
           done
           
           echo ""
-          echo "📤 Uploading updated JSON files..."
+          echo "📤 Uploading updated JSON files to Gitea..."
           
           UPLOAD_COUNT=0
           
-          find gitea-json-files -name "*.json" -type f | while read -r json_file; do
+          for json_file in github-json-files/*.json; do
+            if [ ! -f "$json_file" ]; then
+              echo "⚠️  No JSON files found to upload"
+              break
+            fi
+            
             filename=$(basename "$json_file")
             filesize=$(ls -lh "$json_file" | awk '{print $5}')
             
