@@ -16,14 +16,19 @@ jobs:
         include:
           - platform: 'macos-latest' # for Arm based macs (M1 and above).
             args: '--target aarch64-apple-darwin'
+            target: 'aarch64-apple-darwin'
           - platform: 'macos-latest' # for Intel based macs.
             args: '--target x86_64-apple-darwin'
+            target: 'x86_64-apple-darwin'
           - platform: 'windows-latest'
             args: ''
+            target: 'x86_64-pc-windows-msvc'
 
     runs-on: ${{ matrix.platform }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # 获取完整的 git 历史记录
 
       - name: setup node
         uses: actions/setup-node@v4
@@ -40,6 +45,8 @@ jobs:
         uses: swatinem/rust-cache@v2
         with:
           workspaces: './src-tauri -> target'
+          shared-key: ${{ matrix.target }}
+          cache-on-failure: true
 
       - name: Install Bun
         uses: oven-sh/setup-bun@v2
@@ -50,12 +57,38 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/.bun/install/cache
-          key: ${{ runner.os }}-bun-${{ hashFiles('**/bun.lock') }}
+          key: ${{ runner.os }}-${{ matrix.target }}-bun-${{ hashFiles('**/bun.lock') }}
           restore-keys: |
+            ${{ runner.os }}-${{ matrix.target }}-bun-
             ${{ runner.os }}-bun-
 
       - name: install frontend dependencies
         run: bun install
+
+      - name: Generate release notes from git commits
+        id: release_notes
+        run: |
+          # 获取上一个版本的 tag
+          PREVIOUS_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || git rev-list --max-parents=0 HEAD)
+          
+          # 生成提交日志
+          echo "RELEASE_NOTES<<EOF" >> $GITHUB_OUTPUT
+          echo "## 📝 更新内容" >> $GITHUB_OUTPUT
+          echo "" >> $GITHUB_OUTPUT
+          git log ${PREVIOUS_TAG}..HEAD --pretty=format:"- %s" --no-merges >> $GITHUB_OUTPUT
+          echo "" >> $GITHUB_OUTPUT
+          echo "" >> $GITHUB_OUTPUT
+          echo "### 📦 安装说明" >> $GITHUB_OUTPUT
+          echo "" >> $GITHUB_OUTPUT
+          echo "请从下方 Assets 中下载适合您系统的安装包：" >> $GITHUB_OUTPUT
+          echo "- **macOS (Apple Silicon)**: \`*_aarch64.dmg\` 或 \`*.app.tar.gz\`" >> $GITHUB_OUTPUT
+          echo "- **macOS (Intel)**: \`*_x64.dmg\` 或 \`*.app.tar.gz\`" >> $GITHUB_OUTPUT
+          echo "- **Windows**: \`*.msi\` 或 \`*.exe\`" >> $GITHUB_OUTPUT
+          echo "" >> $GITHUB_OUTPUT
+          echo "### 🔄 自动更新" >> $GITHUB_OUTPUT
+          echo "" >> $GITHUB_OUTPUT
+          echo "如果您已安装旧版本，应用会自动检测并提示更新。" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
 
       - uses: tauri-apps/tauri-action@v0
         env:
@@ -63,10 +96,11 @@ jobs:
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         with:
-          tagName: app-v__VERSION__ # the action automatically replaces __VERSION__ with the app version.
-          releaseName: 'App v__VERSION__'
-          releaseBody: 'See the assets to download this version and install.'
-          releaseDraft: true
+          tagName: v__VERSION__
+          releaseName: 'Watch Monkey v__VERSION__'
+          releaseBody: ${{ steps.release_notes.outputs.RELEASE_NOTES }}
+          releaseDraft: false
           prerelease: false
+          includeUpdaterJson: true
           args: ${{ matrix.args }}
 
