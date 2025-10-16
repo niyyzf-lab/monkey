@@ -45,8 +45,10 @@ jobs:
         uses: swatinem/rust-cache@v2
         with:
           workspaces: './src-tauri -> target'
-          shared-key: ${{ matrix.target }}
+          shared-key: ${{ matrix.target }}-${{ hashFiles('**/Cargo.lock', '**/Cargo.toml') }}
           cache-on-failure: true
+          # 设置缓存过期时间,避免缓存过大
+          save-if: ${{ github.ref == 'refs/heads/release' }}
 
       - name: Install Bun
         uses: oven-sh/setup-bun@v2
@@ -64,6 +66,12 @@ jobs:
 
       - name: install frontend dependencies
         run: bun install
+
+      - name: Set environment variables for build
+        shell: bash
+        run: |
+          echo "VITE_API_BASE_URL=${{ secrets.VITE_API_BASE_URL || 'http://localhost:5678' }}" >> $GITHUB_ENV
+          echo "✅ Set VITE_API_BASE_URL for build process"
 
       - name: Generate release notes from git commits
         id: release_notes
@@ -96,6 +104,8 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+          # Vite 环境变量 - 构建时注入
+          VITE_API_BASE_URL: ${{ secrets.VITE_API_BASE_URL || 'http://localhost:5678' }}
         with:
           tagName: v__VERSION__
           releaseName: 'Watch Monkey v__VERSION__'
