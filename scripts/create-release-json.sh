@@ -443,8 +443,8 @@ remote_windows_build() {
     echo ""
     echo "   2️⃣  在远程主机上拉取最新代码..."
     
-    # 使用 git 命令检查是否是仓库 (更可靠)
-    REMOTE_GIT_CHECK="cd \"$REMOTE_PROJECT_PATH\" 2>nul && git rev-parse --git-dir 2>nul && echo exists || echo not_exists"
+    # 使用 PowerShell + git 命令检查是否是仓库 (更可靠)
+    REMOTE_GIT_CHECK="powershell -Command \"cd '$REMOTE_PROJECT_PATH'; if (Test-Path '.git') { git rev-parse --git-dir 2>\\$null; if (\\\$?) { Write-Output 'exists' } else { Write-Output 'not_exists' } } else { Write-Output 'not_exists' }\""
     REMOTE_REPO_STATUS=$(eval "$SSH_CMD $REMOTE_USER@$REMOTE_HOST \"$REMOTE_GIT_CHECK\"" 2>/dev/null | grep -o "exists\|not_exists" | head -1)
     
     echo "   检测结果: [$REMOTE_REPO_STATUS]"
@@ -457,7 +457,7 @@ remote_windows_build() {
         
         # 如果本地没有获取到，尝试从远程获取
         if [ -z "$GIT_REMOTE_URL" ]; then
-            REMOTE_GET_URL="cd \"$REMOTE_PROJECT_PATH\" && git remote get-url $REMOTE_GIT_REMOTE"
+            REMOTE_GET_URL="powershell -Command \"cd '$REMOTE_PROJECT_PATH'; git remote get-url $REMOTE_GIT_REMOTE\""
             GIT_REMOTE_URL=$(eval "$SSH_CMD $REMOTE_USER@$REMOTE_HOST \"$REMOTE_GET_URL\"" 2>/dev/null | tr -d '\r\n')
         fi
         
@@ -471,11 +471,16 @@ remote_windows_build() {
             GIT_AUTH_URL=$(echo "$GIT_CLEAN_URL" | sed "s|://|://$GITEA_TOKEN@|")
             echo "   🔐 使用 Gitea Token 认证"
             
-            # 更新远程 URL 为带 Token 的版本，并禁用凭证管理器
-            REMOTE_SET_URL="cd \"$REMOTE_PROJECT_PATH\" && git config credential.helper \"\" && git remote set-url $REMOTE_GIT_REMOTE \"$GIT_AUTH_URL\""
+            # 更新远程 URL 为带 Token 的版本，并禁用凭证管理器（使用 PowerShell）
+            REMOTE_SET_URL="powershell -Command \"cd '$REMOTE_PROJECT_PATH'; git config --unset-all credential.helper; git config credential.helper ''; git remote set-url $REMOTE_GIT_REMOTE '$GIT_AUTH_URL'\""
             SET_URL_OUTPUT=$(eval "$SSH_CMD $REMOTE_USER@$REMOTE_HOST \"$REMOTE_SET_URL\"" 2>&1)
             if [ $? -eq 0 ]; then
                 echo "   ✅ 远程 URL 已更新"
+                
+                # 验证设置
+                REMOTE_VERIFY_URL="powershell -Command \"cd '$REMOTE_PROJECT_PATH'; git remote get-url $REMOTE_GIT_REMOTE\""
+                VERIFY_URL=$(eval "$SSH_CMD $REMOTE_USER@$REMOTE_HOST \"$REMOTE_VERIFY_URL\"" 2>/dev/null | tr -d '\r\n')
+                echo "   🔍 验证 URL: ${VERIFY_URL:0:50}..."
             else
                 echo "   ⚠️  更新远程 URL 失败: $SET_URL_OUTPUT"
             fi
@@ -485,16 +490,34 @@ remote_windows_build() {
         # 由于已经设置了带 Token 的 URL，直接拉取即可
         echo "   执行 Git 同步..."
         
-        # 步骤1: fetch 远程更新（使用 git -c 配置禁用交互式提示）
-        REMOTE_GIT_FETCH="cd \"$REMOTE_PROJECT_PATH\" && git -c core.askPass= -c credential.helper= fetch $REMOTE_GIT_REMOTE $REMOTE_GIT_BRANCH"
+        # 步骤1: fetch 远程更新（使用 PowerShell 设置环境变量）
+        # PowerShell 能更可靠地设置环境变量并执行 git
+        REMOTE_GIT_FETCH="powershell -Command \"cd '$REMOTE_PROJECT_PATH'; \\\$env:GIT_TERMINAL_PROMPT='0'; \\\$env:GIT_ASKPASS='echo'; git -c core.askPass='' -c credential.helper='' fetch $REMOTE_GIT_REMOTE $REMOTE_GIT_BRANCH\""
         echo "   📥 正在 fetch 远程更新 ($REMOTE_GIT_REMOTE/$REMOTE_GIT_BRANCH)..."
         FETCH_OUTPUT=$(eval "$SSH_CMD $REMOTE_USER@$REMOTE_HOST \"$REMOTE_GIT_FETCH\"" 2>&1)
         FETCH_EXIT=$?
         
         # 过滤掉不重要的信息
-        FETCH_FILTERED=$(echo "$FETCH_OUTPUT" | grep -v "Unable to persist credentials" | grep -v "warning: redirecting to")
+        FETCH_FILTERED=$(echo "$FETCH_OUTPUT" | grep -v "Unable to persist credentials" | grep -v "warning: redirecting to" | grep -v "^$")
         
         if [ $FETCH_EXIT -ne 0 ]; then
+            # 检查是否是认证问题
+            if echo "$FETCH_OUTPUT" | grep -qi "could not read Username\|authentication\|access denied"; then
+                echo "   ❌ Fetch 失败: 认证错误"
+                echo "   💡 尝试重新设置远程 URL..."
+                
+                # 再次确认远程 URL 包含 Token
+                REMOTE_VERIFY_URL="cd \"$REMOTE_PROJECT_PATH\" && git remote get-url $REMOTE_GIT_REMOTE"
+                CURRENT_REMOTE_URL=$(eval "$SSH_CMD $REMOTE_USER@$REMOTE_HOST \"$REMOTE_VERIFY_URL\"" 2>/dev/null | tr -d '\r\n')
+                echo "   当前远程 URL: $CURRENT_REMOTE_URL"
+                
+                # 如果 URL 中没有 Token，说明设置失败
+                if [[ ! "$CURRENT_REMOTE_URL" =~ @gitea\.watchmonkey\.icu ]]; then
+                    echo "   ⚠️  远程 URL 未包含认证信息，无法继续"
+                    return 1
+                fi
+            fi
+            
             echo "   ❌ Fetch 失败:"
             echo "$FETCH_FILTERED" | head -10
             echo "   💡 提示: 请检查网络连接和 Token 权限"
@@ -507,15 +530,15 @@ remote_windows_build() {
         fi
         
         # 步骤2: 切换到正确的分支（先检查是否存在）
-        REMOTE_GIT_CHECKOUT="cd \"$REMOTE_PROJECT_PATH\" && git show-ref --verify --quiet refs/heads/$REMOTE_GIT_BRANCH && git checkout $REMOTE_GIT_BRANCH || git checkout -b $REMOTE_GIT_BRANCH $REMOTE_GIT_REMOTE/$REMOTE_GIT_BRANCH"
+        REMOTE_GIT_CHECKOUT="powershell -Command \"cd '$REMOTE_PROJECT_PATH'; if (git show-ref --verify --quiet refs/heads/$REMOTE_GIT_BRANCH) { git checkout $REMOTE_GIT_BRANCH } else { git checkout -b $REMOTE_GIT_BRANCH $REMOTE_GIT_REMOTE/$REMOTE_GIT_BRANCH }\""
         echo "   🔀 正在切换分支 $REMOTE_GIT_BRANCH..."
         eval "$SSH_CMD $REMOTE_USER@$REMOTE_HOST \"$REMOTE_GIT_CHECKOUT\"" 2>&1 | grep -v "Unable to persist credentials" || true
         
         # 步骤3: 显示当前和目标提交
-        REMOTE_GIT_SHOW_CURRENT="cd \"$REMOTE_PROJECT_PATH\" && git rev-parse --short HEAD"
+        REMOTE_GIT_SHOW_CURRENT="powershell -Command \"cd '$REMOTE_PROJECT_PATH'; git rev-parse --short HEAD\""
         CURRENT_COMMIT=$(eval "$SSH_CMD $REMOTE_USER@$REMOTE_HOST \"$REMOTE_GIT_SHOW_CURRENT\"" 2>/dev/null | tr -d '\r\n')
         
-        REMOTE_GIT_SHOW_TARGET="cd \"$REMOTE_PROJECT_PATH\" && git rev-parse --short $REMOTE_GIT_REMOTE/$REMOTE_GIT_BRANCH"
+        REMOTE_GIT_SHOW_TARGET="powershell -Command \"cd '$REMOTE_PROJECT_PATH'; git rev-parse --short $REMOTE_GIT_REMOTE/$REMOTE_GIT_BRANCH\""
         TARGET_COMMIT=$(eval "$SSH_CMD $REMOTE_USER@$REMOTE_HOST \"$REMOTE_GIT_SHOW_TARGET\"" 2>/dev/null | tr -d '\r\n')
         
         echo "   📍 当前提交: $CURRENT_COMMIT"
@@ -523,14 +546,14 @@ remote_windows_build() {
         
         # 步骤4: 重置到远程最新状态
         if [ "$CURRENT_COMMIT" != "$TARGET_COMMIT" ]; then
-            REMOTE_GIT_RESET="cd \"$REMOTE_PROJECT_PATH\" && git reset --hard $REMOTE_GIT_REMOTE/$REMOTE_GIT_BRANCH"
+            REMOTE_GIT_RESET="powershell -Command \"cd '$REMOTE_PROJECT_PATH'; git reset --hard $REMOTE_GIT_REMOTE/$REMOTE_GIT_BRANCH\""
             echo "   🔄 正在重置到最新版本..."
             RESET_OUTPUT=$(eval "$SSH_CMD $REMOTE_USER@$REMOTE_HOST \"$REMOTE_GIT_RESET\"" 2>&1)
             RESET_EXIT=$?
             
             if [ $RESET_EXIT -eq 0 ]; then
                 # 验证重置后的提交
-                REMOTE_GIT_VERIFY="cd \"$REMOTE_PROJECT_PATH\" && git rev-parse --short HEAD"
+                REMOTE_GIT_VERIFY="powershell -Command \"cd '$REMOTE_PROJECT_PATH'; git rev-parse --short HEAD\""
                 FINAL_COMMIT=$(eval "$SSH_CMD $REMOTE_USER@$REMOTE_HOST \"$REMOTE_GIT_VERIFY\"" 2>/dev/null | tr -d '\r\n')
                 
                 if [ "$FINAL_COMMIT" = "$TARGET_COMMIT" ]; then
@@ -547,7 +570,7 @@ remote_windows_build() {
         fi
         
         # 显示最终的提交信息
-        REMOTE_GIT_LOG="cd \"$REMOTE_PROJECT_PATH\" && git log -1 --oneline"
+        REMOTE_GIT_LOG="powershell -Command \"cd '$REMOTE_PROJECT_PATH'; git log -1 --oneline\""
         FINAL_LOG=$(eval "$SSH_CMD $REMOTE_USER@$REMOTE_HOST \"$REMOTE_GIT_LOG\"" 2>/dev/null | head -1)
         echo "   📝 最终提交: $FINAL_LOG"
         
