@@ -164,6 +164,36 @@ jobs:
           
           ls -lh release-assets/
 
+      - name: Update URLs in JSON files
+        env:
+          TAG_NAME: ${{ steps.release_info.outputs.tag_name }}
+          GITEA_URL: ${{ secrets.GITEA_URL }}
+          GITEA_REPO: ${{ secrets.GITEA_REPO }}
+        run: |
+          # 获取 GitHub 仓库信息
+          GITHUB_REPO="${{ github.repository }}"
+          
+          echo "🔄 Replacing GitHub URLs with Gitea URLs in JSON files..."
+          
+          # 处理所有 JSON 文件
+          find release-assets -name "*.json" -type f | while read -r json_file; do
+            echo "  📝 Processing $(basename "$json_file")..."
+            
+            # 替换 GitHub 下载 URL 为 Gitea URL
+            # 格式：https://github.com/USER/REPO/releases/download/TAG/FILE
+            # 替换为：GITEA_URL/GITEA_REPO/releases/download/TAG/FILE
+            sed -i.bak \
+              "s|https://github.com/${GITHUB_REPO}/releases/download/|${GITEA_URL}/${GITEA_REPO}/releases/download/|g" \
+              "$json_file"
+            
+            # 删除备份文件
+            rm -f "${json_file}.bak"
+            
+            echo "  ✅ Updated $(basename "$json_file")"
+          done
+          
+          echo "✅ All JSON files updated successfully"
+
       - name: Create or update Gitea release
         env:
           GITEA_TOKEN: ${{ secrets.GITEA_TOKEN }}
