@@ -105,3 +105,108 @@ jobs:
           includeUpdaterJson: true
           args: ${{ matrix.args }}
 
+  sync-to-gitea:
+    needs: publish-tauri
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Get latest release info
+        id: release_info
+        run: |
+          # 获取最新的 release 信息
+          RELEASE_DATA=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+            "https://api.github.com/repos/${{ github.repository }}/releases/latest")
+          
+          echo "tag_name=$(echo $RELEASE_DATA | jq -r '.tag_name')" >> $GITHUB_OUTPUT
+          echo "name=$(echo $RELEASE_DATA | jq -r '.name')" >> $GITHUB_OUTPUT
+          echo "body=$(echo $RELEASE_DATA | jq -r '.body')" >> $GITHUB_OUTPUT
+          echo "draft=$(echo $RELEASE_DATA | jq -r '.draft')" >> $GITHUB_OUTPUT
+          echo "prerelease=$(echo $RELEASE_DATA | jq -r '.prerelease')" >> $GITHUB_OUTPUT
+          
+          # 保存 release ID 用于后续下载 assets
+          echo "release_id=$(echo $RELEASE_DATA | jq -r '.id')" >> $GITHUB_OUTPUT
+
+      - name: Download release assets
+        run: |
+          mkdir -p release-assets
+          
+          # 获取所有 assets
+          ASSETS=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+            "https://api.github.com/repos/${{ github.repository }}/releases/${{ steps.release_info.outputs.release_id }}/assets")
+          
+          # 下载每个 asset
+          echo "$ASSETS" | jq -r '.[] | "\(.id) \(.name)"' | while read asset_id asset_name; do
+            echo "Downloading $asset_name..."
+            curl -L -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+              -H "Accept: application/octet-stream" \
+              "https://api.github.com/repos/${{ github.repository }}/releases/assets/$asset_id" \
+              -o "release-assets/$asset_name"
+          done
+          
+          ls -lh release-assets/
+
+      - name: Create or update Gitea release
+        env:
+          GITEA_TOKEN: ${{ secrets.GITEA_TOKEN }}
+          GITEA_URL: ${{ secrets.GITEA_URL }}
+          GITEA_REPO: ${{ secrets.GITEA_REPO }}
+        run: |
+          TAG_NAME="${{ steps.release_info.outputs.tag_name }}"
+          RELEASE_NAME="${{ steps.release_info.outputs.name }}"
+          RELEASE_BODY="${{ steps.release_info.outputs.body }}"
+          IS_DRAFT="${{ steps.release_info.outputs.draft }}"
+          IS_PRERELEASE="${{ steps.release_info.outputs.prerelease }}"
+          
+          # 检查 Gitea release 是否已存在
+          EXISTING_RELEASE=$(curl -s -w "%{http_code}" -o /tmp/release.json \
+            -H "Authorization: token $GITEA_TOKEN" \
+            "${GITEA_URL}/api/v1/repos/${GITEA_REPO}/releases/tags/${TAG_NAME}")
+          
+          if [ "${EXISTING_RELEASE: -3}" == "200" ]; then
+            echo "Release already exists, deleting old one..."
+            RELEASE_ID=$(jq -r '.id' /tmp/release.json)
+            curl -X DELETE \
+              -H "Authorization: token $GITEA_TOKEN" \
+              "${GITEA_URL}/api/v1/repos/${GITEA_REPO}/releases/${RELEASE_ID}"
+          fi
+          
+          # 创建新的 release
+          echo "Creating new Gitea release..."
+          CREATE_RESPONSE=$(curl -X POST \
+            -H "Authorization: token $GITEA_TOKEN" \
+            -H "Content-Type: application/json" \
+            "${GITEA_URL}/api/v1/repos/${GITEA_REPO}/releases" \
+            -d @- <<EOF
+          {
+            "tag_name": "${TAG_NAME}",
+            "name": "${RELEASE_NAME}",
+            "body": $(echo "$RELEASE_BODY" | jq -Rs .),
+            "draft": ${IS_DRAFT},
+            "prerelease": ${IS_PRERELEASE}
+          }
+          EOF
+          )
+          
+          GITEA_RELEASE_ID=$(echo "$CREATE_RESPONSE" | jq -r '.id')
+          echo "Created Gitea release with ID: $GITEA_RELEASE_ID"
+          
+          # 上传所有 assets
+          for asset in release-assets/*; do
+            if [ -f "$asset" ]; then
+              filename=$(basename "$asset")
+              echo "Uploading $filename..."
+              curl -X POST \
+                -H "Authorization: token $GITEA_TOKEN" \
+                -F "attachment=@${asset}" \
+                "${GITEA_URL}/api/v1/repos/${GITEA_REPO}/releases/${GITEA_RELEASE_ID}/assets?name=${filename}"
+            fi
+          done
+          
+          echo "✅ Successfully synced release to Gitea!"
+
