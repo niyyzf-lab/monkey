@@ -169,6 +169,7 @@ jobs:
           TAG_NAME: ${{ steps.release_info.outputs.tag_name }}
           GITEA_URL: ${{ secrets.GITEA_URL }}
           GITEA_REPO: ${{ secrets.GITEA_REPO }}
+          GITEA_DOWNLOAD_TOKEN: ${{ secrets.GITEA_DOWNLOAD_TOKEN }}
         run: |
           # 获取 GitHub 仓库信息
           GITHUB_REPO="${{ github.repository }}"
@@ -179,12 +180,21 @@ jobs:
           find release-assets -name "*.json" -type f | while read -r json_file; do
             echo "  📝 Processing $(basename "$json_file")..."
             
-            # 替换 GitHub 下载 URL 为 Gitea URL
+            # 替换 GitHub 下载 URL 为 Gitea URL，并添加访问 token
             # 格式：https://github.com/USER/REPO/releases/download/TAG/FILE
-            # 替换为：GITEA_URL/GITEA_REPO/releases/download/TAG/FILE
-            sed -i.bak \
-              "s|https://github.com/${GITHUB_REPO}/releases/download/|${GITEA_URL}/${GITEA_REPO}/releases/download/|g" \
-              "$json_file"
+            # 替换为：GITEA_URL/GITEA_REPO/releases/download/TAG/FILE?token=TOKEN
+            if [ -n "$GITEA_DOWNLOAD_TOKEN" ]; then
+              # 如果配置了 token，在 URL 后面添加 token
+              sed -i.bak \
+                "s|https://github.com/${GITHUB_REPO}/releases/download/|${GITEA_URL}/${GITEA_REPO}/releases/download/|g; \
+                 s|\(${GITEA_URL}/${GITEA_REPO}/releases/download/[^\"]*\)|\1?token=${GITEA_DOWNLOAD_TOKEN}|g" \
+                "$json_file"
+            else
+              # 如果没有配置 token，只替换 URL
+              sed -i.bak \
+                "s|https://github.com/${GITHUB_REPO}/releases/download/|${GITEA_URL}/${GITEA_REPO}/releases/download/|g" \
+                "$json_file"
+            fi
             
             # 删除备份文件
             rm -f "${json_file}.bak"
