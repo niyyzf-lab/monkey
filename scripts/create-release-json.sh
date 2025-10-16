@@ -444,8 +444,19 @@ remote_windows_build() {
     echo "   2️⃣  在远程主机上拉取最新代码..."
     
     # 使用 PowerShell + git 命令检查是否是仓库 (更可靠)
-    REMOTE_GIT_CHECK="powershell -Command \"cd '$REMOTE_PROJECT_PATH'; if (Test-Path '.git') { git rev-parse --git-dir 2>\\$null; if (\\\$?) { Write-Output 'exists' } else { Write-Output 'not_exists' } } else { Write-Output 'not_exists' }\""
-    REMOTE_REPO_STATUS=$(eval "$SSH_CMD $REMOTE_USER@$REMOTE_HOST \"$REMOTE_GIT_CHECK\"" 2>/dev/null | grep -o "exists\|not_exists" | head -1)
+    REMOTE_GIT_CHECK="powershell -Command \"if (Test-Path '$REMOTE_PROJECT_PATH\\.git') { cd '$REMOTE_PROJECT_PATH'; \\\$result = git rev-parse --git-dir 2>\\$null; if (\\\$LASTEXITCODE -eq 0) { Write-Output 'exists' } else { Write-Output 'not_exists' } } else { Write-Output 'not_exists' }\""
+    REMOTE_REPO_STATUS=$(eval "$SSH_CMD $REMOTE_USER@$REMOTE_HOST \"$REMOTE_GIT_CHECK\"" 2>/dev/null | tr -d '\r\n' | grep -o "exists\|not_exists" | head -1)
+    
+    # 如果为空，再尝试简单的目录检查
+    if [ -z "$REMOTE_REPO_STATUS" ]; then
+        REMOTE_DIR_CHECK="powershell -Command \"Test-Path '$REMOTE_PROJECT_PATH\\.git'\""
+        HAS_GIT_DIR=$(eval "$SSH_CMD $REMOTE_USER@$REMOTE_HOST \"$REMOTE_DIR_CHECK\"" 2>/dev/null | tr -d '\r\n')
+        if [ "$HAS_GIT_DIR" = "True" ]; then
+            REMOTE_REPO_STATUS="exists"
+        else
+            REMOTE_REPO_STATUS="not_exists"
+        fi
+    fi
     
     echo "   检测结果: [$REMOTE_REPO_STATUS]"
     
@@ -598,52 +609,68 @@ remote_windows_build() {
             GIT_AUTH_URL="$GIT_REMOTE_URL"
         fi
         
-        # 检查远程目录是否已存在 (Windows 兼容)
-        REMOTE_DIR_CHECK="if exist \"$REMOTE_PROJECT_PATH\" (echo exists) else (echo not_exists)"
-        REMOTE_DIR_STATUS=$(eval "$SSH_CMD $REMOTE_USER@$REMOTE_HOST \"$REMOTE_DIR_CHECK\"" 2>/dev/null | tr -d '\r\n ')
+        # 检查远程目录是否已存在（使用 PowerShell）
+        REMOTE_DIR_CHECK="powershell -Command \"Test-Path '$REMOTE_PROJECT_PATH'\""
+        REMOTE_DIR_EXISTS=$(eval "$SSH_CMD $REMOTE_USER@$REMOTE_HOST \"$REMOTE_DIR_CHECK\"" 2>/dev/null | tr -d '\r\n')
         
-        if [ "$REMOTE_DIR_STATUS" = "exists" ]; then
+        if [ "$REMOTE_DIR_EXISTS" = "True" ]; then
             echo "   ⚠️  远程目录已存在: $REMOTE_PROJECT_PATH"
-            echo ""
-            read -p "   目录已存在，是否删除并重新克隆？(y/N): " RECREATE_DIR
+            echo "   🗑️  自动删除现有目录..."
             
-            if [[ "$RECREATE_DIR" =~ ^[Yy]$ ]]; then
-                echo "   🗑️  删除现有目录..."
-                REMOTE_RM_CMD="rmdir /s /q \"$REMOTE_PROJECT_PATH\""
-                eval "$SSH_CMD $REMOTE_USER@$REMOTE_HOST \"$REMOTE_RM_CMD\""
+            # 使用 PowerShell Remove-Item 强制删除
+            REMOTE_RM_CMD="powershell -Command \"Remove-Item -Path '$REMOTE_PROJECT_PATH' -Recurse -Force -ErrorAction SilentlyContinue\""
+            eval "$SSH_CMD $REMOTE_USER@$REMOTE_HOST \"$REMOTE_RM_CMD\"" 2>/dev/null
+            
+            # 等待一下确保删除完成
+            sleep 2
+            
+            # 验证删除
+            VERIFY_DELETED=$(eval "$SSH_CMD $REMOTE_USER@$REMOTE_HOST \"$REMOTE_DIR_CHECK\"" 2>/dev/null | tr -d '\r\n')
+            if [ "$VERIFY_DELETED" = "True" ]; then
+                echo "   ⚠️  目录删除失败，尝试直接克隆（可能会覆盖）"
             else
-                echo "   ℹ️  跳过克隆，将直接使用现有仓库"
-                echo ""
-                echo "   提示: 脚本将继续使用现有仓库进行构建"
-                echo ""
-                # 不执行克隆，直接返回继续后续流程
-                return 0
+                echo "   ✅ 目录已删除"
             fi
+            echo ""
         fi
         
-        # 在远程克隆仓库 (Windows 环境，禁用凭证管理器和交互式提示)
-        REMOTE_GIT_CLONE="set GIT_TERMINAL_PROMPT=0 && git -c credential.helper= clone -b $REMOTE_GIT_BRANCH $GIT_AUTH_URL \"$REMOTE_PROJECT_PATH\""
-        eval "$SSH_CMD $REMOTE_USER@$REMOTE_HOST \"$REMOTE_GIT_CLONE\""
+        # 在远程克隆仓库（使用 PowerShell + Git）
+        REMOTE_GIT_CLONE="powershell -Command \"\\\$env:GIT_TERMINAL_PROMPT='0'; \\\$env:GIT_ASKPASS='echo'; git -c core.askPass='' -c credential.helper='' clone -b $REMOTE_GIT_BRANCH '$GIT_AUTH_URL' '$REMOTE_PROJECT_PATH'\""
+        echo "   📥 开始克隆仓库..."
+        CLONE_OUTPUT=$(eval "$SSH_CMD $REMOTE_USER@$REMOTE_HOST \"$REMOTE_GIT_CLONE\"" 2>&1)
+        CLONE_EXIT=$?
         
-        if [ $? -eq 0 ]; then
+        # 过滤输出
+        CLONE_FILTERED=$(echo "$CLONE_OUTPUT" | grep -v "warning: redirecting to")
+        
+        if [ $CLONE_EXIT -eq 0 ]; then
             echo "   ✅ Git 仓库克隆成功"
+            
+            # 禁用凭证管理器
+            REMOTE_CONFIG_CMD="powershell -Command \"cd '$REMOTE_PROJECT_PATH'; git config credential.helper ''\""
+            eval "$SSH_CMD $REMOTE_USER@$REMOTE_HOST \"$REMOTE_CONFIG_CMD\"" 2>/dev/null
             
             # 首次克隆后需要安装依赖
             echo ""
             echo "   📦 首次构建，安装依赖..."
-            REMOTE_INSTALL_CMD="cd \"$REMOTE_PROJECT_PATH\" && bun install"
+            REMOTE_INSTALL_CMD="powershell -Command \"cd '$REMOTE_PROJECT_PATH'; bun install\""
             eval "$SSH_CMD $REMOTE_USER@$REMOTE_HOST \"$REMOTE_INSTALL_CMD\""
         else
             echo "   ❌ Git clone 失败"
+            if [ -n "$CLONE_FILTERED" ]; then
+                echo "   错误信息:"
+                echo "$CLONE_FILTERED" | head -10
+            fi
             echo ""
             echo "   💡 可能的原因:"
             echo "      1. 远程 Windows 机器无法访问 Git 仓库"
-            echo "      2. Git 仓库需要认证但 Token 未配置"
-            echo "      3. 远程目录已存在且不为空"
+            echo "      2. Git 需要认证（Token 可能无效）"
+            echo "      3. 网络连接问题"
             echo ""
             echo "   💡 解决方案:"
             echo "      - 确保 Windows 机器可以访问: $GIT_REMOTE_URL"
-            echo "      - 或在 Windows 上手动克隆: git clone $GIT_REMOTE_URL"
+            echo "      - 检查 Gitea Token 是否有效"
+            echo "      - 或在 Windows 上手动克隆后重试"
             return 1
         fi
     fi
@@ -653,8 +680,9 @@ remote_windows_build() {
     echo "   3️⃣  同步签名密钥..."
     REMOTE_TAURI_DIR="${REMOTE_PROJECT_PATH}/.tauri"
     
-    # 创建 .tauri 目录（Windows 兼容）
-    eval "$SSH_CMD $REMOTE_USER@$REMOTE_HOST \"if not exist \\\"$REMOTE_TAURI_DIR\\\" mkdir \\\"$REMOTE_TAURI_DIR\\\"\"" 2>/dev/null || true
+    # 创建 .tauri 目录（使用 PowerShell）
+    REMOTE_MKDIR_CMD="powershell -Command \"New-Item -ItemType Directory -Force -Path '$REMOTE_TAURI_DIR' | Out-Null\""
+    eval "$SSH_CMD $REMOTE_USER@$REMOTE_HOST \"$REMOTE_MKDIR_CMD\"" 2>/dev/null || true
     
     # 上传签名密钥
     if [ -f "$PRIVATE_KEY_PATH" ]; then
