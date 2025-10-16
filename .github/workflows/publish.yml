@@ -227,25 +227,33 @@ jobs:
           # 上传所有 assets
           echo "📤 Uploading assets..."
           ASSET_COUNT=0
-          for asset in release-assets/*; do
-            if [ -f "$asset" ]; then
-              filename=$(basename "$asset")
-              filesize=$(ls -lh "$asset" | awk '{print $5}')
-              echo "  ⏳ Uploading $filename ($filesize)..."
-              
-              UPLOAD_CODE=$(curl -s -w "%{http_code}" -o /dev/null \
-                -H "Authorization: token $GITEA_TOKEN" \
-                -F "attachment=@${asset}" \
-                "${GITEA_URL}/api/v1/repos/${GITEA_REPO}/releases/${GITEA_RELEASE_ID}/assets?name=${filename}")
-              
-              if [ "$UPLOAD_CODE" == "201" ]; then
-                echo "  ✅ Uploaded $filename"
-                ASSET_COUNT=$((ASSET_COUNT + 1))
-              else
-                echo "  ❌ Failed to upload $filename (HTTP $UPLOAD_CODE)"
+          
+          # 获取所有文件列表（不使用通配符）
+          ASSET_FILES=$(find release-assets -type f -maxdepth 1 2>/dev/null)
+          
+          if [ -z "$ASSET_FILES" ]; then
+            echo "⚠️  No assets found in release-assets/"
+          else
+            echo "$ASSET_FILES" | while read -r asset; do
+              if [ -f "$asset" ]; then
+                filename=$(basename "$asset")
+                filesize=$(ls -lh "$asset" | awk '{print $5}')
+                echo "  ⏳ Uploading $filename ($filesize)..."
+                
+                UPLOAD_CODE=$(curl -s -w "%{http_code}" -o /dev/null \
+                  -H "Authorization: token $GITEA_TOKEN" \
+                  -F "attachment=@${asset}" \
+                  "${GITEA_URL}/api/v1/repos/${GITEA_REPO}/releases/${GITEA_RELEASE_ID}/assets?name=${filename}")
+                
+                if [ "$UPLOAD_CODE" == "201" ]; then
+                  echo "  ✅ Uploaded $filename"
+                  ASSET_COUNT=$((ASSET_COUNT + 1))
+                else
+                  echo "  ❌ Failed to upload $filename (HTTP $UPLOAD_CODE)"
+                fi
               fi
-            fi
-          done
+            done
+          fi
           
           echo ""
           echo "🎉 Successfully synced release to Gitea!"

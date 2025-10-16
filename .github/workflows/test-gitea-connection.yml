@@ -292,28 +292,35 @@ jobs:
           UPLOAD_SUCCESS=0
           UPLOAD_FAILED=0
           
-          for asset in test-assets/*; do
-            if [ -f "$asset" ]; then
-              filename=$(basename "$asset")
-              filesize=$(ls -lh "$asset" | awk '{print $5}')
-              echo "⏳ 上传: $filename ($filesize)"
-              
-              UPLOAD_CODE=$(curl -s -w "%{http_code}" -o /tmp/upload.json \
-                -H "Authorization: token $GITEA_TOKEN" \
-                -F "attachment=@${asset}" \
-                "${GITEA_URL}/api/v1/repos/${GITEA_REPO}/releases/${RELEASE_ID}/assets?name=${filename}")
-              
-              if [ "$UPLOAD_CODE" == "201" ]; then
-                ASSET_ID=$(jq -r '.id' /tmp/upload.json)
-                echo "   ✅ 上传成功 (Asset ID: $ASSET_ID)"
-                UPLOAD_SUCCESS=$((UPLOAD_SUCCESS + 1))
-              else
-                echo "   ❌ 上传失败 (HTTP $UPLOAD_CODE)"
-                cat /tmp/upload.json
-                UPLOAD_FAILED=$((UPLOAD_FAILED + 1))
+          # 获取所有文件列表（不使用通配符）
+          ASSET_FILES=$(find test-assets -type f -maxdepth 1 2>/dev/null)
+          
+          if [ -z "$ASSET_FILES" ]; then
+            echo "⚠️  No test assets found"
+          else
+            echo "$ASSET_FILES" | while read -r asset; do
+              if [ -f "$asset" ]; then
+                filename=$(basename "$asset")
+                filesize=$(ls -lh "$asset" | awk '{print $5}')
+                echo "⏳ 上传: $filename ($filesize)"
+                
+                UPLOAD_CODE=$(curl -s -w "%{http_code}" -o /tmp/upload.json \
+                  -H "Authorization: token $GITEA_TOKEN" \
+                  -F "attachment=@${asset}" \
+                  "${GITEA_URL}/api/v1/repos/${GITEA_REPO}/releases/${RELEASE_ID}/assets?name=${filename}")
+                
+                if [ "$UPLOAD_CODE" == "201" ]; then
+                  ASSET_ID=$(jq -r '.id' /tmp/upload.json)
+                  echo "   ✅ 上传成功 (Asset ID: $ASSET_ID)"
+                  UPLOAD_SUCCESS=$((UPLOAD_SUCCESS + 1))
+                else
+                  echo "   ❌ 上传失败 (HTTP $UPLOAD_CODE)"
+                  cat /tmp/upload.json
+                  UPLOAD_FAILED=$((UPLOAD_FAILED + 1))
+                fi
               fi
-            fi
-          done
+            done
+          fi
           
           echo ""
           echo "上传结果:"
