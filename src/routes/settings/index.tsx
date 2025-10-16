@@ -158,7 +158,8 @@ function SettingsPage() {
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.3 }}
-          className="border-b pb-4"
+          className="border-b pb-4 select-none"
+          data-tauri-drag-region
         >
           <h1 className="text-3xl font-bold text-foreground">倒腾</h1>
           <p className="text-muted-foreground mt-2">管理应用的所有配置和偏好设置</p>

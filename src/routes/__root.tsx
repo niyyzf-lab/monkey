@@ -100,7 +100,7 @@ function RootLayoutContent() {
           ease: customEase
         }}
       >
-        <div className='absolute top-0 left-0 w-screen h-8 z-50 select-none' data-tauri-drag-region></div>
+        {/* <div className='absolute top-0 left-0 w-screen h-8 z-50 select-none' data-tauri-drag-region></div> */}
         
         <div className="flex h-screen-safe relative">
           {/* 侧边栏 */}

@@ -82,9 +82,9 @@ jobs:
           echo "### 📦 安装说明" >> $GITHUB_OUTPUT
           echo "" >> $GITHUB_OUTPUT
           echo "请从下方 Assets 中下载适合您系统的安装包：" >> $GITHUB_OUTPUT
-          echo "- **macOS (Apple Silicon)**: \`*_aarch64.dmg\` 或 \`*.app.tar.gz\`" >> $GITHUB_OUTPUT
-          echo "- **macOS (Intel)**: \`*_x64.dmg\` 或 \`*.app.tar.gz\`" >> $GITHUB_OUTPUT
-          echo "- **Windows**: \`*.msi\` 或 \`*.exe\`" >> $GITHUB_OUTPUT
+          echo "- **macOS (Apple Silicon)**: 下载包含 \`aarch64\` 的 \`.dmg\` 或 \`.app.tar.gz\` 文件" >> $GITHUB_OUTPUT
+          echo "- **macOS (Intel)**: 下载包含 \`x64\` 的 \`.dmg\` 或 \`.app.tar.gz\` 文件" >> $GITHUB_OUTPUT
+          echo "- **Windows**: 下载 \`.msi\` 或 \`.exe\` 安装文件" >> $GITHUB_OUTPUT
           echo "" >> $GITHUB_OUTPUT
           echo "### 🔄 自动更新" >> $GITHUB_OUTPUT
           echo "" >> $GITHUB_OUTPUT
@@ -159,15 +159,13 @@ jobs:
           GITEA_TOKEN: ${{ secrets.GITEA_TOKEN }}
           GITEA_URL: ${{ secrets.GITEA_URL }}
           GITEA_REPO: ${{ secrets.GITEA_REPO }}
+          TAG_NAME: ${{ steps.release_info.outputs.tag_name }}
+          RELEASE_NAME: ${{ steps.release_info.outputs.name }}
+          RELEASE_BODY: ${{ steps.release_info.outputs.body }}
+          IS_DRAFT: ${{ steps.release_info.outputs.draft }}
+          IS_PRERELEASE: ${{ steps.release_info.outputs.prerelease }}
         run: |
-          # 禁用通配符展开，防止 RELEASE_BODY 中的 * 被误解析
           set -f
-          
-          TAG_NAME="${{ steps.release_info.outputs.tag_name }}"
-          RELEASE_NAME="${{ steps.release_info.outputs.name }}"
-          RELEASE_BODY="${{ steps.release_info.outputs.body }}"
-          IS_DRAFT="${{ steps.release_info.outputs.draft }}"
-          IS_PRERELEASE="${{ steps.release_info.outputs.prerelease }}"
           
           echo "📦 Syncing release: $RELEASE_NAME ($TAG_NAME)"
           echo "🎯 Target: $GITEA_URL/$GITEA_REPO"

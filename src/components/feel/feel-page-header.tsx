@@ -22,7 +22,8 @@ export const FeelPageHeader = memo(() => {
       initial={{ opacity: 0, y: -10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3 }}
-      className="mb-6"
+      className="mb-6 select-none"
+      data-tauri-drag-region
     >
       <h1 className="text-3xl lg:text-4xl font-bold tracking-tight">
         观猴感

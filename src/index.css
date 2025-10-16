@@ -284,3 +284,14 @@
 .max-h-screen-safe {
   max-height: calc(var(--vh, 1vh) * 100);
 }
+
+/* Tauri 拖拽区域样式 - 父元素可拖拽，子元素可交互 */
+[data-tauri-drag-region] {
+  -webkit-app-region: drag;
+  app-region: drag;
+}
+
+[data-tauri-drag-region] * {
+  -webkit-app-region: no-drag;
+  app-region: no-drag;
+}
