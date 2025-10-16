@@ -15,16 +15,6 @@ PRIVATE_KEY_PATH=""
 PRIVATE_KEY_PASSWORD=""
 GITEA_TOKEN=""
 AUTO_UPLOAD=""
-REMOTE_BUILDS_ENABLED=""
-REMOTE_HOST=""
-REMOTE_PORT=""
-REMOTE_USER=""
-REMOTE_PASSWORD=""
-REMOTE_KEY_PATH=""
-REMOTE_PROJECT_PATH=""
-REMOTE_BUILD_COMMAND=""
-REMOTE_GIT_BRANCH=""
-REMOTE_GIT_REMOTE=""
 
 if [ -f "$CONFIG_FILE" ]; then
     echo "📄 读取配置文件: $CONFIG_FILE"
@@ -41,20 +31,6 @@ if [ -f "$CONFIG_FILE" ]; then
         BUILD_COMMAND=$(jq -r '.build.command' "$CONFIG_FILE")
         PRIVATE_KEY_PATH=$(jq -r '.build.privateKeyPath' "$CONFIG_FILE")
         PRIVATE_KEY_PASSWORD=$(jq -r '.build.privateKeyPassword' "$CONFIG_FILE")
-        
-        # 读取远程构建配置（Windows）
-        REMOTE_BUILDS_ENABLED=$(jq -r '.build.remoteBuilds[0].enabled' "$CONFIG_FILE" 2>/dev/null)
-        if [ "$REMOTE_BUILDS_ENABLED" = "true" ]; then
-            REMOTE_HOST=$(jq -r '.build.remoteBuilds[0].host' "$CONFIG_FILE")
-            REMOTE_PORT=$(jq -r '.build.remoteBuilds[0].port' "$CONFIG_FILE")
-            REMOTE_USER=$(jq -r '.build.remoteBuilds[0].username' "$CONFIG_FILE")
-            REMOTE_PASSWORD=$(jq -r '.build.remoteBuilds[0].password' "$CONFIG_FILE")
-            REMOTE_KEY_PATH=$(jq -r '.build.remoteBuilds[0].privateKeyPath' "$CONFIG_FILE")
-            REMOTE_PROJECT_PATH=$(jq -r '.build.remoteBuilds[0].remoteProjectPath' "$CONFIG_FILE")
-            REMOTE_BUILD_COMMAND=$(jq -r '.build.remoteBuilds[0].buildCommand' "$CONFIG_FILE")
-            REMOTE_GIT_BRANCH=$(jq -r '.build.remoteBuilds[0].gitBranch // "main"' "$CONFIG_FILE")
-            REMOTE_GIT_REMOTE=$(jq -r '.build.remoteBuilds[0].gitRemote // "origin"' "$CONFIG_FILE")
-        fi
     else
         # 简单的 grep 解析（备用方案）
         GITEA_URL=$(grep -o '"url"[[:space:]]*:[[:space:]]*"[^"]*"' "$CONFIG_FILE" | head -1 | sed 's/.*"\([^"]*\)".*/\1/')
@@ -369,473 +345,6 @@ if [ $NEED_BUILD -eq 1 ]; then
 fi
 
 # ============================================
-# 远程构建函数
-# ============================================
-remote_windows_build() {
-    echo "================================================"
-    echo "  远程 Windows 构建"
-    echo "================================================"
-    echo ""
-    echo "   主机: $REMOTE_HOST:$REMOTE_PORT"
-    echo "   用户: $REMOTE_USER"
-    echo "   项目路径: $REMOTE_PROJECT_PATH"
-    echo ""
-    
-    # 构建 SSH 命令参数
-    SSH_OPTS="-p $REMOTE_PORT"
-    SCP_OPTS="-P $REMOTE_PORT"
-    
-    # 如果配置了密钥认证
-    if [ -n "$REMOTE_KEY_PATH" ] && [ "$REMOTE_KEY_PATH" != "null" ] && [ -f "$REMOTE_KEY_PATH" ]; then
-        SSH_OPTS="$SSH_OPTS -i $REMOTE_KEY_PATH"
-        SCP_OPTS="$SCP_OPTS -i $REMOTE_KEY_PATH"
-        echo "   🔑 使用 SSH 密钥认证"
-    elif [ -n "$REMOTE_PASSWORD" ] && [ "$REMOTE_PASSWORD" != "null" ]; then
-        # 使用 sshpass（需要安装）
-        if ! command -v sshpass &> /dev/null; then
-            echo "   ⚠️  建议安装 sshpass 以支持密码认证: brew install sshpass"
-            echo "   或者配置 SSH 密钥认证"
-            return 1
-        fi
-        SSH_CMD="sshpass -p '$REMOTE_PASSWORD' ssh $SSH_OPTS"
-        SCP_CMD="sshpass -p '$REMOTE_PASSWORD' scp $SCP_OPTS"
-        echo "   🔐 使用密码认证"
-    else
-        SSH_CMD="ssh $SSH_OPTS"
-        SCP_CMD="scp $SCP_OPTS"
-        echo "   🔑 使用 SSH 默认认证"
-    fi
-    
-    echo ""
-    echo "1️⃣  使用 Git 同步项目文件到远程主机..."
-    echo ""
-    
-    # 1. 确保本地已提交所有更改
-    if [ -n "$(git status --porcelain)" ]; then
-        echo "   ⚠️  检测到未提交的更改"
-        echo ""
-        git status --short
-        echo ""
-        read -p "   是否自动提交并推送这些更改？(Y/n): " AUTO_COMMIT
-        AUTO_COMMIT=${AUTO_COMMIT:-Y}
-        
-        if [[ "$AUTO_COMMIT" =~ ^[Yy]$ ]]; then
-            echo "   📝 提交更改..."
-            git add .
-            git commit -m "chore: auto commit for remote build v$VERSION" || true
-            
-            echo "   📤 推送到远程仓库..."
-            git push $REMOTE_GIT_REMOTE $REMOTE_GIT_BRANCH
-            
-            if [ $? -ne 0 ]; then
-                echo "   ❌ Git 推送失败"
-                return 1
-            fi
-        else
-            echo "   ℹ️  跳过自动提交，将使用远程现有代码"
-        fi
-    else
-        echo "   ✅ 工作区干净，无需提交"
-        echo "   📤 推送到远程仓库..."
-        git push $REMOTE_GIT_REMOTE $REMOTE_GIT_BRANCH 2>/dev/null || echo "   ℹ️  没有新的提交需要推送"
-    fi
-    
-    echo ""
-    echo "   2️⃣  在远程主机上拉取最新代码..."
-    
-    # 使用 PowerShell + git 命令检查是否是仓库 (更可靠)
-    REMOTE_GIT_CHECK="powershell -Command \"if (Test-Path '$REMOTE_PROJECT_PATH\\.git') { cd '$REMOTE_PROJECT_PATH'; \\\$result = git rev-parse --git-dir 2>\\$null; if (\\\$LASTEXITCODE -eq 0) { Write-Output 'exists' } else { Write-Output 'not_exists' } } else { Write-Output 'not_exists' }\""
-    REMOTE_REPO_STATUS=$(eval "$SSH_CMD $REMOTE_USER@$REMOTE_HOST \"$REMOTE_GIT_CHECK\"" 2>/dev/null | tr -d '\r\n' | grep -o "exists\|not_exists" | head -1)
-    
-    # 如果为空，再尝试简单的目录检查
-    if [ -z "$REMOTE_REPO_STATUS" ]; then
-        REMOTE_DIR_CHECK="powershell -Command \"Test-Path '$REMOTE_PROJECT_PATH\\.git'\""
-        HAS_GIT_DIR=$(eval "$SSH_CMD $REMOTE_USER@$REMOTE_HOST \"$REMOTE_DIR_CHECK\"" 2>/dev/null | tr -d '\r\n')
-        if [ "$HAS_GIT_DIR" = "True" ]; then
-            REMOTE_REPO_STATUS="exists"
-        else
-            REMOTE_REPO_STATUS="not_exists"
-        fi
-    fi
-    
-    echo "   检测结果: [$REMOTE_REPO_STATUS]"
-    
-    if [ "$REMOTE_REPO_STATUS" = "exists" ]; then
-        echo "   ✅ 远程仓库已存在，拉取更新..."
-        
-        # 获取 Git 远程仓库地址（先从本地获取）
-        GIT_REMOTE_URL=$(git remote get-url $REMOTE_GIT_REMOTE 2>/dev/null)
-        
-        # 如果本地没有获取到，尝试从远程获取
-        if [ -z "$GIT_REMOTE_URL" ]; then
-            REMOTE_GET_URL="powershell -Command \"cd '$REMOTE_PROJECT_PATH'; git remote get-url $REMOTE_GIT_REMOTE\""
-            GIT_REMOTE_URL=$(eval "$SSH_CMD $REMOTE_USER@$REMOTE_HOST \"$REMOTE_GET_URL\"" 2>/dev/null | tr -d '\r\n')
-        fi
-        
-        echo "   📡 Git 远程地址: $GIT_REMOTE_URL"
-        
-        # 如果是 HTTP(S) URL 且有 Gitea Token，添加认证信息
-        if [[ "$GIT_REMOTE_URL" =~ ^https?:// ]] && [ -n "$GITEA_TOKEN" ] && [ "$GITEA_TOKEN" != "null" ]; then
-            # 先移除可能已存在的认证信息
-            GIT_CLEAN_URL=$(echo "$GIT_REMOTE_URL" | sed 's|://[^@]*@|://|')
-            # 添加新的认证信息
-            GIT_AUTH_URL=$(echo "$GIT_CLEAN_URL" | sed "s|://|://$GITEA_TOKEN@|")
-            echo "   🔐 使用 Gitea Token 认证"
-            
-            # 更新远程 URL 为带 Token 的版本，并禁用凭证管理器（使用 PowerShell）
-            REMOTE_SET_URL="powershell -Command \"cd '$REMOTE_PROJECT_PATH'; git config --unset-all credential.helper; git config credential.helper ''; git remote set-url $REMOTE_GIT_REMOTE '$GIT_AUTH_URL'\""
-            SET_URL_OUTPUT=$(eval "$SSH_CMD $REMOTE_USER@$REMOTE_HOST \"$REMOTE_SET_URL\"" 2>&1)
-            if [ $? -eq 0 ]; then
-                echo "   ✅ 远程 URL 已更新"
-                
-                # 验证设置
-                REMOTE_VERIFY_URL="powershell -Command \"cd '$REMOTE_PROJECT_PATH'; git remote get-url $REMOTE_GIT_REMOTE\""
-                VERIFY_URL=$(eval "$SSH_CMD $REMOTE_USER@$REMOTE_HOST \"$REMOTE_VERIFY_URL\"" 2>/dev/null | tr -d '\r\n')
-                echo "   🔍 验证 URL: ${VERIFY_URL:0:50}..."
-            else
-                echo "   ⚠️  更新远程 URL 失败: $SET_URL_OUTPUT"
-            fi
-        fi
-        
-        # 远程执行 git pull (修复分支问题)
-        # 由于已经设置了带 Token 的 URL，直接拉取即可
-        echo "   执行 Git 同步..."
-        
-        # 步骤1: fetch 远程更新（使用 PowerShell 设置环境变量）
-        # PowerShell 能更可靠地设置环境变量并执行 git
-        REMOTE_GIT_FETCH="powershell -Command \"cd '$REMOTE_PROJECT_PATH'; \\\$env:GIT_TERMINAL_PROMPT='0'; \\\$env:GIT_ASKPASS='echo'; git -c core.askPass='' -c credential.helper='' fetch $REMOTE_GIT_REMOTE $REMOTE_GIT_BRANCH\""
-        echo "   📥 正在 fetch 远程更新 ($REMOTE_GIT_REMOTE/$REMOTE_GIT_BRANCH)..."
-        FETCH_OUTPUT=$(eval "$SSH_CMD $REMOTE_USER@$REMOTE_HOST \"$REMOTE_GIT_FETCH\"" 2>&1)
-        FETCH_EXIT=$?
-        
-        # 过滤掉不重要的信息
-        FETCH_FILTERED=$(echo "$FETCH_OUTPUT" | grep -v "Unable to persist credentials" | grep -v "warning: redirecting to" | grep -v "^$")
-        
-        if [ $FETCH_EXIT -ne 0 ]; then
-            # 检查是否是认证问题
-            if echo "$FETCH_OUTPUT" | grep -qi "could not read Username\|authentication\|access denied"; then
-                echo "   ❌ Fetch 失败: 认证错误"
-                echo "   💡 尝试重新设置远程 URL..."
-                
-                # 再次确认远程 URL 包含 Token
-                REMOTE_VERIFY_URL="cd \"$REMOTE_PROJECT_PATH\" && git remote get-url $REMOTE_GIT_REMOTE"
-                CURRENT_REMOTE_URL=$(eval "$SSH_CMD $REMOTE_USER@$REMOTE_HOST \"$REMOTE_VERIFY_URL\"" 2>/dev/null | tr -d '\r\n')
-                echo "   当前远程 URL: $CURRENT_REMOTE_URL"
-                
-                # 如果 URL 中没有 Token，说明设置失败
-                if [[ ! "$CURRENT_REMOTE_URL" =~ @gitea\.watchmonkey\.icu ]]; then
-                    echo "   ⚠️  远程 URL 未包含认证信息，无法继续"
-                    return 1
-                fi
-            fi
-            
-            echo "   ❌ Fetch 失败:"
-            echo "$FETCH_FILTERED" | head -10
-            echo "   💡 提示: 请检查网络连接和 Token 权限"
-            return 1
-        elif [ -n "$FETCH_FILTERED" ]; then
-            echo "   ⚠️  Fetch 输出:"
-            echo "$FETCH_FILTERED" | head -5
-        else
-            echo "   ✅ Fetch 完成"
-        fi
-        
-        # 步骤2: 切换到正确的分支（先检查是否存在）
-        REMOTE_GIT_CHECKOUT="powershell -Command \"cd '$REMOTE_PROJECT_PATH'; if (git show-ref --verify --quiet refs/heads/$REMOTE_GIT_BRANCH) { git checkout $REMOTE_GIT_BRANCH } else { git checkout -b $REMOTE_GIT_BRANCH $REMOTE_GIT_REMOTE/$REMOTE_GIT_BRANCH }\""
-        echo "   🔀 正在切换分支 $REMOTE_GIT_BRANCH..."
-        eval "$SSH_CMD $REMOTE_USER@$REMOTE_HOST \"$REMOTE_GIT_CHECKOUT\"" 2>&1 | grep -v "Unable to persist credentials" || true
-        
-        # 步骤3: 显示当前和目标提交
-        REMOTE_GIT_SHOW_CURRENT="powershell -Command \"cd '$REMOTE_PROJECT_PATH'; git rev-parse --short HEAD\""
-        CURRENT_COMMIT=$(eval "$SSH_CMD $REMOTE_USER@$REMOTE_HOST \"$REMOTE_GIT_SHOW_CURRENT\"" 2>/dev/null | tr -d '\r\n')
-        
-        REMOTE_GIT_SHOW_TARGET="powershell -Command \"cd '$REMOTE_PROJECT_PATH'; git rev-parse --short $REMOTE_GIT_REMOTE/$REMOTE_GIT_BRANCH\""
-        TARGET_COMMIT=$(eval "$SSH_CMD $REMOTE_USER@$REMOTE_HOST \"$REMOTE_GIT_SHOW_TARGET\"" 2>/dev/null | tr -d '\r\n')
-        
-        echo "   📍 当前提交: $CURRENT_COMMIT"
-        echo "   📍 目标提交: $TARGET_COMMIT"
-        
-        # 步骤4: 重置到远程最新状态
-        if [ "$CURRENT_COMMIT" != "$TARGET_COMMIT" ]; then
-            REMOTE_GIT_RESET="powershell -Command \"cd '$REMOTE_PROJECT_PATH'; git reset --hard $REMOTE_GIT_REMOTE/$REMOTE_GIT_BRANCH\""
-            echo "   🔄 正在重置到最新版本..."
-            RESET_OUTPUT=$(eval "$SSH_CMD $REMOTE_USER@$REMOTE_HOST \"$REMOTE_GIT_RESET\"" 2>&1)
-            RESET_EXIT=$?
-            
-            if [ $RESET_EXIT -eq 0 ]; then
-                # 验证重置后的提交
-                REMOTE_GIT_VERIFY="powershell -Command \"cd '$REMOTE_PROJECT_PATH'; git rev-parse --short HEAD\""
-                FINAL_COMMIT=$(eval "$SSH_CMD $REMOTE_USER@$REMOTE_HOST \"$REMOTE_GIT_VERIFY\"" 2>/dev/null | tr -d '\r\n')
-                
-                if [ "$FINAL_COMMIT" = "$TARGET_COMMIT" ]; then
-                    echo "   ✅ 已重置到 $FINAL_COMMIT"
-                else
-                    echo "   ⚠️  重置后的提交 ($FINAL_COMMIT) 与目标提交 ($TARGET_COMMIT) 不一致"
-                fi
-            else
-                echo "   ❌ 重置失败: $RESET_OUTPUT"
-                return 1
-            fi
-        else
-            echo "   ✅ 已经是最新版本"
-        fi
-        
-        # 显示最终的提交信息
-        REMOTE_GIT_LOG="powershell -Command \"cd '$REMOTE_PROJECT_PATH'; git log -1 --oneline\""
-        FINAL_LOG=$(eval "$SSH_CMD $REMOTE_USER@$REMOTE_HOST \"$REMOTE_GIT_LOG\"" 2>/dev/null | head -1)
-        echo "   📝 最终提交: $FINAL_LOG"
-        
-        echo "   ✅ Git 代码同步成功"
-    else
-        echo "   📦 远程仓库不存在，执行首次克隆..."
-        
-        # 获取 Git 远程仓库地址
-        GIT_REMOTE_URL=$(git remote get-url $REMOTE_GIT_REMOTE 2>/dev/null)
-        
-        if [ -z "$GIT_REMOTE_URL" ]; then
-            echo "   ❌ 无法获取 Git 远程仓库地址"
-            return 1
-        fi
-        
-        echo "   仓库地址: $GIT_REMOTE_URL"
-        
-        # 如果是 HTTP(S) URL 且有 Gitea Token，添加认证信息
-        if [[ "$GIT_REMOTE_URL" =~ ^https?:// ]] && [ -n "$GITEA_TOKEN" ] && [ "$GITEA_TOKEN" != "null" ]; then
-            # 在 URL 中嵌入 Token 进行认证
-            # 格式: https://token@gitea.example.com/user/repo.git
-            GIT_AUTH_URL=$(echo "$GIT_REMOTE_URL" | sed "s|://|://$GITEA_TOKEN@|")
-            echo "   🔐 使用 Gitea Token 认证"
-        else
-            GIT_AUTH_URL="$GIT_REMOTE_URL"
-        fi
-        
-        # 检查远程目录是否已存在（使用 PowerShell）
-        REMOTE_DIR_CHECK="powershell -Command \"Test-Path '$REMOTE_PROJECT_PATH'\""
-        REMOTE_DIR_EXISTS=$(eval "$SSH_CMD $REMOTE_USER@$REMOTE_HOST \"$REMOTE_DIR_CHECK\"" 2>/dev/null | tr -d '\r\n')
-        
-        if [ "$REMOTE_DIR_EXISTS" = "True" ]; then
-            echo "   ⚠️  远程目录已存在: $REMOTE_PROJECT_PATH"
-            echo "   🗑️  自动删除现有目录..."
-            
-            # 使用 PowerShell Remove-Item 强制删除
-            REMOTE_RM_CMD="powershell -Command \"Remove-Item -Path '$REMOTE_PROJECT_PATH' -Recurse -Force -ErrorAction SilentlyContinue\""
-            eval "$SSH_CMD $REMOTE_USER@$REMOTE_HOST \"$REMOTE_RM_CMD\"" 2>/dev/null
-            
-            # 等待一下确保删除完成
-            sleep 2
-            
-            # 验证删除
-            VERIFY_DELETED=$(eval "$SSH_CMD $REMOTE_USER@$REMOTE_HOST \"$REMOTE_DIR_CHECK\"" 2>/dev/null | tr -d '\r\n')
-            if [ "$VERIFY_DELETED" = "True" ]; then
-                echo "   ⚠️  目录删除失败，尝试直接克隆（可能会覆盖）"
-            else
-                echo "   ✅ 目录已删除"
-            fi
-            echo ""
-        fi
-        
-        # 在远程克隆仓库（使用 PowerShell + Git）
-        REMOTE_GIT_CLONE="powershell -Command \"\\\$env:GIT_TERMINAL_PROMPT='0'; \\\$env:GIT_ASKPASS='echo'; git -c core.askPass='' -c credential.helper='' clone -b $REMOTE_GIT_BRANCH '$GIT_AUTH_URL' '$REMOTE_PROJECT_PATH'\""
-        echo "   📥 开始克隆仓库..."
-        CLONE_OUTPUT=$(eval "$SSH_CMD $REMOTE_USER@$REMOTE_HOST \"$REMOTE_GIT_CLONE\"" 2>&1)
-        CLONE_EXIT=$?
-        
-        # 过滤输出
-        CLONE_FILTERED=$(echo "$CLONE_OUTPUT" | grep -v "warning: redirecting to")
-        
-        if [ $CLONE_EXIT -eq 0 ]; then
-            echo "   ✅ Git 仓库克隆成功"
-            
-            # 禁用凭证管理器
-            REMOTE_CONFIG_CMD="powershell -Command \"cd '$REMOTE_PROJECT_PATH'; git config credential.helper ''\""
-            eval "$SSH_CMD $REMOTE_USER@$REMOTE_HOST \"$REMOTE_CONFIG_CMD\"" 2>/dev/null
-            
-            # 首次克隆后需要安装依赖
-            echo ""
-            echo "   📦 首次构建，安装依赖..."
-            REMOTE_INSTALL_CMD="powershell -Command \"cd '$REMOTE_PROJECT_PATH'; bun install\""
-            eval "$SSH_CMD $REMOTE_USER@$REMOTE_HOST \"$REMOTE_INSTALL_CMD\""
-        else
-            echo "   ❌ Git clone 失败"
-            if [ -n "$CLONE_FILTERED" ]; then
-                echo "   错误信息:"
-                echo "$CLONE_FILTERED" | head -10
-            fi
-            echo ""
-            echo "   💡 可能的原因:"
-            echo "      1. 远程 Windows 机器无法访问 Git 仓库"
-            echo "      2. Git 需要认证（Token 可能无效）"
-            echo "      3. 网络连接问题"
-            echo ""
-            echo "   💡 解决方案:"
-            echo "      - 确保 Windows 机器可以访问: $GIT_REMOTE_URL"
-            echo "      - 检查 Gitea Token 是否有效"
-            echo "      - 或在 Windows 上手动克隆后重试"
-            return 1
-        fi
-    fi
-    
-    # 同步签名密钥（Git 不会跟踪 .tauri/*.key）
-    echo ""
-    echo "   3️⃣  同步签名密钥..."
-    REMOTE_TAURI_DIR="${REMOTE_PROJECT_PATH}/.tauri"
-    
-    # 创建 .tauri 目录（使用 PowerShell）
-    REMOTE_MKDIR_CMD="powershell -Command \"New-Item -ItemType Directory -Force -Path '$REMOTE_TAURI_DIR' | Out-Null\""
-    eval "$SSH_CMD $REMOTE_USER@$REMOTE_HOST \"$REMOTE_MKDIR_CMD\"" 2>/dev/null || true
-    
-    # 上传签名密钥
-    if [ -f "$PRIVATE_KEY_PATH" ]; then
-        eval "$SCP_CMD \"$PRIVATE_KEY_PATH\" $REMOTE_USER@$REMOTE_HOST:\"$REMOTE_TAURI_DIR/watch-monkey.key\""
-        if [ $? -eq 0 ]; then
-            echo "   ✅ 签名密钥同步成功"
-        else
-            echo "   ⚠️  签名密钥同步失败"
-        fi
-    fi
-    
-    echo ""
-    echo "4️⃣  在远程主机执行构建..."
-    echo ""
-    
-    # 转义构建命令中的引号和特殊字符
-    ESCAPED_BUILD_CMD="${REMOTE_BUILD_COMMAND//\"/\\\"}"
-    # 转义 $ 符号以防止在 bash 中被解析
-    ESCAPED_BUILD_CMD="${ESCAPED_BUILD_CMD//\$/\\\$}"
-    
-    # 在远程主机执行构建
-    echo "   执行: $REMOTE_BUILD_COMMAND"
-    echo ""
-    eval "$SSH_CMD $REMOTE_USER@$REMOTE_HOST \"$ESCAPED_BUILD_CMD\""
-    
-    if [ $? -ne 0 ]; then
-        echo ""
-        echo "   ❌ 远程构建失败"
-        return 1
-    fi
-    
-    echo ""
-    echo "   ✅ 远程构建成功"
-    echo ""
-    echo "5️⃣  上传构建产物到 Gitea..."
-    echo ""
-    
-    # 构建路径
-    REMOTE_NSIS_PATH="${REMOTE_PROJECT_PATH}/src-tauri/target/release/bundle/nsis"
-    REMOTE_MSI_PATH="${REMOTE_PROJECT_PATH}/src-tauri/target/release/bundle/msi"
-    
-    # API 基础 URL
-    API_BASE="${GITEA_URL}/api/v1"
-    
-    # 步骤1: 检查或创建 Release
-    echo "   📦 检查/创建 Release v$VERSION..."
-    CHECK_RELEASE_CMD="powershell -Command \"
-        \\\$Headers = @{ 'Authorization' = 'token $GITEA_TOKEN' };
-        try {
-            \\\$Release = Invoke-RestMethod -Uri '$API_BASE/repos/$OWNER/$REPO/releases/tags/v$VERSION' -Headers \\\$Headers -Method Get;
-            Write-Output \\\"RELEASE_ID:\\\$(\\\$Release.id)\\\";
-        } catch {
-            \\\$CreateData = @{ tag_name = 'v$VERSION'; name = 'v$VERSION'; body = 'Release v$VERSION'; draft = \\\$false; prerelease = \\\$false } | ConvertTo-Json;
-            \\\$Release = Invoke-RestMethod -Uri '$API_BASE/repos/$OWNER/$REPO/releases' -Headers \\\$Headers -Method Post -Body \\\$CreateData -ContentType 'application/json';
-            Write-Output \\\"RELEASE_ID:\\\$(\\\$Release.id)\\\";
-        }
-    \""
-    
-    RELEASE_OUTPUT=$(eval "$SSH_CMD $REMOTE_USER@$REMOTE_HOST \"$CHECK_RELEASE_CMD\"" 2>&1)
-    RELEASE_ID=$(echo "$RELEASE_OUTPUT" | grep "RELEASE_ID:" | cut -d: -f2 | tr -d '\r\n ')
-    
-    if [ -z "$RELEASE_ID" ]; then
-        echo "   ❌ 无法获取 Release ID"
-        echo "$RELEASE_OUTPUT"
-        return 1
-    fi
-    
-    echo "   ✅ Release ID: $RELEASE_ID"
-    echo ""
-    
-    # 步骤2: 列出需要上传的文件
-    echo "   📋 查找构建文件..."
-    LIST_FILES_CMD="powershell -Command \"
-        \\\$files = @();
-        \\\$files += Get-ChildItem -Path '$REMOTE_NSIS_PATH' -Filter '*-setup.exe*' -File -ErrorAction SilentlyContinue;
-        \\\$files += Get-ChildItem -Path '$REMOTE_MSI_PATH' -Filter '*.msi*' -File -ErrorAction SilentlyContinue;
-        \\\$files | ForEach-Object { Write-Output \\\$_.FullName };
-    \""
-    
-    FILE_LIST=$(eval "$SSH_CMD $REMOTE_USER@$REMOTE_HOST \"$LIST_FILES_CMD\"" 2>/dev/null | tr -d '\r')
-    
-    if [ -z "$FILE_LIST" ]; then
-        echo "   ⚠️  未找到构建文件"
-        return 1
-    fi
-    
-    echo "   找到文件:"
-    echo "$FILE_LIST" | while read -r file; do
-        [ -n "$file" ] && echo "      - $(basename "$file")"
-    done
-    echo ""
-    
-    # 步骤3: 上传每个文件
-    UPLOAD_SUCCESS=0
-    UPLOADED_FILES=""
-    
-    echo "$FILE_LIST" | while read -r REMOTE_FILE; do
-        [ -z "$REMOTE_FILE" ] && continue
-        
-        FILE_NAME=$(basename "$REMOTE_FILE")
-        echo "   📤 上传 $FILE_NAME..."
-        
-        # 删除已存在的文件
-        DELETE_ASSET_CMD="powershell -Command \"
-            \\\$Headers = @{ 'Authorization' = 'token $GITEA_TOKEN' };
-            try {
-                \\\$Assets = Invoke-RestMethod -Uri '$API_BASE/repos/$OWNER/$REPO/releases/$RELEASE_ID/assets' -Headers \\\$Headers;
-                \\\$Existing = \\\$Assets | Where-Object { \\\$_.name -eq '$FILE_NAME' };
-                if (\\\$Existing) {
-                    Invoke-RestMethod -Uri '$API_BASE/repos/$OWNER/$REPO/releases/$RELEASE_ID/assets/\$(\\\$Existing.id)' -Headers \\\$Headers -Method Delete | Out-Null;
-                }
-            } catch {}
-        \""
-        eval "$SSH_CMD $REMOTE_USER@$REMOTE_HOST \"$DELETE_ASSET_CMD\"" 2>/dev/null
-        
-        # 上传文件
-        UPLOAD_FILE_CMD="powershell -Command \"
-            \\\$Headers = @{ 'Authorization' = 'token $GITEA_TOKEN' };
-            \\\$FileBytes = [System.IO.File]::ReadAllBytes('$REMOTE_FILE');
-            \\\$UploadUrl = '$API_BASE/repos/$OWNER/$REPO/releases/$RELEASE_ID/assets?name=$FILE_NAME';
-            try {
-                \\\$Response = Invoke-RestMethod -Uri \\\$UploadUrl -Headers \\\$Headers -Method Post -Body \\\$FileBytes -ContentType 'application/octet-stream';
-                Write-Output \\\"SUCCESS:\\\$(\\\$Response.browser_download_url)\\\";
-            } catch {
-                Write-Output \\\"FAILED:\\\$_\\\";
-            }
-        \""
-        
-        UPLOAD_RESULT=$(eval "$SSH_CMD $REMOTE_USER@$REMOTE_HOST \"$UPLOAD_FILE_CMD\"" 2>&1)
-        
-        if echo "$UPLOAD_RESULT" | grep -q "SUCCESS:"; then
-            FILE_URL=$(echo "$UPLOAD_RESULT" | grep "SUCCESS:" | cut -d: -f2- | tr -d '\r\n ')
-            echo "      ✅ 成功: $FILE_URL"
-            UPLOADED_FILES="${UPLOADED_FILES}${FILE_NAME}|${FILE_URL}\n"
-        else
-            echo "      ❌ 失败"
-        fi
-    done
-    
-    # 保存上传结果（简化版）
-    if [ -n "$UPLOADED_FILES" ]; then
-        echo "$UPLOADED_FILES" > /tmp/windows-upload-result.txt
-        echo ""
-        echo "   ✅ Windows 构建产物上传成功"
-        return 0
-    else
-        echo ""
-        echo "   ❌ Windows 构建产物上传失败"
-        return 1
-    fi
-}
-
-# ============================================
 # 开始构建
 # ============================================
 if [ $NEED_BUILD -eq 1 ]; then
@@ -983,24 +492,6 @@ if [ $NEED_BUILD -eq 1 ]; then
     
     echo "✅ 本地构建成功！"
     echo ""
-    
-    # 检查是否需要远程构建 Windows 版本
-    if [ "$REMOTE_BUILDS_ENABLED" = "true" ]; then
-        echo ""
-        read -p "🪟 是否在远程 Windows 主机上构建 Windows 版本？(Y/n): " BUILD_REMOTE_WINDOWS
-        BUILD_REMOTE_WINDOWS=${BUILD_REMOTE_WINDOWS:-Y}
-        
-        if [[ "$BUILD_REMOTE_WINDOWS" =~ ^[Yy]$ ]]; then
-            echo ""
-            remote_windows_build
-            
-            if [ $? -ne 0 ]; then
-                echo ""
-                echo "⚠️  远程 Windows 构建失败，将仅使用本地构建产物"
-                echo ""
-            fi
-        fi
-    fi
 fi
 
 echo "🔍 正在扫描构建产物..."
@@ -1184,58 +675,22 @@ WINDOWS_FILE=""
 WINDOWS_MSI_SIG=""
 WINDOWS_MSI_FILE=""
 
-# 检查是否有远程上传的 Windows 文件信息
-if [ -f "/tmp/windows-upload-result.txt" ]; then
-    echo "  🌐 使用远程 Windows 构建..."
-    
-    # 从上传结果中提取 NSIS 文件
-    while IFS='|' read -r FILE_NAME FILE_URL; do
-        [ -z "$FILE_NAME" ] && continue
-        
-        if [[ "$FILE_NAME" == *"-setup.exe.sig"* ]]; then
-            # 下载签名文件到本地以读取签名
-            TEMP_SIG="/tmp/nsis-temp.sig"
-            curl -s -H "Authorization: token $GITEA_TOKEN" "$FILE_URL" -o "$TEMP_SIG" 2>/dev/null
-            
-            if [ -f "$TEMP_SIG" ] && [ -s "$TEMP_SIG" ]; then
-                WINDOWS_SIG=$(read_sig "$TEMP_SIG")
-                rm -f "$TEMP_SIG"
-            fi
-        elif [[ "$FILE_NAME" == *"-setup.exe" ]]; then
-            WINDOWS_FILE="$FILE_NAME"
-            echo "      NSIS: $WINDOWS_FILE"
-        elif [[ "$FILE_NAME" == *".msi.sig" ]]; then
-            # 下载 MSI 签名文件
-            TEMP_MSI_SIG="/tmp/msi-temp.sig"
-            curl -s -H "Authorization: token $GITEA_TOKEN" "$FILE_URL" -o "$TEMP_MSI_SIG" 2>/dev/null
-            
-            if [ -f "$TEMP_MSI_SIG" ] && [ -s "$TEMP_MSI_SIG" ]; then
-                WINDOWS_MSI_SIG=$(read_sig "$TEMP_MSI_SIG")
-                rm -f "$TEMP_MSI_SIG"
-            fi
-        elif [[ "$FILE_NAME" == *".msi" ]]; then
-            WINDOWS_MSI_FILE="$FILE_NAME"
-            echo "      MSI: $WINDOWS_MSI_FILE"
-        fi
-    done < /tmp/windows-upload-result.txt
-else
-    # 使用本地构建文件
-    if [ -f "$BUNDLE_DIR/nsis/${APP_NAME}_${VERSION}_x64-setup.exe.sig" ]; then
-        WINDOWS_SIG=$(read_sig "$BUNDLE_DIR/nsis/${APP_NAME}_${VERSION}_x64-setup.exe.sig")
-        WINDOWS_FILE="${APP_NAME}_${VERSION}_x64-setup.exe"
-    elif [ -f "$BUNDLE_DIR/nsis/${APP_NAME}-setup.exe.sig" ]; then
-        WINDOWS_SIG=$(read_sig "$BUNDLE_DIR/nsis/${APP_NAME}-setup.exe.sig")
-        WINDOWS_FILE="${APP_NAME}-setup.exe"
-    fi
-    
-    # Windows x64 MSI (备用)
-    if [ -f "$BUNDLE_DIR/msi/${APP_NAME}_${VERSION}_x64.msi.sig" ]; then
-        WINDOWS_MSI_SIG=$(read_sig "$BUNDLE_DIR/msi/${APP_NAME}_${VERSION}_x64.msi.sig")
-        WINDOWS_MSI_FILE="${APP_NAME}_${VERSION}_x64.msi"
-    elif [ -f "$BUNDLE_DIR/msi/${APP_NAME}.msi.sig" ]; then
-        WINDOWS_MSI_SIG=$(read_sig "$BUNDLE_DIR/msi/${APP_NAME}.msi.sig")
-        WINDOWS_MSI_FILE="${APP_NAME}.msi"
-    fi
+# 使用本地构建文件
+if [ -f "$BUNDLE_DIR/nsis/${APP_NAME}_${VERSION}_x64-setup.exe.sig" ]; then
+    WINDOWS_SIG=$(read_sig "$BUNDLE_DIR/nsis/${APP_NAME}_${VERSION}_x64-setup.exe.sig")
+    WINDOWS_FILE="${APP_NAME}_${VERSION}_x64-setup.exe"
+elif [ -f "$BUNDLE_DIR/nsis/${APP_NAME}-setup.exe.sig" ]; then
+    WINDOWS_SIG=$(read_sig "$BUNDLE_DIR/nsis/${APP_NAME}-setup.exe.sig")
+    WINDOWS_FILE="${APP_NAME}-setup.exe"
+fi
+
+# Windows x64 MSI (备用)
+if [ -f "$BUNDLE_DIR/msi/${APP_NAME}_${VERSION}_x64.msi.sig" ]; then
+    WINDOWS_MSI_SIG=$(read_sig "$BUNDLE_DIR/msi/${APP_NAME}_${VERSION}_x64.msi.sig")
+    WINDOWS_MSI_FILE="${APP_NAME}_${VERSION}_x64.msi"
+elif [ -f "$BUNDLE_DIR/msi/${APP_NAME}.msi.sig" ]; then
+    WINDOWS_MSI_SIG=$(read_sig "$BUNDLE_DIR/msi/${APP_NAME}.msi.sig")
+    WINDOWS_MSI_FILE="${APP_NAME}.msi"
 fi
 
 if [ -n "$WINDOWS_SIG" ] && [ -n "$WINDOWS_FILE" ]; then
@@ -1523,16 +978,14 @@ if [ $SHOULD_UPLOAD -eq 1 ]; then
         upload_file "$BUNDLE_DIR/appimage/$LINUX_FILE.sig"
     fi
     
-    # 上传 Windows NSIS 文件（仅当使用本地构建时）
-    if [ -n "$WINDOWS_SIG" ] && [ ! -f "/tmp/windows-upload-result.txt" ]; then
+    # 上传 Windows NSIS 文件
+    if [ -n "$WINDOWS_SIG" ]; then
         upload_file "$BUNDLE_DIR/nsis/$WINDOWS_FILE"
         upload_file "$BUNDLE_DIR/nsis/$WINDOWS_FILE.sig"
-    elif [ -f "/tmp/windows-upload-result.txt" ]; then
-        echo "   ⏭️  跳过 Windows 文件上传（已在远程主机上传）"
     fi
     
-    # 上传 Windows MSI 文件（可选，仅当使用本地构建时）
-    if [ -n "$WINDOWS_MSI_SIG" ] && [ ! -f "/tmp/windows-upload-result.txt" ]; then
+    # 上传 Windows MSI 文件（可选）
+    if [ -n "$WINDOWS_MSI_SIG" ]; then
         upload_file "$BUNDLE_DIR/msi/$WINDOWS_MSI_FILE"
         upload_file "$BUNDLE_DIR/msi/$WINDOWS_MSI_FILE.sig"
     fi
@@ -1626,11 +1079,3 @@ else
     echo "================================================"
     echo ""
 fi
-
-# ============================================
-# 清理临时文件
-# ============================================
-rm -f /tmp/windows-upload-result.txt 2>/dev/null || true
-rm -f /tmp/nsis-temp.sig 2>/dev/null || true
-rm -f /tmp/msi-temp.sig 2>/dev/null || true
-
