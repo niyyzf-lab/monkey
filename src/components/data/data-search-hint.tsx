@@ -8,17 +8,17 @@ interface SearchTerms {
   letters: string[]
 }
 
-interface SearchHintBarProps {
+interface DataSearchHintProps {
   searchQuery: string
   searchTerms: SearchTerms
   totalItems: number
 }
 
-export const SearchHintBar = memo(function SearchHintBar({
+export const DataSearchHint = memo(function DataSearchHint({
   searchQuery,
   searchTerms,
   totalItems,
-}: SearchHintBarProps) {
+}: DataSearchHintProps) {
   if (!searchQuery) return null
 
   return (

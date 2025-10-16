@@ -2,7 +2,7 @@ import { motion } from 'motion/react'
 import { Database } from 'lucide-react'
 import { memo } from 'react'
 
-export const DataPageLoadingState = memo(function DataPageLoadingState() {
+export const DataLoadingState = memo(function DataLoadingState() {
   return (
     <div className="h-screen-safe flex flex-col">
       {/* 简化的头部 */}
@@ -93,7 +93,7 @@ export const DataPageLoadingState = memo(function DataPageLoadingState() {
   )
 })
 
-export const DataPageErrorState = memo(function DataPageErrorState({ 
+export const DataErrorState = memo(function DataErrorState({ 
   error 
 }: { 
   error: string 

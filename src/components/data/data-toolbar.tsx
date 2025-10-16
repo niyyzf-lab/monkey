@@ -1,43 +1,42 @@
-import { Search, X, ChevronDown, Database, Tag, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Search, X, ChevronDown, Database, Tag } from 'lucide-react'
 import { Input } from '../ui/input'
 import { motion, AnimatePresence } from 'motion/react'
 import { memo } from 'react'
 
-interface DataPageToolbarProps {
+interface DataToolbarProps {
   searchQuery: string
   onSearchChange: (query: string) => void
   onClearSearch: () => void
-  currentPage: number
-  totalPages: number
   totalItems: number
+  filteredItems: number
   hasSearchTerms: boolean
   isScrolled: boolean
   showNavigationDropdown: boolean
   onToggleDropdown: () => void
   onNavigate: (path: string) => void
-  onPageChange: (page: number) => void
 }
 
-export const DataPageToolbar = memo(function DataPageToolbar({
+export const DataToolbar = memo(function DataToolbar({
   searchQuery,
   onSearchChange,
   onClearSearch,
-  currentPage,
-  totalPages,
   totalItems,
+  filteredItems,
   hasSearchTerms,
   isScrolled,
   showNavigationDropdown,
   onToggleDropdown,
   onNavigate,
-  onPageChange,
-}: DataPageToolbarProps) {
+}: DataToolbarProps) {
   return (
-    <div className={`sticky top-0 z-20 flex items-center justify-between gap-4 py-3 px-6 transition-all duration-300 ${
-      isScrolled 
-        ? 'backdrop-blur-xl bg-background/98 shadow-md border-b border-border/80' 
-        : 'backdrop-blur-md bg-background/80'
-    }`} data-tauri-drag-region>
+    <div
+      className={`sticky top-0 z-20 flex items-center justify-between gap-4 py-3 px-6 transition-all duration-300 ${
+        isScrolled
+          ? 'backdrop-blur-xl bg-background/98 shadow-md border-b border-border/80'
+          : 'backdrop-blur-md bg-background/80'
+      }`}
+      data-tauri-drag-region
+    >
       {/* 左侧：标题 + 搜索 */}
       <div className="flex items-center gap-3 flex-1 min-w-0" data-tauri-drag-region>
         <motion.div
@@ -47,8 +46,15 @@ export const DataPageToolbar = memo(function DataPageToolbar({
           data-tauri-drag-region
         >
           <div className="space-y-0.5" data-tauri-drag-region>
-            <h1 className="text-lg font-semibold whitespace-nowrap" data-tauri-drag-region>猴の数据库</h1>
-            <p className="text-xs text-muted-foreground/70 hidden @sm:block" data-tauri-drag-region>给猴子提供价值</p>
+            <h1 className="text-lg font-semibold whitespace-nowrap" data-tauri-drag-region>
+              猴の数据库
+            </h1>
+            <p
+              className="text-xs text-muted-foreground/70 hidden @sm:block"
+              data-tauri-drag-region
+            >
+              给猴子提供价值
+            </p>
           </div>
         </motion.div>
 
@@ -87,68 +93,38 @@ export const DataPageToolbar = memo(function DataPageToolbar({
         </motion.div>
       </div>
 
-      {/* 右侧：分页控制 + 统计信息 + 导航 */}
+      {/* 右侧：统计信息 + 导航 */}
       <motion.div
         initial={{ opacity: 0, x: 10 }}
         animate={{ opacity: 1, x: 0 }}
         transition={{ duration: 0.3, delay: 0.2 }}
         className="flex items-center gap-3 text-sm text-muted-foreground/70 flex-shrink-0"
       >
-        {/* 分页控制 */}
-        {totalPages > 1 && (
-          <>
-            <div className="flex items-center gap-1">
-              <button
-                onClick={() => onPageChange(currentPage - 1)}
-                disabled={currentPage <= 1}
-                className={`p-1.5 rounded-md transition-all duration-200 ${
-                  currentPage <= 1
-                    ? 'opacity-30 cursor-not-allowed'
-                    : 'opacity-60 hover:opacity-100 hover:bg-secondary/60'
-                }`}
-                aria-label="上一页"
-              >
-                <ChevronLeft className="w-4 h-4" />
-              </button>
-              
-              <div className="flex items-center gap-2 px-2">
-                <span className="font-medium hidden @md:inline">页码</span>
-                <div className="flex items-center gap-1">
-                  <span className="font-mono text-base font-semibold text-foreground/80">{currentPage}</span>
-                  <span className="opacity-50">/</span>
-                  <span className="font-mono opacity-70">{totalPages}</span>
-                </div>
-              </div>
-              
-              <button
-                onClick={() => onPageChange(currentPage + 1)}
-                disabled={currentPage >= totalPages}
-                className={`p-1.5 rounded-md transition-all duration-200 ${
-                  currentPage >= totalPages
-                    ? 'opacity-30 cursor-not-allowed'
-                    : 'opacity-60 hover:opacity-100 hover:bg-secondary/60'
-                }`}
-                aria-label="下一页"
-              >
-                <ChevronRight className="w-4 h-4" />
-              </button>
-            </div>
-            
-            {/* 短分隔线 */}
-            <div className="h-4 w-px bg-gradient-to-b from-border/40 via-border to-border/40" />
-          </>
-        )}
-        
         <div className="hidden @lg:flex items-center gap-2">
-          <span className="font-medium">
-            {hasSearchTerms ? '结果' : '总计'}
-          </span>
-          <span className="font-mono font-medium text-foreground/70">{totalItems.toLocaleString()}</span>
+          {hasSearchTerms ? (
+            <>
+              <span className="font-medium">显示</span>
+              <span className="font-mono font-semibold text-primary">
+                {filteredItems.toLocaleString()}
+              </span>
+              <span className="text-muted-foreground/50">/</span>
+              <span className="font-mono text-muted-foreground/60">
+                {totalItems.toLocaleString()}
+              </span>
+            </>
+          ) : (
+            <>
+              <span className="font-medium">总计</span>
+              <span className="font-mono font-medium text-foreground/70">
+                {totalItems.toLocaleString()}
+              </span>
+            </>
+          )}
         </div>
-        
+
         {/* 短分隔线 */}
         <div className="h-4 w-px bg-gradient-to-b from-border/40 via-border to-border/40" />
-        
+
         {/* 导航按钮 */}
         <div className="relative" data-dropdown-container>
           <button
@@ -157,11 +133,13 @@ export const DataPageToolbar = memo(function DataPageToolbar({
                      hover:bg-secondary/60 focus:outline-none"
             aria-label="导航"
           >
-            <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-200 ${
-              showNavigationDropdown ? 'rotate-180' : ''
-            }`} />
+            <ChevronDown
+              className={`w-3.5 h-3.5 transition-transform duration-200 ${
+                showNavigationDropdown ? 'rotate-180' : ''
+              }`}
+            />
           </button>
-          
+
           {/* 下拉菜单 */}
           <AnimatePresence>
             {showNavigationDropdown && (
