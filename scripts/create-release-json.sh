@@ -452,41 +452,106 @@ remote_windows_build() {
     if [ "$REMOTE_REPO_STATUS" = "exists" ]; then
         echo "   ✅ 远程仓库已存在，拉取更新..."
         
-        # 获取 Git 远程仓库地址
+        # 获取 Git 远程仓库地址（先从本地获取）
         GIT_REMOTE_URL=$(git remote get-url $REMOTE_GIT_REMOTE 2>/dev/null)
+        
+        # 如果本地没有获取到，尝试从远程获取
+        if [ -z "$GIT_REMOTE_URL" ]; then
+            REMOTE_GET_URL="cd \"$REMOTE_PROJECT_PATH\" && git remote get-url $REMOTE_GIT_REMOTE"
+            GIT_REMOTE_URL=$(eval "$SSH_CMD $REMOTE_USER@$REMOTE_HOST \"$REMOTE_GET_URL\"" 2>/dev/null | tr -d '\r\n')
+        fi
+        
+        echo "   📡 Git 远程地址: $GIT_REMOTE_URL"
         
         # 如果是 HTTP(S) URL 且有 Gitea Token，添加认证信息
         if [[ "$GIT_REMOTE_URL" =~ ^https?:// ]] && [ -n "$GITEA_TOKEN" ] && [ "$GITEA_TOKEN" != "null" ]; then
-            GIT_AUTH_URL=$(echo "$GIT_REMOTE_URL" | sed "s|://|://$GITEA_TOKEN@|")
+            # 先移除可能已存在的认证信息
+            GIT_CLEAN_URL=$(echo "$GIT_REMOTE_URL" | sed 's|://[^@]*@|://|')
+            # 添加新的认证信息
+            GIT_AUTH_URL=$(echo "$GIT_CLEAN_URL" | sed "s|://|://$GITEA_TOKEN@|")
             echo "   🔐 使用 Gitea Token 认证"
             
             # 更新远程 URL 为带 Token 的版本，并禁用凭证管理器
-            REMOTE_SET_URL="cd \"$REMOTE_PROJECT_PATH\" && git config credential.helper \"\" && git config --unset-all credential.helper && git remote set-url $REMOTE_GIT_REMOTE $GIT_AUTH_URL"
-            eval "$SSH_CMD $REMOTE_USER@$REMOTE_HOST \"$REMOTE_SET_URL\"" 2>/dev/null || true
+            REMOTE_SET_URL="cd \"$REMOTE_PROJECT_PATH\" && git config credential.helper \"\" && git remote set-url $REMOTE_GIT_REMOTE \"$GIT_AUTH_URL\""
+            SET_URL_OUTPUT=$(eval "$SSH_CMD $REMOTE_USER@$REMOTE_HOST \"$REMOTE_SET_URL\"" 2>&1)
+            if [ $? -eq 0 ]; then
+                echo "   ✅ 远程 URL 已更新"
+            else
+                echo "   ⚠️  更新远程 URL 失败: $SET_URL_OUTPUT"
+            fi
         fi
         
         # 远程执行 git pull (修复分支问题)
         # 由于已经设置了带 Token 的 URL，直接拉取即可
         echo "   执行 Git 同步..."
         
-        # 步骤1: fetch 远程更新（设置环境变量禁用交互式提示）
-        REMOTE_GIT_FETCH="cd \"$REMOTE_PROJECT_PATH\" && set GIT_TERMINAL_PROMPT=0 && git -c credential.helper= fetch $REMOTE_GIT_REMOTE"
-        eval "$SSH_CMD $REMOTE_USER@$REMOTE_HOST \"$REMOTE_GIT_FETCH\"" 2>&1 | grep -v "Unable to persist credentials" || true
+        # 步骤1: fetch 远程更新（使用 git -c 配置禁用交互式提示）
+        REMOTE_GIT_FETCH="cd \"$REMOTE_PROJECT_PATH\" && git -c core.askPass= -c credential.helper= fetch $REMOTE_GIT_REMOTE $REMOTE_GIT_BRANCH"
+        echo "   📥 正在 fetch 远程更新 ($REMOTE_GIT_REMOTE/$REMOTE_GIT_BRANCH)..."
+        FETCH_OUTPUT=$(eval "$SSH_CMD $REMOTE_USER@$REMOTE_HOST \"$REMOTE_GIT_FETCH\"" 2>&1)
+        FETCH_EXIT=$?
+        
+        # 过滤掉不重要的信息
+        FETCH_FILTERED=$(echo "$FETCH_OUTPUT" | grep -v "Unable to persist credentials" | grep -v "warning: redirecting to")
+        
+        if [ $FETCH_EXIT -ne 0 ]; then
+            echo "   ❌ Fetch 失败:"
+            echo "$FETCH_FILTERED" | head -10
+            echo "   💡 提示: 请检查网络连接和 Token 权限"
+            return 1
+        elif [ -n "$FETCH_FILTERED" ]; then
+            echo "   ⚠️  Fetch 输出:"
+            echo "$FETCH_FILTERED" | head -5
+        else
+            echo "   ✅ Fetch 完成"
+        fi
         
         # 步骤2: 切换到正确的分支（先检查是否存在）
         REMOTE_GIT_CHECKOUT="cd \"$REMOTE_PROJECT_PATH\" && git show-ref --verify --quiet refs/heads/$REMOTE_GIT_BRANCH && git checkout $REMOTE_GIT_BRANCH || git checkout -b $REMOTE_GIT_BRANCH $REMOTE_GIT_REMOTE/$REMOTE_GIT_BRANCH"
+        echo "   🔀 正在切换分支 $REMOTE_GIT_BRANCH..."
         eval "$SSH_CMD $REMOTE_USER@$REMOTE_HOST \"$REMOTE_GIT_CHECKOUT\"" 2>&1 | grep -v "Unable to persist credentials" || true
         
-        # 步骤3: 重置到远程最新状态
-        REMOTE_GIT_RESET="cd \"$REMOTE_PROJECT_PATH\" && git reset --hard $REMOTE_GIT_REMOTE/$REMOTE_GIT_BRANCH"
-        eval "$SSH_CMD $REMOTE_USER@$REMOTE_HOST \"$REMOTE_GIT_RESET\""
+        # 步骤3: 显示当前和目标提交
+        REMOTE_GIT_SHOW_CURRENT="cd \"$REMOTE_PROJECT_PATH\" && git rev-parse --short HEAD"
+        CURRENT_COMMIT=$(eval "$SSH_CMD $REMOTE_USER@$REMOTE_HOST \"$REMOTE_GIT_SHOW_CURRENT\"" 2>/dev/null | tr -d '\r\n')
         
-        if [ $? -eq 0 ]; then
-            echo "   ✅ Git 代码同步成功"
+        REMOTE_GIT_SHOW_TARGET="cd \"$REMOTE_PROJECT_PATH\" && git rev-parse --short $REMOTE_GIT_REMOTE/$REMOTE_GIT_BRANCH"
+        TARGET_COMMIT=$(eval "$SSH_CMD $REMOTE_USER@$REMOTE_HOST \"$REMOTE_GIT_SHOW_TARGET\"" 2>/dev/null | tr -d '\r\n')
+        
+        echo "   📍 当前提交: $CURRENT_COMMIT"
+        echo "   📍 目标提交: $TARGET_COMMIT"
+        
+        # 步骤4: 重置到远程最新状态
+        if [ "$CURRENT_COMMIT" != "$TARGET_COMMIT" ]; then
+            REMOTE_GIT_RESET="cd \"$REMOTE_PROJECT_PATH\" && git reset --hard $REMOTE_GIT_REMOTE/$REMOTE_GIT_BRANCH"
+            echo "   🔄 正在重置到最新版本..."
+            RESET_OUTPUT=$(eval "$SSH_CMD $REMOTE_USER@$REMOTE_HOST \"$REMOTE_GIT_RESET\"" 2>&1)
+            RESET_EXIT=$?
+            
+            if [ $RESET_EXIT -eq 0 ]; then
+                # 验证重置后的提交
+                REMOTE_GIT_VERIFY="cd \"$REMOTE_PROJECT_PATH\" && git rev-parse --short HEAD"
+                FINAL_COMMIT=$(eval "$SSH_CMD $REMOTE_USER@$REMOTE_HOST \"$REMOTE_GIT_VERIFY\"" 2>/dev/null | tr -d '\r\n')
+                
+                if [ "$FINAL_COMMIT" = "$TARGET_COMMIT" ]; then
+                    echo "   ✅ 已重置到 $FINAL_COMMIT"
+                else
+                    echo "   ⚠️  重置后的提交 ($FINAL_COMMIT) 与目标提交 ($TARGET_COMMIT) 不一致"
+                fi
+            else
+                echo "   ❌ 重置失败: $RESET_OUTPUT"
+                return 1
+            fi
         else
-            echo "   ❌ Git pull 失败"
-            return 1
+            echo "   ✅ 已经是最新版本"
         fi
+        
+        # 显示最终的提交信息
+        REMOTE_GIT_LOG="cd \"$REMOTE_PROJECT_PATH\" && git log -1 --oneline"
+        FINAL_LOG=$(eval "$SSH_CMD $REMOTE_USER@$REMOTE_HOST \"$REMOTE_GIT_LOG\"" 2>/dev/null | head -1)
+        echo "   📝 最终提交: $FINAL_LOG"
+        
+        echo "   ✅ Git 代码同步成功"
     else
         echo "   📦 远程仓库不存在，执行首次克隆..."
         
@@ -601,121 +666,174 @@ remote_windows_build() {
     echo ""
     echo "   ✅ 远程构建成功"
     echo ""
-    echo "5️⃣  下载构建产物..."
+    echo "5️⃣  上传构建产物到 Gitea..."
     echo ""
     
-    # 下载构建产物
-    mkdir -p "$BUNDLE_DIR/nsis" "$BUNDLE_DIR/msi"
-    
-    # 使用 SSH 直接传输文件（避免路径转换问题）
+    # 构建路径
     REMOTE_NSIS_PATH="${REMOTE_PROJECT_PATH}/src-tauri/target/release/bundle/nsis"
     REMOTE_MSI_PATH="${REMOTE_PROJECT_PATH}/src-tauri/target/release/bundle/msi"
     
-    echo "   下载 NSIS 安装包..."
-    # 通过 SSH 列出文件
-    NSIS_FILES=$(eval "$SSH_CMD $REMOTE_USER@$REMOTE_HOST \"cd \\\"$REMOTE_NSIS_PATH\\\" 2>nul && dir /b 2>nul\"" 2>/dev/null | tr -d '\r')
+    # API 基础 URL
+    API_BASE="${GITEA_URL}/api/v1"
     
-    NSIS_SUCCESS=0
-    NSIS_EXE_COUNT=0
-    NSIS_SIG_COUNT=0
+    # 在远程 Windows 上创建上传脚本
+    UPLOAD_SCRIPT_PATH="C:/Users/$REMOTE_USER/Desktop/gitea-upload-temp.ps1"
     
-    if [ -n "$NSIS_FILES" ]; then
-        while IFS= read -r filename; do
-            if [ -n "$filename" ]; then
-                # 只下载 .exe 和 .sig 文件
-                if [[ "$filename" == *"-setup.exe"* ]]; then
-                    # 使用 SSH type 命令传输文件
-                    eval "$SSH_CMD $REMOTE_USER@$REMOTE_HOST \"type \\\"$REMOTE_NSIS_PATH\\$filename\\\"\"" > "$BUNDLE_DIR/nsis/$filename" 2>/dev/null
-                    if [ $? -eq 0 ] && [ -s "$BUNDLE_DIR/nsis/$filename" ]; then
-                        filesize=$(ls -lh "$BUNDLE_DIR/nsis/$filename" | awk '{print $5}')
-                        echo "      ✅ $filename ($filesize)"
-                        
-                        # 统计下载的文件类型
-                        if [[ "$filename" == *".sig" ]]; then
-                            NSIS_SIG_COUNT=$((NSIS_SIG_COUNT + 1))
-                        else
-                            NSIS_EXE_COUNT=$((NSIS_EXE_COUNT + 1))
-                        fi
-                    else
-                        echo "      ❌ $filename (下载失败)"
-                    fi
-                fi
-            fi
-        done <<< "$NSIS_FILES"
+    # 生成 PowerShell 上传脚本
+    cat > /tmp/gitea-upload.ps1 << 'UPLOAD_SCRIPT_EOF'
+param(
+    [string]$GiteaUrl,
+    [string]$Token,
+    [string]$Owner,
+    [string]$Repo,
+    [string]$Version,
+    [string]$NsisPath,
+    [string]$MsiPath
+)
+
+$ErrorActionPreference = "Stop"
+$ApiBase = "$GiteaUrl/api/v1"
+$Headers = @{ "Authorization" = "token $Token" }
+
+# 检查或创建 Release
+Write-Host "   📦 检查 Release v$Version..."
+$ReleaseUrl = "$ApiBase/repos/$Owner/$Repo/releases/tags/v$Version"
+$Release = $null
+
+try {
+    $Release = Invoke-RestMethod -Uri $ReleaseUrl -Headers $Headers -Method Get
+    Write-Host "   ✅ Release 已存在 (ID: $($Release.id))"
+} catch {
+    Write-Host "   📝 创建新 Release..."
+    $CreateData = @{
+        tag_name = "v$Version"
+        name = "v$Version"
+        body = "Release v$Version - Windows Build"
+        draft = $false
+        prerelease = $false
+    } | ConvertTo-Json
+    
+    $Release = Invoke-RestMethod -Uri "$ApiBase/repos/$Owner/$Repo/releases" `
+        -Headers $Headers `
+        -Method Post `
+        -Body $CreateData `
+        -ContentType "application/json"
+    Write-Host "   ✅ Release 创建成功 (ID: $($Release.id))"
+}
+
+$ReleaseId = $Release.id
+
+# 上传文件函数
+function Upload-File {
+    param([string]$FilePath)
+    
+    if (-not (Test-Path $FilePath)) {
+        Write-Host "   ⚠️  文件不存在: $FilePath"
+        return $null
+    }
+    
+    $FileName = Split-Path $FilePath -Leaf
+    $FileSize = (Get-Item $FilePath).Length
+    Write-Host "   📤 上传 $FileName ($([math]::Round($FileSize/1MB, 2)) MB)..."
+    
+    # 检查文件是否已存在
+    $Assets = Invoke-RestMethod -Uri "$ApiBase/repos/$Owner/$Repo/releases/$ReleaseId/assets" -Headers $Headers
+    $ExistingAsset = $Assets | Where-Object { $_.name -eq $FileName }
+    
+    if ($ExistingAsset) {
+        Write-Host "      删除已存在的文件..."
+        Invoke-RestMethod -Uri "$ApiBase/repos/$Owner/$Repo/releases/$ReleaseId/assets/$($ExistingAsset.id)" `
+            -Headers $Headers `
+            -Method Delete | Out-Null
+    }
+    
+    # 上传文件
+    $UploadUrl = "$ApiBase/repos/$Owner/$Repo/releases/$ReleaseId/assets?name=$FileName"
+    $FileBytes = [System.IO.File]::ReadAllBytes($FilePath)
+    
+    $Response = Invoke-RestMethod -Uri $UploadUrl `
+        -Headers $Headers `
+        -Method Post `
+        -Body $FileBytes `
+        -ContentType "application/octet-stream"
+    
+    Write-Host "      ✅ 上传成功"
+    return @{
+        name = $FileName
+        url = $Response.browser_download_url
+        size = $FileSize
+    }
+}
+
+# 收集所有需要上传的文件
+$Files = @()
+$Files += Get-ChildItem -Path $NsisPath -Filter "*-setup.exe*" -File
+$Files += Get-ChildItem -Path $MsiPath -Filter "*.msi*" -File
+
+# 上传所有文件并收集信息
+$UploadedFiles = @()
+foreach ($File in $Files) {
+    $Result = Upload-File -FilePath $File.FullName
+    if ($Result) {
+        $UploadedFiles += $Result
+    }
+}
+
+# 输出 JSON 格式的结果（用于本地解析）
+Write-Host ""
+Write-Host "UPLOAD_RESULT_JSON_START"
+$UploadedFiles | ConvertTo-Json -Depth 10
+Write-Host "UPLOAD_RESULT_JSON_END"
+UPLOAD_SCRIPT_EOF
+
+    # 上传脚本到远程（使用 base64 编码避免转义问题）
+    echo "   📝 准备上传脚本..."
+    SCRIPT_BASE64=$(base64 < /tmp/gitea-upload.ps1)
+    
+    # 在远程解码并保存脚本
+    DECODE_CMD="powershell -Command \"\$bytes = [System.Convert]::FromBase64String('$SCRIPT_BASE64'); [System.IO.File]::WriteAllBytes('$UPLOAD_SCRIPT_PATH', \$bytes)\""
+    eval "$SSH_CMD $REMOTE_USER@$REMOTE_HOST \"$DECODE_CMD\"" 2>/dev/null
+    
+    if [ $? -ne 0 ]; then
+        echo "   ❌ 脚本上传失败"
+        rm -f /tmp/gitea-upload.ps1
+        return 1
+    fi
+    
+    # 执行上传脚本
+    echo "   🚀 执行上传..."
+    UPLOAD_OUTPUT=$(eval "$SSH_CMD $REMOTE_USER@$REMOTE_HOST \"powershell -ExecutionPolicy Bypass -File '$UPLOAD_SCRIPT_PATH' -GiteaUrl '$GITEA_URL' -Token '$GITEA_TOKEN' -Owner '$OWNER' -Repo '$REPO' -Version '$VERSION' -NsisPath '$REMOTE_NSIS_PATH' -MsiPath '$REMOTE_MSI_PATH'\"" 2>&1)
+    UPLOAD_EXIT=$?
+    
+    # 显示上传过程
+    echo "$UPLOAD_OUTPUT" | grep -v "UPLOAD_RESULT_JSON"
+    
+    # 清理远程临时脚本
+    eval "$SSH_CMD $REMOTE_USER@$REMOTE_HOST \"del '$UPLOAD_SCRIPT_PATH' 2>nul\"" 2>/dev/null || true
+    rm -f /tmp/gitea-upload.ps1
+    
+    if [ $UPLOAD_EXIT -eq 0 ]; then
+        # 解析上传结果
+        UPLOAD_JSON=$(echo "$UPLOAD_OUTPUT" | sed -n '/UPLOAD_RESULT_JSON_START/,/UPLOAD_RESULT_JSON_END/p' | grep -v "UPLOAD_RESULT_JSON")
         
-        # 检查是否同时下载了 .exe 和 .sig
-        if [ $NSIS_EXE_COUNT -gt 0 ] && [ $NSIS_SIG_COUNT -gt 0 ]; then
-            NSIS_SUCCESS=1
+        if [ -z "$UPLOAD_JSON" ] || [ "$UPLOAD_JSON" = "null" ]; then
+            echo ""
+            echo "   ⚠️  未获取到上传结果信息"
+            echo "   💡  文件可能已上传，但无法解析返回数据"
+            return 1
         fi
-    fi
-    
-    if [ $NSIS_SUCCESS -eq 1 ]; then
-        echo "   ✅ NSIS 安装包下载成功 (exe: $NSIS_EXE_COUNT, sig: $NSIS_SIG_COUNT)"
-    else
-        echo "   ⚠️  NSIS 安装包下载失败 (exe: $NSIS_EXE_COUNT, sig: $NSIS_SIG_COUNT)"
-        if [ $NSIS_SIG_COUNT -eq 0 ]; then
-            echo "      提示: 未找到 .sig 签名文件，请检查构建是否正确生成签名"
-        fi
-    fi
-    
-    echo ""
-    echo "   下载 MSI 安装包..."
-    # 通过 SSH 列出文件
-    MSI_FILES=$(eval "$SSH_CMD $REMOTE_USER@$REMOTE_HOST \"cd \\\"$REMOTE_MSI_PATH\\\" 2>nul && dir /b 2>nul\"" 2>/dev/null | tr -d '\r')
-    
-    MSI_SUCCESS=0
-    MSI_MSI_COUNT=0
-    MSI_SIG_COUNT=0
-    
-    if [ -n "$MSI_FILES" ]; then
-        while IFS= read -r filename; do
-            if [ -n "$filename" ]; then
-                # 只下载 .msi 和 .sig 文件
-                if [[ "$filename" == *.msi* ]]; then
-                    # 使用 SSH type 命令传输文件
-                    eval "$SSH_CMD $REMOTE_USER@$REMOTE_HOST \"type \\\"$REMOTE_MSI_PATH\\$filename\\\"\"" > "$BUNDLE_DIR/msi/$filename" 2>/dev/null
-                    if [ $? -eq 0 ] && [ -s "$BUNDLE_DIR/msi/$filename" ]; then
-                        filesize=$(ls -lh "$BUNDLE_DIR/msi/$filename" | awk '{print $5}')
-                        echo "      ✅ $filename ($filesize)"
-                        
-                        # 统计下载的文件类型
-                        if [[ "$filename" == *".sig" ]]; then
-                            MSI_SIG_COUNT=$((MSI_SIG_COUNT + 1))
-                        else
-                            MSI_MSI_COUNT=$((MSI_MSI_COUNT + 1))
-                        fi
-                    else
-                        echo "      ❌ $filename (下载失败)"
-                    fi
-                fi
-            fi
-        done <<< "$MSI_FILES"
         
-        # 检查是否同时下载了 .msi 和 .sig
-        if [ $MSI_MSI_COUNT -gt 0 ] && [ $MSI_SIG_COUNT -gt 0 ]; then
-            MSI_SUCCESS=1
-        fi
-    fi
-    
-    if [ $MSI_SUCCESS -eq 1 ]; then
-        echo "   ✅ MSI 安装包下载成功 (msi: $MSI_MSI_COUNT, sig: $MSI_SIG_COUNT)"
-    else
-        echo "   ⚠️  MSI 安装包下载失败 (msi: $MSI_MSI_COUNT, sig: $MSI_SIG_COUNT)"
-        if [ $MSI_SIG_COUNT -eq 0 ]; then
-            echo "      提示: 未找到 .sig 签名文件，请检查构建是否正确生成签名"
-        fi
-    fi
-    
-    echo ""
-    
-    # 只要有一个成功就算成功
-    if [ $NSIS_SUCCESS -eq 1 ] || [ $MSI_SUCCESS -eq 1 ]; then
+        # 保存到临时文件供后续使用
+        echo "$UPLOAD_JSON" > /tmp/windows-upload-result.json
+        
+        echo ""
+        echo "   ✅ Windows 构建产物上传成功"
+        echo "   📊 上传结果已保存"
         return 0
     else
-        echo "   ❌ Windows 构建产物下载失败"
-        echo "   提示: 请检查远程路径是否正确"
-        echo "   NSIS: $REMOTE_NSIS_PATH"
-        echo "   MSI: $REMOTE_MSI_PATH"
+        echo ""
+        echo "   ❌ Windows 构建产物上传失败"
+        echo "   💡  请检查网络连接和 Gitea Token 权限"
         return 1
     fi
 }
@@ -1065,15 +1183,73 @@ fi
 
 # Windows x64 (NSIS) - Tauri 更新器优先使用 NSIS
 WINDOWS_SIG=""
-if [ -f "$BUNDLE_DIR/nsis/${APP_NAME}_${VERSION}_x64-setup.exe.sig" ]; then
-    WINDOWS_SIG=$(read_sig "$BUNDLE_DIR/nsis/${APP_NAME}_${VERSION}_x64-setup.exe.sig")
-    WINDOWS_FILE="${APP_NAME}_${VERSION}_x64-setup.exe"
-elif [ -f "$BUNDLE_DIR/nsis/${APP_NAME}-setup.exe.sig" ]; then
-    WINDOWS_SIG=$(read_sig "$BUNDLE_DIR/nsis/${APP_NAME}-setup.exe.sig")
-    WINDOWS_FILE="${APP_NAME}-setup.exe"
+WINDOWS_FILE=""
+WINDOWS_MSI_SIG=""
+WINDOWS_MSI_FILE=""
+
+# 检查是否有远程上传的 Windows 文件信息
+if [ -f "/tmp/windows-upload-result.json" ] && command -v jq &> /dev/null; then
+    echo "  🌐 使用远程 Windows 构建..."
+    
+    # 从上传结果中提取 NSIS 文件
+    NSIS_URL=$(jq -r '.[] | select(.name | contains("-setup.exe") and (contains(".sig") | not)) | .url' /tmp/windows-upload-result.json 2>/dev/null | head -1)
+    NSIS_SIG_URL=$(jq -r '.[] | select(.name | contains("-setup.exe.sig")) | .url' /tmp/windows-upload-result.json 2>/dev/null | head -1)
+    
+    if [ -n "$NSIS_URL" ] && [ -n "$NSIS_SIG_URL" ] && [ "$NSIS_URL" != "null" ] && [ "$NSIS_SIG_URL" != "null" ]; then
+        # 下载签名文件到本地以读取签名
+        TEMP_SIG="/tmp/nsis-temp.sig"
+        curl -s -H "Authorization: token $GITEA_TOKEN" "$NSIS_SIG_URL" -o "$TEMP_SIG" 2>/dev/null
+        
+        if [ -f "$TEMP_SIG" ] && [ -s "$TEMP_SIG" ]; then
+            WINDOWS_SIG=$(read_sig "$TEMP_SIG")
+            WINDOWS_FILE=$(basename "$NSIS_URL")
+            rm -f "$TEMP_SIG"
+            echo "      NSIS: $WINDOWS_FILE"
+        else
+            echo "      ⚠️  无法下载 NSIS 签名文件"
+            rm -f "$TEMP_SIG"
+        fi
+    fi
+    
+    # 从上传结果中提取 MSI 文件
+    MSI_URL=$(jq -r '.[] | select(.name | contains(".msi") and (contains(".sig") | not)) | .url' /tmp/windows-upload-result.json 2>/dev/null | head -1)
+    MSI_SIG_URL=$(jq -r '.[] | select(.name | contains(".msi.sig")) | .url' /tmp/windows-upload-result.json 2>/dev/null | head -1)
+    
+    if [ -n "$MSI_URL" ] && [ -n "$MSI_SIG_URL" ] && [ "$MSI_URL" != "null" ] && [ "$MSI_SIG_URL" != "null" ]; then
+        TEMP_MSI_SIG="/tmp/msi-temp.sig"
+        curl -s -H "Authorization: token $GITEA_TOKEN" "$MSI_SIG_URL" -o "$TEMP_MSI_SIG" 2>/dev/null
+        
+        if [ -f "$TEMP_MSI_SIG" ] && [ -s "$TEMP_MSI_SIG" ]; then
+            WINDOWS_MSI_SIG=$(read_sig "$TEMP_MSI_SIG")
+            WINDOWS_MSI_FILE=$(basename "$MSI_URL")
+            rm -f "$TEMP_MSI_SIG"
+            echo "      MSI: $WINDOWS_MSI_FILE"
+        else
+            echo "      ⚠️  无法下载 MSI 签名文件"
+            rm -f "$TEMP_MSI_SIG"
+        fi
+    fi
+else
+    # 使用本地构建文件
+    if [ -f "$BUNDLE_DIR/nsis/${APP_NAME}_${VERSION}_x64-setup.exe.sig" ]; then
+        WINDOWS_SIG=$(read_sig "$BUNDLE_DIR/nsis/${APP_NAME}_${VERSION}_x64-setup.exe.sig")
+        WINDOWS_FILE="${APP_NAME}_${VERSION}_x64-setup.exe"
+    elif [ -f "$BUNDLE_DIR/nsis/${APP_NAME}-setup.exe.sig" ]; then
+        WINDOWS_SIG=$(read_sig "$BUNDLE_DIR/nsis/${APP_NAME}-setup.exe.sig")
+        WINDOWS_FILE="${APP_NAME}-setup.exe"
+    fi
+    
+    # Windows x64 MSI (备用)
+    if [ -f "$BUNDLE_DIR/msi/${APP_NAME}_${VERSION}_x64.msi.sig" ]; then
+        WINDOWS_MSI_SIG=$(read_sig "$BUNDLE_DIR/msi/${APP_NAME}_${VERSION}_x64.msi.sig")
+        WINDOWS_MSI_FILE="${APP_NAME}_${VERSION}_x64.msi"
+    elif [ -f "$BUNDLE_DIR/msi/${APP_NAME}.msi.sig" ]; then
+        WINDOWS_MSI_SIG=$(read_sig "$BUNDLE_DIR/msi/${APP_NAME}.msi.sig")
+        WINDOWS_MSI_FILE="${APP_NAME}.msi"
+    fi
 fi
 
-if [ -n "$WINDOWS_SIG" ]; then
+if [ -n "$WINDOWS_SIG" ] && [ -n "$WINDOWS_FILE" ]; then
     [ $PLATFORM_COUNT -gt 0 ] && echo "," >> latest.json
     cat >> latest.json <<EOF
     "windows-x86_64": {
@@ -1085,18 +1261,8 @@ EOF
     PLATFORM_COUNT=$((PLATFORM_COUNT + 1))
 fi
 
-# Windows x64 MSI (备用)
-WINDOWS_MSI_SIG=""
-if [ -f "$BUNDLE_DIR/msi/${APP_NAME}_${VERSION}_x64.msi.sig" ]; then
-    WINDOWS_MSI_SIG=$(read_sig "$BUNDLE_DIR/msi/${APP_NAME}_${VERSION}_x64.msi.sig")
-    WINDOWS_MSI_FILE="${APP_NAME}_${VERSION}_x64.msi"
-elif [ -f "$BUNDLE_DIR/msi/${APP_NAME}.msi.sig" ]; then
-    WINDOWS_MSI_SIG=$(read_sig "$BUNDLE_DIR/msi/${APP_NAME}.msi.sig")
-    WINDOWS_MSI_FILE="${APP_NAME}.msi"
-fi
-
 # MSI 也添加到平台信息（作为额外的下载选项，但不用于自动更新）
-if [ -n "$WINDOWS_MSI_SIG" ]; then
+if [ -n "$WINDOWS_MSI_SIG" ] && [ -n "$WINDOWS_MSI_FILE" ]; then
     echo "  ✅ 找到 Windows x64 构建 (MSI): $WINDOWS_MSI_FILE"
 fi
 
@@ -1368,14 +1534,16 @@ if [ $SHOULD_UPLOAD -eq 1 ]; then
         upload_file "$BUNDLE_DIR/appimage/$LINUX_FILE.sig"
     fi
     
-    # 上传 Windows NSIS 文件
-    if [ -n "$WINDOWS_SIG" ]; then
+    # 上传 Windows NSIS 文件（仅当使用本地构建时）
+    if [ -n "$WINDOWS_SIG" ] && [ ! -f "/tmp/windows-upload-result.json" ]; then
         upload_file "$BUNDLE_DIR/nsis/$WINDOWS_FILE"
         upload_file "$BUNDLE_DIR/nsis/$WINDOWS_FILE.sig"
+    elif [ -f "/tmp/windows-upload-result.json" ]; then
+        echo "   ⏭️  跳过 Windows 文件上传（已在远程主机上传）"
     fi
     
-    # 上传 Windows MSI 文件（可选）
-    if [ -n "$WINDOWS_MSI_SIG" ]; then
+    # 上传 Windows MSI 文件（可选，仅当使用本地构建时）
+    if [ -n "$WINDOWS_MSI_SIG" ] && [ ! -f "/tmp/windows-upload-result.json" ]; then
         upload_file "$BUNDLE_DIR/msi/$WINDOWS_MSI_FILE"
         upload_file "$BUNDLE_DIR/msi/$WINDOWS_MSI_FILE.sig"
     fi
@@ -1469,4 +1637,12 @@ else
     echo "================================================"
     echo ""
 fi
+
+# ============================================
+# 清理临时文件
+# ============================================
+rm -f /tmp/windows-upload-result.json 2>/dev/null || true
+rm -f /tmp/nsis-temp.sig 2>/dev/null || true
+rm -f /tmp/msi-temp.sig 2>/dev/null || true
+rm -f /tmp/gitea-upload.ps1 2>/dev/null || true
 
