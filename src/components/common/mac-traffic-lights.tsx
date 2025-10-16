@@ -31,7 +31,7 @@ export const MacTrafficLights = React.memo(({ className }: MacTrafficLightsProps
       }
 
       // 根据位置判断是否显示 - 四个角落区域触发
-      const cornerSize = 60 // 角落触发区域大小
+      const cornerSize = 100 // 角落触发区域大小
       const windowWidth = window.innerWidth
       const windowHeight = window.innerHeight
       let shouldShow = false
