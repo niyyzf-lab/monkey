@@ -160,6 +160,9 @@ jobs:
           GITEA_URL: ${{ secrets.GITEA_URL }}
           GITEA_REPO: ${{ secrets.GITEA_REPO }}
         run: |
+          # 禁用通配符展开，防止 RELEASE_BODY 中的 * 被误解析
+          set -f
+          
           TAG_NAME="${{ steps.release_info.outputs.tag_name }}"
           RELEASE_NAME="${{ steps.release_info.outputs.name }}"
           RELEASE_BODY="${{ steps.release_info.outputs.body }}"
@@ -189,7 +192,7 @@ jobs:
           fi
           
           # 准备 JSON payload，正确处理多行内容
-          BODY_JSON=$(echo "$RELEASE_BODY" | jq -Rs .)
+          BODY_JSON=$(printf '%s' "$RELEASE_BODY" | jq -Rs .)
           
           # 创建新的 release
           echo "🚀 Creating new Gitea release..."

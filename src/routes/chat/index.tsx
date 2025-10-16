@@ -1,6 +1,7 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { useState } from 'react'
-import { Send } from 'lucide-react'
+import { useState, useEffect } from 'react'
+import { Send, MessageCircle } from 'lucide-react'
+import { motion } from 'motion/react'
 
 export const Route = createFileRoute('/chat/')({
   component: ChatPage,

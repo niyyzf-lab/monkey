@@ -221,6 +221,9 @@ jobs:
           echo "📋 步骤 2/4: 创建测试 Release"
           echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
           
+          # 禁用通配符展开，防止 RELEASE_BODY 中的 * 被误解析
+          set -f
+          
           RELEASE_BODY="## 🧪 这是一个测试 Release
 
           本 Release 由 GitHub Actions 自动创建，用于测试 Gitea Release 同步功能。
@@ -236,9 +239,16 @@ jobs:
           - [x] Release 创建
           - [x] 文件上传
           
-          > ⚠️ 这是一个测试 Release，可以安全删除。"
+          > ⚠️ 这是一个测试 Release，可以安全删除。
           
-          BODY_JSON=$(echo "$RELEASE_BODY" | jq -Rs .)
+          ### 📦 测试安装包格式
+          - **macOS (Apple Silicon)**: \`*_aarch64.dmg\` 或 \`*.app.tar.gz\`
+          - **macOS (Intel)**: \`*_x64.dmg\` 或 \`*.app.tar.gz\`
+          - **Windows**: \`*.msi\` 或 \`*.exe\`
+          
+          这些通配符用于测试 bash 脚本是否正确处理特殊字符。"
+          
+          BODY_JSON=$(printf '%s' "$RELEASE_BODY" | jq -Rs .)
           
           CREATE_RESPONSE=$(curl -s -w "\n%{http_code}" \
             -H "Authorization: token $GITEA_TOKEN" \
