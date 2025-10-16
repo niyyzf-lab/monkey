@@ -1,6 +1,98 @@
-# Tauri 自动更新 - Release 管理脚本
+# 脚本工具集
 
-这个脚本用于自动化 Tauri 应用的构建、打包和发布流程，支持自动上传到 Gitea Release。
+本目录包含项目开发和发布相关的自动化脚本。
+
+## 脚本列表
+
+### 1. update-version.sh - 交互式版本号更新脚本
+
+智能更新项目版本号，支持语义化版本控制（SemVer）。
+
+**使用方法**:
+```bash
+# 交互式选择版本号（推荐）
+bash scripts/update-version.sh
+
+# 或直接指定版本号
+bash scripts/update-version.sh 1.2.3
+
+# 添加执行权限后直接运行
+./scripts/update-version.sh
+```
+
+**功能特性**:
+- ✅ 自动读取当前版本号
+- ✅ 智能建议版本升级选项（补丁/次版本/主版本）
+- ✅ 支持自定义版本号
+- ✅ 同步更新 `tauri.conf.json` 和 `package.json`
+- ✅ 版本号格式验证
+- ✅ 更新后自动验证
+- ✅ 失败自动恢复备份
+- ✅ 彩色输出和友好提示
+- ✅ 提供后续操作建议
+
+**版本类型说明**:
+- **补丁版本 (Patch)**: `0.1.0` → `0.1.1` - 用于 Bug 修复、小改进
+- **次版本 (Minor)**: `0.1.0` → `0.2.0` - 用于新功能、向后兼容的更改
+- **主版本 (Major)**: `0.1.0` → `1.0.0` - 用于重大更新、破坏性更改
+
+**推荐工作流**:
+```bash
+# 1. 更新版本号
+./scripts/update-version.sh
+
+# 2. 提交更改
+git add .
+git commit -m "chore: bump version to 1.2.3"
+
+# 3. 创建标签（可选）
+git tag -a v1.2.3 -m "Release v1.2.3"
+
+# 4. 推送到远程
+git push origin main
+git push origin v1.2.3
+
+# 5. 同步到 release 分支触发构建
+./scripts/sync-to-release.sh
+```
+
+---
+
+### 2. sync-to-release.sh - 分支同步脚本
+
+将 `main` 分支的改动同步到 `release` 分支，触发自动构建和发布。
+
+**使用方法**:
+```bash
+# 在任意分支执行
+bash scripts/sync-to-release.sh
+
+# 或添加执行权限后直接运行
+./scripts/sync-to-release.sh
+```
+
+**功能特性**:
+- ✅ 自动检查工作目录状态
+- ✅ 拉取远程最新代码
+- ✅ 合并 main 到 release
+- ✅ 自动推送触发 CI/CD
+- ✅ 冲突提示和处理建议
+- ✅ 彩色输出和进度显示
+- ✅ 自动切换回原分支
+
+**工作流程**:
+1. 检查工作目录是否干净
+2. 切换到 main 并拉取最新代码
+3. 切换到 release 并拉取最新代码
+4. 合并 main 到 release
+5. 推送到远程 release 分支
+6. 触发 GitHub Actions 构建
+
+---
+
+### 3. create-release-json.sh - Release 管理脚本
+
+自动化 Tauri 应用的构建、打包和发布流程，支持自动上传到 Gitea Release。
 
 ## 功能特性
 
