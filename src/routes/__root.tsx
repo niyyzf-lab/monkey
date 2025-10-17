@@ -13,6 +13,7 @@ import { useEffect, useState } from 'react'
 import { useViewportHeight } from '../hooks/use-viewport-height'
 import { UpdaterProvider } from '../components/updater'
 import { useDeviceDetect } from '../hooks/use-device-detect'
+import { useAndroidBackButton } from '../hooks/use-android-back-button'
 
 export const Route = createRootRoute({
   component: RootLayout,
@@ -65,6 +66,9 @@ function RootLayoutContent() {
   
   // 初始化视口高度监听，修复移动端 100vh 问题
   useViewportHeight()
+  
+  // 监听 Android 返回键，触发网页历史记录返回
+  useAndroidBackButton()
   
   // 检测是否为 iOS 或 Android 设备
   const isMobileOS = isIOS || isAndroid

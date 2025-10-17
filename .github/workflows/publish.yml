@@ -123,12 +123,14 @@ jobs:
 
       - name: Setup Android NDK
         if: matrix.platform == 'ubuntu-latest' && steps.ndk-cache.outputs.cache-hit != 'true'
+        shell: bash
         run: |
           echo "📦 Downloading Android NDK..."
           sdkmanager "ndk;27.0.12077973"
 
       - name: Configure Android NDK environment
         if: matrix.platform == 'ubuntu-latest'
+        shell: bash
         run: |
           # Tauri 需要 NDK_HOME 环境变量
           echo "NDK_HOME=$ANDROID_HOME/ndk/27.0.12077973" >> $GITHUB_ENV
@@ -142,6 +144,7 @@ jobs:
 
       - name: Setup Android signing
         if: matrix.platform == 'ubuntu-latest'
+        shell: bash
         run: |
           cd src-tauri/gen/android
           echo "keyAlias=${{ secrets.ANDROID_KEY_ALIAS }}" > keystore.properties
@@ -197,6 +200,7 @@ jobs:
       # Android 使用 Tauri 的 android build 命令（仅 ARM64）
       - name: Build Android APK
         if: matrix.platform == 'ubuntu-latest'
+        shell: bash
         env:
           VITE_API_BASE_URL: ${{ secrets.VITE_API_BASE_URL || 'http://localhost:5678' }}
         run: |
@@ -246,6 +250,7 @@ jobs:
       # 实时同步到 Gitea（每个平台构建完成后立即执行）
       - name: Sync current platform to Gitea
         if: always() && (success() || failure())
+        shell: bash
         env:
           GITEA_TOKEN: ${{ secrets.GITEA_TOKEN }}
           GITEA_URL: ${{ secrets.GITEA_URL }}
@@ -422,12 +427,14 @@ jobs:
           fetch-depth: 0
 
       - name: Check and sync any missing files
+        shell: bash
         run: |
           echo "🔍 Checking for any missing files that weren't synced in real-time..."
           echo "ℹ️  Note: Most files should already be synced by individual platform jobs"
 
       - name: Get latest release info
         id: release_info
+        shell: bash
         run: |
           # 获取最新的 release 信息
           RELEASE_DATA=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
@@ -446,6 +453,7 @@ jobs:
           echo "EOF" >> $GITHUB_OUTPUT
 
       - name: Download release assets
+        shell: bash
         run: |
           mkdir -p release-assets
           
@@ -479,6 +487,7 @@ jobs:
           ls -lh release-assets/
 
       - name: Update URLs in JSON files
+        shell: bash
         env:
           TAG_NAME: ${{ steps.release_info.outputs.tag_name }}
           GITEA_URL: ${{ secrets.GITEA_URL }}
@@ -519,6 +528,7 @@ jobs:
           echo "✅ All JSON files updated successfully"
 
       - name: Create or update Gitea release
+        shell: bash
         env:
           GITEA_TOKEN: ${{ secrets.GITEA_TOKEN }}
           GITEA_URL: ${{ secrets.GITEA_URL }}
