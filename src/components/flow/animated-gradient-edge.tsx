@@ -6,8 +6,9 @@ import {
 } from '@xyflow/react'
 
 /**
- * 自定义动画渐变边组件
- * 带流动粒子效果的贝塞尔曲线连接线
+ * 优化的动画渐变边组件
+ * 更现代、简洁、专业的设计
+ * 用于模块之间的主要数据流连接
  */
 function AnimatedGradientEdgeComponent({
   id,
@@ -31,21 +32,46 @@ function AnimatedGradientEdgeComponent({
     targetPosition,
   })
 
-  // 为路径生成唯一 ID，供粒子动画使用
+  // 为路径生成唯一 ID，供渐变和动画使用
   const pathId = `path-${id}`
+  const gradientId = `gradient-${id}`
   
   // 获取标签文本
   const label = data?.label as string | undefined
 
   return (
     <>
-      {/* 背景发光层 */}
+      {/* 定义渐变 */}
+      <defs>
+        <linearGradient id={gradientId} x1="0%" y1="0%" x2="100%" y2="0%">
+          <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity="0.6" />
+          <stop offset="50%" stopColor="hsl(var(--primary))" stopOpacity="0.9" />
+          <stop offset="100%" stopColor="hsl(var(--primary))" stopOpacity="0.6" />
+        </linearGradient>
+      </defs>
+
+      {/* 外层发光 */}
       <path
         d={edgePath}
         fill="none"
-        stroke="hsl(var(--primary) / 0.3)"
-        strokeWidth={selected ? 8 : 6}
+        stroke="hsl(var(--primary) / 0.2)"
+        strokeWidth={selected ? 12 : 10}
+        strokeLinecap="round"
         style={{
+          filter: 'blur(6px)',
+          ...(style as React.CSSProperties),
+        }}
+      />
+
+      {/* 中层发光 */}
+      <path
+        d={edgePath}
+        fill="none"
+        stroke={`url(#${gradientId})`}
+        strokeWidth={selected ? 4 : 3}
+        strokeLinecap="round"
+        style={{
+          filter: 'blur(2px)',
           ...(style as React.CSSProperties),
         }}
       />
@@ -56,47 +82,49 @@ function AnimatedGradientEdgeComponent({
         d={edgePath}
         fill="none"
         stroke="hsl(var(--primary))"
-        strokeWidth={selected ? 3 : 2.5}
+        strokeWidth={selected ? 2.5 : 2}
+        strokeLinecap="round"
         style={{
-          transition: 'stroke-width 0.2s ease',
+          transition: 'all 0.2s ease',
           ...(style as React.CSSProperties),
         }}
         markerEnd={markerEnd}
       />
 
-      {/* 流动粒子动画 */}
-      {[0, 0.33, 0.66].map((offset, index) => (
+      {/* 流动光点动画 - 更少更精致 */}
+      {[0, 0.5].map((offset, index) => (
         <g key={`particle-${index}`}>
-          {/* 粒子发光效果 */}
+          {/* 光点外发光 */}
           <circle
-            r={selected ? 6 : 5}
-            fill="hsl(var(--primary) / 0.3)"
+            r={selected ? 5 : 4}
+            fill="hsl(var(--primary) / 0.4)"
+            style={{ filter: 'blur(3px)' }}
           >
             <animateMotion
-              dur="2.5s"
+              dur="3s"
               repeatCount="indefinite"
-              begin={`${offset * 2.5}s`}
+              begin={`${offset * 3}s`}
             >
               <mpath href={`#${pathId}`} />
             </animateMotion>
           </circle>
-          {/* 粒子核心 */}
+          {/* 光点核心 */}
           <circle
-            r={selected ? 3.5 : 3}
+            r={selected ? 2.5 : 2}
             fill="hsl(var(--primary))"
           >
             <animateMotion
-              dur="2.5s"
+              dur="3s"
               repeatCount="indefinite"
-              begin={`${offset * 2.5}s`}
+              begin={`${offset * 3}s`}
             >
               <mpath href={`#${pathId}`} />
             </animateMotion>
-            {/* 粒子的脉冲动画 */}
+            {/* 脉冲动画 */}
             <animate
-              attributeName="r"
-              values={selected ? "3.5;4.5;3.5" : "3;4;3"}
-              dur="1s"
+              attributeName="opacity"
+              values="0.6;1;0.6"
+              dur="1.5s"
               repeatCount="indefinite"
             />
           </circle>
@@ -115,12 +143,11 @@ function AnimatedGradientEdgeComponent({
             className="nodrag nopan"
           >
             <div
-              className="rounded-md px-2 py-1 text-xs font-medium shadow-md border transition-all"
+              className="rounded-full px-2.5 py-0.5 text-[10px] font-medium shadow-lg border backdrop-blur-md transition-all hover:scale-105"
               style={{
-                background: 'hsl(var(--card) / 0.95)',
-                color: 'hsl(var(--card-foreground))',
-                borderColor: 'hsl(var(--border))',
-                backdropFilter: 'blur(8px)',
+                background: 'hsl(var(--primary) / 0.15)',
+                color: 'hsl(var(--primary-foreground))',
+                borderColor: 'hsl(var(--primary) / 0.3)',
               }}
             >
               {label}

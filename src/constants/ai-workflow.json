@@ -6,7 +6,9 @@
       "position": { "x": 100, "y": 200 },
       "data": { 
         "label": "新闻触发器",
-        "description": "RSS 订阅财联社新闻"
+        "description": "RSS 订阅财联社新闻",
+        "nodeType": "module",
+        "functions": []
       }
     },
     {
@@ -15,7 +17,12 @@
       "position": { "x": 400, "y": 200 },
       "data": { 
         "label": "新闻分析AI",
-        "description": "分析新闻并总结200字"
+        "description": "分析新闻并总结200字",
+        "nodeType": "module",
+        "functions": [
+          { "id": "llm-1", "label": "LLM" },
+          { "id": "parser-1", "label": "解析器" }
+        ]
       }
     },
     {
@@ -24,7 +31,8 @@
       "position": { "x": 400, "y": 350 },
       "data": { 
         "label": "Ollama模型",
-        "model": "gpt-oss:120b"
+        "description": "gpt-oss:120b",
+        "nodeType": "function"
       }
     },
     {
@@ -33,7 +41,8 @@
       "position": { "x": 400, "y": 50 },
       "data": { 
         "label": "输出解析器",
-        "description": "结构化输出"
+        "description": "结构化输出",
+        "nodeType": "function"
       }
     },
     {
@@ -42,34 +51,43 @@
       "position": { "x": 700, "y": 200 },
       "data": { 
         "label": "选股AI",
-        "description": "提取关键词推荐股票"
+        "description": "提取关键词推荐股票",
+        "nodeType": "module",
+        "functions": [
+          { "id": "llm-2", "label": "LLM" },
+          { "id": "tool-1", "label": "选股工具" },
+          { "id": "mem-1", "label": "记忆" }
+        ]
       }
     },
     {
       "id": "ollama-model-2",
       "type": "llm-model",
-      "position": { "x": 700, "y": 350 },
+      "position": { "x": 700, "y": 370 },
       "data": { 
         "label": "Ollama模型2",
-        "model": "gpt-oss:120b"
+        "description": "gpt-oss:120b",
+        "nodeType": "function"
       }
     },
     {
       "id": "keyword-tool",
       "type": "tool",
-      "position": { "x": 700, "y": 50 },
+      "position": { "x": 620, "y": 370 },
       "data": { 
         "label": "关键字选股工具",
-        "description": "根据关键字查询股票"
+        "description": "根据关键字查询股票",
+        "nodeType": "function"
       }
     },
     {
       "id": "memory",
       "type": "memory",
-      "position": { "x": 850, "y": 350 },
+      "position": { "x": 780, "y": 370 },
       "data": { 
         "label": "记忆模块",
-        "description": "上下文记忆"
+        "description": "上下文记忆",
+        "nodeType": "function"
       }
     },
     {
@@ -78,34 +96,43 @@
       "position": { "x": 1000, "y": 200 },
       "data": { 
         "label": "决策AI",
-        "description": "决策是否买入"
+        "description": "决策是否买入",
+        "nodeType": "module",
+        "functions": [
+          { "id": "llm-3", "label": "LLM" },
+          { "id": "tool-2", "label": "买入" },
+          { "id": "tool-3", "label": "止盈止损" }
+        ]
       }
     },
     {
       "id": "ollama-model-3",
       "type": "llm-model",
-      "position": { "x": 1000, "y": 350 },
+      "position": { "x": 1000, "y": 370 },
       "data": { 
         "label": "Ollama模型3",
-        "model": "gpt-oss:120b"
+        "description": "gpt-oss:120b",
+        "nodeType": "function"
       }
     },
     {
       "id": "buy-tool",
       "type": "tool",
-      "position": { "x": 1000, "y": 50 },
+      "position": { "x": 920, "y": 370 },
       "data": { 
         "label": "买入工具",
-        "description": "执行买入操作"
+        "description": "执行买入操作",
+        "nodeType": "function"
       }
     },
     {
       "id": "tp-sl-tool",
       "type": "tool",
-      "position": { "x": 1150, "y": 50 },
+      "position": { "x": 1080, "y": 370 },
       "data": { 
         "label": "止盈止损工具",
-        "description": "设置止盈止损"
+        "description": "设置止盈止损",
+        "nodeType": "function"
       }
     }
   ],
@@ -121,18 +148,20 @@
     {
       "id": "e2",
       "source": "news-analyzer",
+      "sourceHandle": "llm-1",
       "target": "ollama-model-1",
-      "type": "smoothstep",
+      "type": "bezier",
       "animated": false,
-      "label": "使用LLM"
+      "label": ""
     },
     {
       "id": "e3",
       "source": "news-analyzer",
+      "sourceHandle": "parser-1",
       "target": "output-parser",
-      "type": "smoothstep",
+      "type": "bezier",
       "animated": false,
-      "label": "解析输出"
+      "label": ""
     },
     {
       "id": "e4",
@@ -145,26 +174,29 @@
     {
       "id": "e5",
       "source": "stock-selector-ai",
+      "sourceHandle": "llm-2",
       "target": "ollama-model-2",
-      "type": "smoothstep",
+      "type": "bezier",
       "animated": false,
-      "label": "使用LLM"
+      "label": ""
     },
     {
       "id": "e6",
       "source": "stock-selector-ai",
+      "sourceHandle": "tool-1",
       "target": "keyword-tool",
-      "type": "smoothstep",
+      "type": "bezier",
       "animated": false,
-      "label": "调用工具"
+      "label": ""
     },
     {
       "id": "e7",
       "source": "stock-selector-ai",
+      "sourceHandle": "mem-1",
       "target": "memory",
-      "type": "smoothstep",
+      "type": "bezier",
       "animated": false,
-      "label": "读写记忆"
+      "label": ""
     },
     {
       "id": "e8",
@@ -177,26 +209,29 @@
     {
       "id": "e9",
       "source": "decision-ai",
+      "sourceHandle": "llm-3",
       "target": "ollama-model-3",
-      "type": "smoothstep",
+      "type": "bezier",
       "animated": false,
-      "label": "使用LLM"
+      "label": ""
     },
     {
       "id": "e10",
       "source": "decision-ai",
+      "sourceHandle": "tool-2",
       "target": "buy-tool",
-      "type": "smoothstep",
+      "type": "bezier",
       "animated": false,
-      "label": "调用工具"
+      "label": ""
     },
     {
       "id": "e11",
       "source": "decision-ai",
+      "sourceHandle": "tool-3",
       "target": "tp-sl-tool",
-      "type": "smoothstep",
+      "type": "bezier",
       "animated": false,
-      "label": "调用工具"
+      "label": ""
     }
   ]
 }
