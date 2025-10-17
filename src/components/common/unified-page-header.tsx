@@ -1,8 +1,10 @@
 import { ReactNode, useState, useEffect } from 'react'
-import { Search, X } from 'lucide-react'
+import { Search, X, Menu } from 'lucide-react'
 import { Input } from '../ui/input'
 import { motion } from 'motion/react'
 import { cn } from '@/lib/utils'
+import { useSidebar } from '../sidebar'
+import { Button } from '../ui/button'
 
 interface SearchConfig {
   value: string
@@ -38,6 +40,7 @@ export function UnifiedPageHeader({
   className,
 }: UnifiedPageHeaderProps) {
   const [isScrolled, setIsScrolled] = useState(false)
+  const { setIsOpen, isMobile } = useSidebar()
 
   // 监听滚动，动态调整悬浮样式
   useEffect(() => {
@@ -92,7 +95,7 @@ export function UnifiedPageHeader({
         </motion.div>
       </div>
 
-      {/* 右侧：工具 + 搜索 */}
+      {/* 右侧：工具 + 搜索 + 菜单按钮（移动端） */}
       <motion.div
         initial={{ opacity: 0, x: 10 }}
         animate={{ opacity: 1, x: 0 }}
@@ -137,6 +140,25 @@ export function UnifiedPageHeader({
               </button>
             )}
           </div>
+        )}
+
+        {/* 移动端侧边栏打开按钮 - 放在最右侧 */}
+        {isMobile && (
+          <>
+            {/* 如果有搜索框或工具，添加分隔线 */}
+            {(tools || searchConfig) && (
+              <div className="h-6 w-px bg-border/50" />
+            )}
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setIsOpen(true)}
+              className="flex-shrink-0 h-9 w-9"
+              aria-label="打开侧边栏"
+            >
+              <Menu className="h-5 w-5" />
+            </Button>
+          </>
         )}
       </motion.div>
     </div>

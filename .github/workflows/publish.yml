@@ -23,6 +23,9 @@ jobs:
           - platform: 'windows-latest'
             args: ''
             target: 'x86_64-pc-windows-msvc'
+          - platform: 'ubuntu-latest' # for Android
+            args: '--target aarch64-linux-android'
+            target: 'aarch64-linux-android'
 
     runs-on: ${{ matrix.platform }}
     steps:
@@ -39,7 +42,7 @@ jobs:
         uses: dtolnay/rust-toolchain@stable
         with:
           # Those targets are only used on macos runners so it's in an `if` to slightly speed up windows builds.
-          targets: ${{ matrix.platform == 'macos-latest' && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
+          targets: ${{ matrix.platform == 'macos-latest' && 'aarch64-apple-darwin,x86_64-apple-darwin' || matrix.platform == 'ubuntu-latest' && 'aarch64-linux-android,armv7-linux-androideabi,i686-linux-android,x86_64-linux-android' || '' }}
 
       - name: Rust cache
         uses: swatinem/rust-cache@v2
@@ -67,6 +70,35 @@ jobs:
       - name: install frontend dependencies
         run: bun install
 
+      - name: Setup Android SDK
+        if: matrix.platform == 'ubuntu-latest'
+        uses: android-actions/setup-android@v3
+
+      - name: Install Java
+        if: matrix.platform == 'ubuntu-latest'
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Setup Android NDK
+        if: matrix.platform == 'ubuntu-latest'
+        run: |
+          sdkmanager "ndk;27.0.12077973"
+          echo "ANDROID_NDK_HOME=$ANDROID_HOME/ndk/27.0.12077973" >> $GITHUB_ENV
+
+      - name: Setup Android signing
+        if: matrix.platform == 'ubuntu-latest'
+        run: |
+          cd src-tauri/gen/android
+          echo "keyAlias=${{ secrets.ANDROID_KEY_ALIAS }}" > keystore.properties
+          echo "password=${{ secrets.ANDROID_KEY_PASSWORD }}" >> keystore.properties
+          base64 -d <<< "${{ secrets.ANDROID_KEY_BASE64 }}" > $RUNNER_TEMP/keystore.jks
+          echo "storeFile=$RUNNER_TEMP/keystore.jks" >> keystore.properties
+          
+          echo "✅ Android signing configured"
+          cat keystore.properties | sed 's/password=.*/password=***/'
+
       - name: Set environment variables for build
         shell: bash
         run: |
@@ -93,6 +125,7 @@ jobs:
           echo "- **macOS (Apple Silicon)**: 下载包含 \`aarch64\` 的 \`.dmg\` 或 \`.app.tar.gz\` 文件" >> $GITHUB_OUTPUT
           echo "- **macOS (Intel)**: 下载包含 \`x64\` 的 \`.dmg\` 或 \`.app.tar.gz\` 文件" >> $GITHUB_OUTPUT
           echo "- **Windows**: 下载 \`.msi\` 或 \`.exe\` 安装文件" >> $GITHUB_OUTPUT
+          echo "- **Android**: 下载 \`.apk\` 文件" >> $GITHUB_OUTPUT
           echo "" >> $GITHUB_OUTPUT
           echo "### 🔄 自动更新" >> $GITHUB_OUTPUT
           echo "" >> $GITHUB_OUTPUT

@@ -5,6 +5,7 @@ import { CoolMode } from "@/components/ui/cool-mode"
 import { MacTrafficLights } from "@/components/common/mac-traffic-lights"
 import { useSidebar } from "./sidebar-context"
 import { resetMenuItemCounter } from "./sidebar-menu"
+import { useDeviceDetect } from "@/hooks/use-device-detect"
 
 interface SidebarProps extends React.HTMLAttributes<HTMLDivElement> {}
 
@@ -12,11 +13,15 @@ interface SidebarProps extends React.HTMLAttributes<HTMLDivElement> {}
 export const Sidebar = React.memo(React.forwardRef<HTMLDivElement, SidebarProps>(
   ({ className, children }, ref) => {
     const { isOpen, isMobile } = useSidebar()
+    const { isIOS, isAndroid } = useDeviceDetect()
     
     // 每次渲染时重置菜单项计数器
     React.useEffect(() => {
       resetMenuItemCounter()
     })
+    
+    // 检测是否为移动操作系统
+    const isMobileOS = isIOS || isAndroid
     
     // 计算侧边栏宽度：大屏220px，中屏72px（仅图标），小屏220px（悬浮）
     const getWidth = () => {
@@ -32,15 +37,21 @@ export const Sidebar = React.memo(React.forwardRef<HTMLDivElement, SidebarProps>
         <motion.div
           ref={ref}
           className={cn(
-            "flex h-full flex-col bg-sidebar/95 backdrop-blur-xl border-r border-sidebar-border",
+            "flex h-full flex-col bg-sidebar/95 backdrop-blur-xl",
             "overflow-hidden shadow-lg select-none relative",
-            isMobile && "fixed top-0 left-0 z-50 h-screen-safe",
+            // 桌面端：左侧边框
+            !isMobile && "border-r border-sidebar-border",
+            // 移动端：固定在右侧，左侧边框
+            isMobile && "fixed top-0 right-0 z-50 h-screen-safe border-l border-sidebar-border",
             className
           )}
+          style={{
+            paddingTop: isMobileOS && isMobile ? '20px' : '0'
+          }}
           animate={{
             width: getWidth(),
             opacity: isMobile ? (isOpen ? 1 : 0) : 1,
-            x: isMobile && !isOpen ? -220 : 0,
+            x: isMobile && !isOpen ? 220 : 0,
           }}
           transition={{
             width: {

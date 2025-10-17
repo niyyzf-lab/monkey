@@ -1,84 +1,139 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { motion } from 'motion/react'
-import { Circle } from 'lucide-react'
-import { useMemo } from 'react'
+import { useCallback } from 'react'
 import {
-  MarketPulseCard,
-  MarketSentimentCard,
-  FundFlowCard,
-  LimitStatsCard,
-  HotSectorsCard,
-} from '@/components/feel'
-import { MOCK_MARKET_DATA, ANIMATION_DELAYS } from '@/constants/market-config'
+  ReactFlow,
+  Background,
+  addEdge,
+  useNodesState,
+  useEdgesState,
+  type Connection,
+  type Edge,
+  BackgroundVariant,
+} from '@xyflow/react'
+import '@xyflow/react/dist/style.css'
 import { UnifiedPageHeader } from '@/components/common/unified-page-header'
 
 export const Route = createFileRoute('/feel/')({
   component: FeelPage,
 })
 
+// 初始节点
+const initialNodes = [
+  {
+    id: '1',
+    type: 'default',
+    position: { x: 250, y: 100 },
+    data: { label: '猴园儿画布' },
+    style: {
+      background: 'hsl(var(--card))',
+      color: 'hsl(var(--card-foreground))',
+      border: '1px solid hsl(var(--border))',
+      borderRadius: '8px',
+      padding: '12px 24px',
+      fontSize: '14px',
+      fontWeight: '500',
+    },
+  },
+]
+
+// 初始边
+const initialEdges: Edge[] = []
+
 /**
- * 观猴感页面 - 市场概览
- * 展示市场指数、情绪、资金流向和热门板块
+ * 猴园儿页面 - React Flow 画布
+ * 提供一个基础的可视化编辑画布，完美支持暗黑模式
  */
 function FeelPage() {
-  // 使用 useMemo 缓存时间计算，避免不必要的重渲染
-  const currentTime = useMemo(() => {
-    return new Date().toLocaleTimeString('zh-CN')
-  }, [])
+  const [nodes, , onNodesChange] = useNodesState(initialNodes)
+  const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges)
+
+  const onConnect = useCallback(
+    (connection: Connection) => {
+      setEdges((eds) => addEdge(connection, eds))
+    },
+    [setEdges]
+  )
 
   return (
-    <div className="h-full overflow-y-auto bg-background">
+    <div className="h-full flex flex-col bg-background">
       {/* 页面标题 - 统一标题栏（浮动） */}
       <UnifiedPageHeader
         title="猴园儿"
-        subtitle="观猴感主界面"
+        subtitle="可视化画布"
       />
       
-      <div className="max-w-[1600px] mx-auto p-4 lg:p-6 xl:p-8 space-y-6 lg:space-y-8">
-
-        {/* 杂志式布局 */}
-        <div className="space-y-4 lg:space-y-6">
-          {/* 第一行：主卡片（市场脉搏）+ 次要卡片组 */}
-          <div className="grid grid-cols-1 lg:grid-cols-5 gap-4 lg:gap-6">
-            {/* 主卡片 - 市场脉搏 (60%) */}
-            <MarketPulseCard 
-              mainIndex={MOCK_MARKET_DATA.mainIndex}
-              subIndices={MOCK_MARKET_DATA.subIndices}
-            />
-
-            {/* 次要卡片组 (40%) */}
-            <div className="lg:col-span-2 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-4 lg:gap-6">
-              {/* 市场温度 */}
-              <MarketSentimentCard sentiment={MOCK_MARKET_DATA.sentiment} />
-
-              {/* 资金罗盘 */}
-              <FundFlowCard fundFlow={MOCK_MARKET_DATA.fundFlow} />
-            </div>
-          </div>
-
-          {/* 第二行：涨跌停数据 */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 lg:gap-6">
-            <LimitStatsCard stats={MOCK_MARKET_DATA.limitStats} />
-          </div>
-
-          {/* 第三行：热门板块 */}
-          <HotSectorsCard sectors={MOCK_MARKET_DATA.hotSectors} />
-        </div>
-
-        {/* 极简页脚 */}
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: ANIMATION_DELAYS.FOOTER }}
-          className="text-center text-xs text-muted-foreground/50 pt-6 lg:pt-8 pb-4 border-t border-border"
+      {/* React Flow 画布 */}
+      <div className="flex-1 w-full react-flow-dark-mode">
+        <ReactFlow
+          nodes={nodes}
+          edges={edges}
+          onNodesChange={onNodesChange}
+          onEdgesChange={onEdgesChange}
+          onConnect={onConnect}
+          fitView
+          className="bg-background"
+          defaultEdgeOptions={{
+            style: { 
+              stroke: 'hsl(var(--primary))',
+              strokeWidth: 2,
+            },
+            animated: true,
+          }}
         >
-          <div className="flex items-center justify-center gap-2">
-            <Circle className="w-1 h-1 fill-current" />
-            <span>实时更新于 {currentTime}</span>
-            <Circle className="w-1 h-1 fill-current" />
-          </div>
-        </motion.div>
+          <Background 
+            variant={BackgroundVariant.Dots} 
+            gap={16} 
+            size={1}
+            className="bg-background [&>*]:stroke-muted-foreground/20"
+          />
+        </ReactFlow>
       </div>
+      
+      <style>{`
+        /* React Flow 暗黑模式优化 */
+        .react-flow-dark-mode .react-flow__node {
+          background: hsl(var(--card));
+          color: hsl(var(--card-foreground));
+          border: 1px solid hsl(var(--border));
+        }
+        
+        .react-flow-dark-mode .react-flow__node.selected {
+          box-shadow: 0 0 0 2px hsl(var(--ring));
+        }
+        
+        .react-flow-dark-mode .react-flow__edge-path {
+          stroke: hsl(var(--primary));
+        }
+        
+        .react-flow-dark-mode .react-flow__edge.selected .react-flow__edge-path {
+          stroke: hsl(var(--ring));
+        }
+        
+        .react-flow-dark-mode .react-flow__handle {
+          background: hsl(var(--primary));
+          border: 2px solid hsl(var(--background));
+        }
+        
+        .react-flow-dark-mode .react-flow__handle-connecting {
+          background: hsl(var(--ring));
+        }
+        
+        .react-flow-dark-mode .react-flow__handle-valid {
+          background: hsl(var(--primary));
+        }
+        
+        /* 选择框优化 */
+        .react-flow-dark-mode .react-flow__selection {
+          background: hsl(var(--primary) / 0.1);
+          border: 1px solid hsl(var(--primary));
+        }
+        
+        /* 节点工具栏优化 */
+        .react-flow-dark-mode .react-flow__nodesselection-rect {
+          fill: hsl(var(--primary) / 0.05);
+          stroke: hsl(var(--primary));
+        }
+      `}</style>
     </div>
   )
 }

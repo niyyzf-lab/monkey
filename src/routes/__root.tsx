@@ -12,6 +12,7 @@ import { Settings, HatGlasses, Banana, HandMetal, MessageSquareHeart, Brain, Unl
 import { useEffect, useState } from 'react'
 import { useViewportHeight } from '../hooks/use-viewport-height'
 import { UpdaterProvider } from '../components/updater'
+import { useDeviceDetect } from '../hooks/use-device-detect'
 
 export const Route = createRootRoute({
   component: RootLayout,
@@ -60,9 +61,13 @@ function RootLayoutContent() {
   const location = useLocation()
   const [activeItem, setActiveItem] = useState('/')
   const { isOpen, setIsOpen, isMobile } = useSidebar()
+  const { isIOS, isAndroid } = useDeviceDetect()
   
   // 初始化视口高度监听，修复移动端 100vh 问题
   useViewportHeight()
+  
+  // 检测是否为 iOS 或 Android 设备
+  const isMobileOS = isIOS || isAndroid
 
   // 根据当前路径设置活跃状态
   useEffect(() => {
@@ -92,7 +97,7 @@ function RootLayoutContent() {
 
   return (
       <motion.div 
-        className="min-h-screen-safe relative overflow-hidden"
+        className="h-screen-safe relative overflow-hidden"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ 
@@ -102,7 +107,12 @@ function RootLayoutContent() {
       >
         {/* <div className='absolute top-0 left-0 w-screen h-8 z-50 select-none' data-tauri-drag-region></div> */}
         
-        <div className="flex h-screen-safe relative">
+        <div 
+          className="flex h-full relative" 
+          style={{ 
+            paddingTop: isMobileOS ? '20px' : '0'
+          }}
+        >
           {/* 侧边栏 */}
           <Sidebar>
             <SidebarMenu>

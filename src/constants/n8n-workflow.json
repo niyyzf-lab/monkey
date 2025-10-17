@@ -1,0 +1,986 @@
+{
+  "nodes": [
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyMinute"
+            }
+          ]
+        },
+        "feedUrl": "http://simulator-rsshub-1:1200/cls/depth/1000"
+      },
+      "type": "n8n-nodes-base.rssFeedReadTrigger",
+      "typeVersion": 1,
+      "position": [
+        336,
+        432
+      ],
+      "id": "002ab9da-2ad6-4b20-95b0-f1a3c352446b",
+      "name": "财联社头条"
+    },
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyMinute"
+            }
+          ]
+        },
+        "feedUrl": "http://simulator-rsshub-1:1200/cls/depth/1003"
+      },
+      "type": "n8n-nodes-base.rssFeedReadTrigger",
+      "typeVersion": 1,
+      "position": [
+        336,
+        624
+      ],
+      "id": "a41ecfae-2cd6-4d9e-89c5-ce4a212c4ff5",
+      "name": "财联社A股"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "10f12b89-3287-40af-a8ea-4cb8c52dc157",
+              "name": "author",
+              "value": "={{ $json.author }}",
+              "type": "string"
+            },
+            {
+              "id": "1a2b84b2-ca35-47da-8def-8b0dd4eafbbc",
+              "name": "link",
+              "value": "={{ $json.link }}",
+              "type": "string"
+            },
+            {
+              "id": "bf03219b-1650-4282-97e2-93419bd4bacb",
+              "name": "title",
+              "value": "={{ $json.title }}",
+              "type": "string"
+            },
+            {
+              "id": "07fb302b-e6b2-4642-a773-cc7da5714b3f",
+              "name": "contentSnippet",
+              "value": "={{ $json.contentSnippet }}",
+              "type": "string"
+            },
+            {
+              "id": "e4ebd5a3-ad6c-4288-852d-dc081aa90db3",
+              "name": "isoDate",
+              "value": "={{ $json.isoDate }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        560,
+        624
+      ],
+      "id": "c366f5e2-3dea-46db-92ee-b85c6131b38d",
+      "name": "Edit Fields"
+    },
+    {
+      "parameters": {
+        "model": "gpt-oss:120b",
+        "options": {
+          "format": "default"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOllama",
+      "typeVersion": 1,
+      "position": [
+        1680,
+        944
+      ],
+      "id": "9dc1c528-85a7-4b79-90f3-870be7e6d988",
+      "name": "Ollama Chat Model",
+      "credentials": {
+        "ollamaApi": {
+          "id": "3zvkHT1AOsZ2Ci5B",
+          "name": "Ollama account"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "type": "@n8n/n8n-nodes-langchain.toolCalculator",
+      "typeVersion": 1,
+      "position": [
+        1936,
+        944
+      ],
+      "id": "6a443291-d8d0-437e-8985-869898c4d43c",
+      "name": "Calculator"
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "recommended_stocks",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [
+        2496,
+        720
+      ],
+      "id": "c8968472-9b2e-4098-a157-a0468bddb1d9",
+      "name": "Split Out"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=这是一篇{{ $json.author }}编写的文章，我需要你仔细阅读文章并总结200字左右,如果内容完全无法对A股市场没有任何影响，你需要直接标记跳过，如果跳过需要提供原因，阅读【{{ $json.title }}】 {{ $json.contentSnippet }}",
+        "hasOutputParser": true,
+        "batching": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.7,
+      "position": [
+        784,
+        416
+      ],
+      "id": "da79813d-5b01-418a-a404-7717a71d2dc1",
+      "name": "Basic LLM Chain"
+    },
+    {
+      "parameters": {
+        "model": "gpt-oss:120b",
+        "options": {
+          "keepAlive": "30m"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOllama",
+      "typeVersion": 1,
+      "position": [
+        864,
+        848
+      ],
+      "id": "e42814c1-c285-4f00-9495-c191ca19f7ff",
+      "name": "Ollama Chat Model1",
+      "credentials": {
+        "ollamaApi": {
+          "id": "3zvkHT1AOsZ2Ci5B",
+          "name": "Ollama account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsonSchemaExample": "{\n  \"summary\": \"加州...\",\n  \"skip\":true,\n  \"cause\":\"...\"\n}",
+        "autoFix": true
+      },
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.3,
+      "position": [
+        864,
+        640
+      ],
+      "id": "c062672d-5987-4ca4-8c34-45a3c4f7f357",
+      "name": "Structured Output Parser1"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "964e6545-eabf-4d7e-a27b-9c11c13e37f3",
+              "leftValue": "={{ $json.output.skip }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1232,
+        624
+      ],
+      "id": "88bc385f-a6af-4c6c-91f4-ec12cd13b986",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=你是一名专业的 A 股新闻分析师，正在参与一个 AI 炒股项目。你的职责是根据新闻内容，从中提取具有炒作潜力的关键词，并调用我们提供的工具，推荐可能受益的 A 股主板股票。\n\n---\n\n【新闻】\n标题：{{ $json.title }}\n作者：{{ $json.author }}\n简述：{{ $json.summary }}\n\n---\n\n## 核心任务\n分析上述新闻，从中识别与市场炒作、政策导向、产业链联动或情绪题材相关的关键词（至少1个，不超过2个）。  \n使用这些关键词调用我们提供的股票查询工具，获取潜在受益股票。  \n根据查询结果输出最多5只具有短线炒作价值的 A 股主板股票。  \n\n⚠️ **请严格遵守以下约束条件：**\n- 最多允许调用工具 **5 次**（超过则立即停止）。\n- 每次调用前记录当前尝试次数。\n- 每个关键词仅调用一次。\n- 如果 5 次后仍无结果，必须直接输出空列表，不再进行任何调用。\n- 不允许无限循环或重复查询。\n\n---\n\n## 分析流程\n\n### ① 新闻关键词提取\n从新闻中提炼 1~2 个与本公司或行业强相关的关键词，关键词需具备"炒作潜力"，类别包括但不限于：\n- 上下游公司或供应链相关词（如：特斯拉、歌尔股份、宁德时代）\n- 产品、技术、原材料、设备（如：光伏组件、GPU、AI芯片、磷酸铁锂）\n- 行业/主题/概念类（如：新能源、AI算力、军工、半导体、医药）\n- 政策与监管事件（如：发改委、国家药监局、中标、并购、限电）\n- 人物/舆情类（如：特朗普、胡海峰、温家宝家族）\n\n### ② 工具调用逻辑\n- 使用关键词依次调用我们提供的股票数据工具；\n- 每次调用后，记录：\n  - 调用关键词；\n  - 当前调用次数；\n  - 是否有结果；\n- 如果有股票数据，直接进入筛选；\n- 如果无数据，换下一个关键词；\n- 当调用次数 ≥ 5 时，无论是否有结果，必须立即停止。\n\n### ③ 推荐筛选标准\n- **重大事件驱动**：政策利好、国际形势、地缘风险、自然灾害\n- **情绪炒作逻辑**：热点新闻、影视事件、舆情传播、谐音题材\n- **产业链联动**：上下游受益企业、同题材概念股\n- **短线逻辑**：具备市场热度或资金推动迹象\n- 推荐数量：最多5只，至少1只（如实无数据，则空列表）\n\n---\n\n## 输出格式（必须严格为以下 JSON 格式）\n\n```json\n{\n  \"recommended_stocks\": [\n    {\n      \"stock_code\": \"603337\",\n      \"company_name\": \"和而泰\",\n      \"market_cap\": \"中盘\",\n      \"logic_path\": \"典型概念龙头，已多次涨停，受摩尔线程题材直接驱动\",\n      \"recommendation_reason\": \"概念龙头，涨停后仍有继续拉升空间，短线可跟进\",\n      \"upside_probability\": 9\n    }\n  ]\n}",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2.2,
+      "position": [
+        1808,
+        720
+      ],
+      "id": "ef4392d3-867c-49f8-ac4f-c2996a1bd955",
+      "name": "选股AI"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        1456,
+        528
+      ],
+      "id": "876d50e9-e3ad-4294-9e44-b24fd27eff77",
+      "name": "No Operation, do nothing",
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "4b610a60-b791-4c10-9e6e-a3c878a0ca81",
+              "name": "summary",
+              "value": "={{ $('Basic LLM Chain').item.json.output.summary }}",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        2720,
+        720
+      ],
+      "id": "0171aa9a-6e96-43e3-9330-2555cb0eaef4",
+      "name": "Edit Fields1"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "e760d775-5652-406e-922b-323422a556e8",
+              "name": "summary",
+              "value": "={{ $json.output.summary }}",
+              "type": "string"
+            },
+            {
+              "id": "56d81644-6a97-4782-967b-9e0efdd41a6a",
+              "name": "author",
+              "value": "={{ $('Edit Fields').item.json.author }}",
+              "type": "string"
+            },
+            {
+              "id": "e50bb729-b9fe-42cb-be55-f5f7b58f4f4f",
+              "name": "title",
+              "value": "={{ $('Edit Fields').item.json.title }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1456,
+        720
+      ],
+      "id": "a02b2538-cc22-479c-b22d-18ee1679e5e2",
+      "name": "Edit Fields2"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [
+        2944,
+        720
+      ],
+      "id": "aa61896f-a00e-4c82-9019-1a8b05810072",
+      "name": "获取总结"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=现在你可以调用买入模块来买入，我有且暂时只会提供这些数据，直接通过这些数据来判断是否买入，如果你认为可以买就调用工具进行买入， 新闻来源[{{ $json.summary }}],关联股票：[{{ $json.stock_code }}/{{ $json.company_name }}],预判断：{{ $json.recommendation_reason }}，估分(满分10分)：{{ $json.upside_probability }}分。现在为测试阶段你可直接进行买入，而不用担心任何风险，暂时不需要考虑任何持仓信息 并且如果你是第一次购买,你必须进行止盈止损设置，你将全权进行操作，而不是询问我\n{{ $json.content }}",
+        "options": {
+          "systemMessage": "你是一位 专业的 A 股投资者，你会持续接收来自不同模块的信息，包括但不限于：\n1.新闻模块：新闻分析师根据时事新闻推荐可能相关的股票。\n2.持仓模块：展示你当前的持仓情况。\n3.盯盘模块：当持仓出现异动时推送提醒。\n4.经验模块：基于你的历史交易记录总结经验与教训，供你参考。\n\n你的任务是根据这些信息进行投资决策，例如：买入、卖出、加仓、止损，或者选择 不操作。\n请注意：\n•在股市中，很多时候正确的决策就是 不进行任何操作。\n•作为 AI 模块，你切忌因为"必须输出"而硬给出操作建议。\n•如果你认为当前不是合适的操作时机，请明确选择 不操作。\n•如果你觉得需要额外的信息，请主动提出，并要求我们增加相应的模块。\n•随着时间的推移，你会收到非常多模块的信息，请在交易过程中为各个模块的内容在心里设定一个权重，因为有些模块可能存在噪音或错误信息。\n\n为了保证家里的猫能够吃上猫粮，请务必小心谨慎，确保每一步决策都尽量正确；\n一旦你做出错误的决策，猫就会挨饿。"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2.2,
+      "position": [
+        3904,
+        720
+      ],
+      "id": "4b46c452-0ebb-449d-908b-51ff3c2b2677",
+      "name": "决策AI"
+    },
+    {
+      "parameters": {
+        "model": "gpt-oss:120b",
+        "options": {
+          "keepAlive": "30m"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOllama",
+      "typeVersion": 1,
+      "position": [
+        3840,
+        944
+      ],
+      "id": "5b156f08-5f5c-4e61-b4ce-f8cb4020015c",
+      "name": "Ollama Chat Model3",
+      "credentials": {
+        "ollamaApi": {
+          "id": "3zvkHT1AOsZ2Ci5B",
+          "name": "Ollama account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "={{ $json.title }}",
+        "contextWindowLength": 10
+      },
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.3,
+      "position": [
+        1808,
+        944
+      ],
+      "id": "37b99447-de1f-49ca-a43f-76cc62a61cc3",
+      "name": "Simple Memory"
+    },
+    {
+      "parameters": {
+        "description": "Use this tool to select stocks by passing keywords, all and mode, the more keywords there are, the fewer keywords",
+        "workflowId": {
+          "__rl": true,
+          "value": "ZNgXyJoFdSp8tQWD",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/ZNgXyJoFdSp8tQWD",
+          "cachedResultName": "关键字选股"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "list": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('list', `输入n个关键字,使用逗号分隔`, 'string') }}"
+          },
+          "matchingColumns": [
+            "list"
+          ],
+          "schema": [
+            {
+              "id": "list",
+              "displayName": "list",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "typeVersion": 2.2,
+      "position": [
+        2064,
+        944
+      ],
+      "id": "1b9f20fd-4478-4b73-9688-ee4cde919804",
+      "name": "Call 'Keyword stock selection"
+    },
+    {
+      "parameters": {
+        "jsCode": "const str=JSON.parse($input.all()[0].json.output);\nreturn str;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2272,
+        720
+      ],
+      "id": "abae6dfa-5a26-4ca1-ba00-57bff074f95a",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "description": "The purchase of shares can be made using this tool",
+        "workflowId": {
+          "__rl": true,
+          "value": "KR9qpUsqE2Fkoo7p",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/KR9qpUsqE2Fkoo7p",
+          "cachedResultName": "买入工具"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Quantity": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Quantity', `买入数量`, 'number') }}",
+            "Price": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Price', `买入价格`, 'number') }}",
+            "Notes": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('Notes', `买入记录`, 'string') }}",
+            "StockName": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('StockName', `股票名称`, 'string') }}",
+            "StockCode": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('StockCode', `六位纯数字股票代码`, 'string') }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "StockCode",
+              "displayName": "StockCode",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "StockName",
+              "displayName": "StockName",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "Quantity",
+              "displayName": "Quantity",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "number"
+            },
+            {
+              "id": "Price",
+              "displayName": "Price",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "number"
+            },
+            {
+              "id": "Notes",
+              "displayName": "Notes",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string"
+            },
+            {
+              "id": "SellPrice",
+              "displayName": "SellPrice",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": true
+            },
+            {
+              "id": "ForceSellPrice",
+              "displayName": "ForceSellPrice",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "typeVersion": 2.2,
+      "position": [
+        4096,
+        944
+      ],
+      "id": "caaba8f2-2545-4981-82ea-f634ae977781",
+      "name": "BuyTool"
+    },
+    {
+      "parameters": {
+        "url": "=https://api.biyingapi.com/hsstock/real/time/{{ $json.stock_code }}/28807C11-1C32-415A-AB32-115CA9B62FC3",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        3168,
+        720
+      ],
+      "id": "0593bb25-bbe8-45c1-8577-073d534d4b35",
+      "name": "HTTP Request"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const formatText = ({\n  p, o, h, l, yc, cje, v, pv, t, ud, pc, zf, pe, tr, pb_ratio, tv\n}) => \n`股票数据 ${t}\n最新价: ${p}元 涨跌: ${ud}元(${pc.toFixed(2)}%)\n振幅: ${zf.toFixed(2)}% 换手: ${tr.toFixed(2)}%\n市盈率: ${pe}倍 市净率: ${pb_ratio}倍\n成交额: ${(cje / 100000000).toFixed(2)}亿元 成交量: ${(v / 10000).toFixed(2)}万手`;\n\nreturn {content:formatText($input.item.json)};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3392,
+        720
+      ],
+      "id": "245e3e4a-706b-4543-ad25-0f567d2869a3",
+      "name": "Code in JavaScript1"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "4b610a60-b791-4c10-9e6e-a3c878a0ca81",
+              "name": "summary",
+              "value": "={{ $('Basic LLM Chain').item.json.output.summary }}",
+              "type": "string"
+            },
+            {
+              "id": "fd9e37f9-5f7d-4d08-b43c-b4c5eadd3e7e",
+              "name": "stock_code",
+              "value": "={{ $('Edit Fields1').item.json.stock_code }}",
+              "type": "string"
+            },
+            {
+              "id": "71bca931-5daa-496e-bf03-0f879ccdf4ec",
+              "name": "company_name",
+              "value": "={{ $('Edit Fields1').item.json.company_name }}",
+              "type": "string"
+            },
+            {
+              "id": "69c94ec6-8d4c-43e7-9b2a-839396db44f4",
+              "name": "market_cap",
+              "value": "={{ $('Edit Fields1').item.json.market_cap }}",
+              "type": "string"
+            },
+            {
+              "id": "e681a9e5-805a-4423-9da4-46667a4cb25e",
+              "name": "logic_path",
+              "value": "={{ $('Edit Fields1').item.json.logic_path }}",
+              "type": "string"
+            },
+            {
+              "id": "d69150e7-acd1-4b73-9272-670a103a8f50",
+              "name": "recommendation_reason",
+              "value": "={{ $('Edit Fields1').item.json.recommendation_reason }}",
+              "type": "string"
+            },
+            {
+              "id": "63257db6-845f-45fd-a360-6eec46a55798",
+              "name": "upside_probability",
+              "value": "={{ $('Edit Fields1').item.json.upside_probability }}",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        3616,
+        720
+      ],
+      "id": "5e279fed-d778-4735-a2d9-4d999f03086c",
+      "name": "Edit Fields3"
+    },
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyMinute"
+            }
+          ]
+        },
+        "feedUrl": "http://simulator-rsshub-1:1200/cls/depth/1135"
+      },
+      "type": "n8n-nodes-base.rssFeedReadTrigger",
+      "typeVersion": 1,
+      "position": [
+        336,
+        816
+      ],
+      "id": "89daed40-50c5-4ef4-b184-d9e5d74ab650",
+      "name": "财联社港股"
+    },
+    {
+      "parameters": {
+        "description": "Use this tool to set the TP-SL price for a specified stock",
+        "workflowId": {
+          "__rl": true,
+          "value": "MXYTnINGhMprroBb",
+          "mode": "list",
+          "cachedResultUrl": "/workflow/MXYTnINGhMprroBb",
+          "cachedResultName": "止盈止损设置工具"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "StockCode": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('StockCode', `6位纯数字股票代码`, 'string') }}",
+            "ForceSellPrice": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('ForceSellPrice', `强制止损平仓价格,格式：0.2 比例价格 则为(1.2*购入价格)`, 'number') }}",
+            "SellPrice": "={{ /*n8n-auto-generated-fromAI-override*/ $fromAI('SellPrice', `止盈价格,格式：0.2 比例价格 则为 (0.8*购入价格)`, 'number') }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "StockCode",
+              "displayName": "StockCode",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            },
+            {
+              "id": "SellPrice",
+              "displayName": "SellPrice",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "number",
+              "removed": false
+            },
+            {
+              "id": "ForceSellPrice",
+              "displayName": "ForceSellPrice",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "number",
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "typeVersion": 2.2,
+      "position": [
+        3968,
+        944
+      ],
+      "id": "c837591f-fdbc-47af-bc24-2767502bfaf3",
+      "name": "Profit and Loss Setting Tool"
+    }
+  ],
+  "connections": {
+    "财联社头条": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "财联社A股": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "Basic LLM Chain",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ollama Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "选股AI",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Calculator": {
+      "ai_tool": [
+        [
+          {
+            "node": "选股AI",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split Out": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Basic LLM Chain": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ollama Chat Model1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Basic LLM Chain",
+            "type": "ai_languageModel",
+            "index": 0
+          },
+          {
+            "node": "Structured Output Parser1",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Structured Output Parser1": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "Basic LLM Chain",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "No Operation, do nothing",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Edit Fields2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "选股AI": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields1": {
+      "main": [
+        [
+          {
+            "node": "获取总结",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields2": {
+      "main": [
+        [
+          {
+            "node": "选股AI",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "获取总结": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ollama Chat Model3": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "决策AI",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Simple Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "选股AI",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call 'Keyword stock selection": {
+      "ai_tool": [
+        [
+          {
+            "node": "选股AI",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "Split Out",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "BuyTool": {
+      "ai_tool": [
+        [
+          {
+            "node": "决策AI",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript1": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields3": {
+      "main": [
+        [
+          {
+            "node": "决策AI",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "财联社港股": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Profit and Loss Setting Tool": {
+      "ai_tool": [
+        [
+          {
+            "node": "决策AI",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "a7060a9131864a2250c40bfa2b48d99e522dc898418d6bd8932d5011e30760e3"
+  }
+}
+

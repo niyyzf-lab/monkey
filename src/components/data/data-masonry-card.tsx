@@ -8,11 +8,13 @@ import { Tags, Globe, ExternalLink } from 'lucide-react'
 interface DataMasonryCardProps {
   stockInfo: StockCompanyInfo
   onTagsUpdate?: (stockCode: string, newTags: string) => void
+  parsedTags?: Record<string, Array<{ name: string; detail?: string }>> // 预解析的标签数据
 }
 
 
 // 解析自定义标签 - 提取到组件外部避免重复创建
-const parseCustomTags = (tags: string) => {
+// 导出以便在父组件中使用，实现预计算优化
+export const parseCustomTags = (tags: string) => {
   if (!tags) return {}
   const sections = tags.split(';').map(s => s.trim()).filter(s => s)
   const parsedData: Record<string, Array<{ name: string; detail?: string }>> = {}
@@ -150,9 +152,11 @@ const TagListWithPopover = memo<TagListWithPopoverProps>(
 )
 
 export const DataMasonryCard = memo<DataMasonryCardProps>(
-  function DataMasonryCard({ stockInfo }) {
-    // 使用 useMemo 缓存标签解析结果
-    const parsedTags = useMemo(() => parseCustomTags(stockInfo.custom_tags), [stockInfo.custom_tags])
+  function DataMasonryCard({ stockInfo, parsedTags: propsParsedTags }) {
+    // 优先使用父组件传递的预解析标签，否则在本地解析（降级方案）
+    const parsedTags = useMemo(() => {
+      return propsParsedTags || parseCustomTags(stockInfo.custom_tags)
+    }, [propsParsedTags, stockInfo.custom_tags])
 
     return (
       <Card 

@@ -2,7 +2,7 @@ import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { useEffect, useState, useMemo, useCallback, useRef } from 'react'
 import { fetchStockDetails } from '@/api/stock-details-api'
 import { StockInfoArray } from '@/types/stock_details'
-import { Search, X, Database, ChevronDown, Tag } from 'lucide-react'
+import { Search, X, Database, ChevronDown, Tag, Loader2 } from 'lucide-react'
 import { DataSearchHint } from '@/components/data'
 import { DataMasonryContainer } from '@/components/data'
 import { DataLoadingState, DataErrorState } from '@/components/data'
@@ -32,11 +32,18 @@ function DataPage() {
   // 搜索状态
   const [searchQuery, setSearchQuery] = useState('')
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('')
+  
+  // 分页状态
+  const [displayCount, setDisplayCount] = useState(200)
+  const [isLoadingMore, setIsLoadingMore] = useState(false)
+  const PAGE_SIZE = 200
 
   // 搜索防抖效果 - 300ms延迟
   useEffect(() => {
     const timer = setTimeout(() => {
       setDebouncedSearchQuery(searchQuery)
+      // 搜索变化时重置显示数量
+      setDisplayCount(PAGE_SIZE)
     }, 300)
 
     return () => clearTimeout(timer)
@@ -129,10 +136,42 @@ function DataPage() {
     })
   }, [stockData, searchTerms.text, searchTerms.tags, searchTerms.letters])
 
+  // 分页显示的数据
+  const displayedData = useMemo(() => {
+    return filteredData.slice(0, displayCount)
+  }, [filteredData, displayCount])
+
+  // 加载更多
+  const loadMore = useCallback(() => {
+    if (isLoadingMore) return
+    
+    setIsLoadingMore(true)
+    
+    // 保存当前滚动位置
+    const currentScrollTop = scrollContainerRef.current?.scrollTop || 0
+    
+    // 使用 setTimeout 模拟平滑加载，让用户看到加载状态
+    setTimeout(() => {
+      setDisplayCount(prev => prev + PAGE_SIZE)
+      setIsLoadingMore(false)
+      
+      // 在下一帧恢复滚动位置，避免跳动
+      requestAnimationFrame(() => {
+        if (scrollContainerRef.current) {
+          scrollContainerRef.current.scrollTop = currentScrollTop
+        }
+      })
+    }, 100) // 短暂延迟以显示加载状态
+  }, [isLoadingMore])
+
+  // 是否还有更多数据
+  const hasMore = displayCount < filteredData.length
+
   // 清除搜索
   const clearSearch = useCallback(() => {
     setSearchQuery('')
     setDebouncedSearchQuery('')
+    setDisplayCount(PAGE_SIZE)
   }, [])
 
   // 导航处理函数
@@ -325,11 +364,57 @@ function DataPage() {
         <div className="px-6 py-3">
           {stockData && stockData.length > 0 ? (
             filteredData.length > 0 ? (
-              <DataMasonryContainer 
-                data={filteredData} 
-                searchQuery={debouncedSearchQuery}
-                scrollContainerRef={scrollContainerRef}
-              />
+              <>
+                <DataMasonryContainer 
+                  data={displayedData} 
+                  searchQuery={debouncedSearchQuery}
+                  scrollContainerRef={scrollContainerRef}
+                />
+                
+                {/* 加载更多按钮 */}
+                {hasMore && (
+                  <div className="flex justify-center py-8">
+                    <button
+                      onClick={loadMore}
+                      disabled={isLoadingMore}
+                      className="group px-6 py-3 text-sm font-medium rounded-lg
+                               bg-primary/10 hover:bg-primary/20 
+                               text-primary hover:text-primary
+                               border border-primary/30 hover:border-primary/50
+                               transition-all duration-200
+                               shadow-sm hover:shadow-md
+                               flex items-center gap-2
+                               disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-primary/10"
+                    >
+                      {isLoadingMore ? (
+                        <>
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                          <span>加载中...</span>
+                        </>
+                      ) : (
+                        <>
+                          <span>加载更多</span>
+                          <span className="text-xs opacity-70">
+                            ({displayedData.length} / {filteredData.length})
+                          </span>
+                          <ChevronDown className="w-4 h-4 group-hover:translate-y-0.5 transition-transform" />
+                        </>
+                      )}
+                    </button>
+                  </div>
+                )}
+                
+                {/* 已全部加载提示 */}
+                {!hasMore && filteredData.length > PAGE_SIZE && (
+                  <div className="flex justify-center py-8">
+                    <div className="text-sm text-muted-foreground/60 flex items-center gap-2">
+                      <div className="h-px w-12 bg-border/40"></div>
+                      <span>已显示全部 {filteredData.length} 条数据</span>
+                      <div className="h-px w-12 bg-border/40"></div>
+                    </div>
+                  </div>
+                )}
+              </>
             ) : (
               // 搜索无结果
               <div
