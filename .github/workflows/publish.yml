@@ -214,7 +214,7 @@ jobs:
           echo "📦 Generated APK files:"
           find src-tauri/gen/android/app/build/outputs/apk -name "*.apk" -type f -exec ls -lh {} \;
 
-      # 桌面平台使用 tauri-action（仅构建，不推送）
+      # 桌面平台使用 tauri-action（构建 + 生成 updater JSON，但不发布）
       - uses: tauri-apps/tauri-action@v0
         if: matrix.platform != 'ubuntu-latest'
         env:
@@ -224,8 +224,12 @@ jobs:
           # Vite 环境变量 - 构建时注入
           VITE_API_BASE_URL: ${{ secrets.VITE_API_BASE_URL || 'http://localhost:5678' }}
         with:
-          # 不设置 tagName，只构建不发布 Release
-          includeUpdaterJson: true
+          tagName: ${{ steps.get_version.outputs.tag_name }}
+          releaseName: 'Watch Monkey ${{ steps.get_version.outputs.tag_name }}'
+          releaseBody: ${{ steps.release_notes.outputs.RELEASE_NOTES }}
+          releaseDraft: true  # 草稿模式：生成文件但不发布
+          prerelease: false
+          includeUpdaterJson: true  # 生成 latest.json
           args: ${{ matrix.args }}
 
       # 收集构建产物
@@ -241,11 +245,46 @@ jobs:
           else
             # 桌面平台构建产物
             echo "📦 Collecting desktop build artifacts..."
-            find src-tauri/target/${{ matrix.target }}/release/bundle -type f \( -name "*.dmg" -o -name "*.app.tar.gz" -o -name "*.msi" -o -name "*.exe" -o -name "*.json" \) -exec cp {} artifacts/ \; 2>/dev/null || true
+            echo "Looking in: src-tauri/target/${{ matrix.target }}/release/bundle"
+            
+            # 尝试两种可能的路径结构
+            # 1. 带 target 架构的路径（macOS 交叉编译）
+            if [ -d "src-tauri/target/${{ matrix.target }}/release/bundle" ]; then
+              find src-tauri/target/${{ matrix.target }}/release/bundle -type f \( -name "*.dmg" -o -name "*.app.tar.gz" -o -name "*.msi" -o -name "*.exe" -o -name "*.json" -o -name "*.sig" \) -exec cp {} artifacts/ \; 2>/dev/null || true
+            fi
+            
+            # 2. 不带 target 架构的路径（Windows/Linux 本地编译）
+            if [ -d "src-tauri/target/release/bundle" ]; then
+              echo "Also looking in: src-tauri/target/release/bundle"
+              find src-tauri/target/release/bundle -type f \( -name "*.dmg" -o -name "*.app.tar.gz" -o -name "*.msi" -o -name "*.exe" -o -name "*.json" -o -name "*.sig" \) -exec cp {} artifacts/ \; 2>/dev/null || true
+            fi
+            
+            # 3. 收集 updater JSON 文件（latest.json 等）
+            # tauri-action 会生成这些文件在根目录或特定位置
+            if [ -f "src-tauri/target/${{ matrix.target }}/release/bundle/macos/latest.json" ]; then
+              cp src-tauri/target/${{ matrix.target }}/release/bundle/macos/latest.json artifacts/ 2>/dev/null || true
+            fi
+            if [ -f "src-tauri/target/release/latest.json" ]; then
+              cp src-tauri/target/release/latest.json artifacts/ 2>/dev/null || true
+            fi
+            
+            # 查找所有可能的 updater JSON 文件
+            find src-tauri/target -name "latest.json" -o -name "*-updater.json" 2>/dev/null | while read json_file; do
+              echo "Found updater JSON: $json_file"
+              cp "$json_file" artifacts/ 2>/dev/null || true
+            done
           fi
           
           echo "✅ Collected artifacts:"
           ls -lh artifacts/
+          
+          # 检查是否收集到文件
+          if [ -z "$(ls -A artifacts/)" ]; then
+            echo "❌ Error: No artifacts collected!"
+            echo "Available files:"
+            find src-tauri/target -name "*.msi" -o -name "*.exe" -o -name "*.dmg" -o -name "*.app.tar.gz" 2>/dev/null || true
+            exit 1
+          fi
 
       # 上传构建产物为 GitHub Actions Artifacts
       - name: Upload build artifacts
@@ -319,6 +358,46 @@ jobs:
           ls -lh release-assets/
           echo ""
           echo "Total files: $(find release-assets -type f | wc -l)"
+
+      # 从草稿 Release 下载 tauri-action 生成的文件（如 latest.json）
+      - name: Download files from draft releases
+        shell: bash
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG_NAME: ${{ steps.get_version.outputs.tag_name }}
+        run: |
+          echo "📥 Checking for draft releases created by tauri-action..."
+          
+          # 获取所有草稿 Release
+          DRAFTS=$(curl -s -H "Authorization: token $GITHUB_TOKEN" \
+            "https://api.github.com/repos/${{ github.repository }}/releases")
+          
+          # 查找匹配当前 tag 的草稿 Release
+          echo "$DRAFTS" | jq -r '.[] | select(.draft == true and .tag_name == env.TAG_NAME) | .id' | while read draft_id; do
+            echo "Found draft release: $draft_id"
+            
+            # 获取草稿 Release 的所有 assets
+            ASSETS=$(curl -s -H "Authorization: token $GITHUB_TOKEN" \
+              "https://api.github.com/repos/${{ github.repository }}/releases/$draft_id/assets")
+            
+            # 下载所有 assets（尤其是 latest.json）
+            echo "$ASSETS" | jq -r '.[] | "\(.id) \(.name)"' | while read asset_id asset_name; do
+              echo "  📥 Downloading $asset_name from draft..."
+              curl -L -H "Authorization: token $GITHUB_TOKEN" \
+                -H "Accept: application/octet-stream" \
+                "https://api.github.com/repos/${{ github.repository }}/releases/assets/$asset_id" \
+                -o "release-assets/$asset_name"
+            done
+            
+            # 删除草稿 Release
+            echo "🗑️  Deleting draft release $draft_id..."
+            curl -X DELETE -H "Authorization: token $GITHUB_TOKEN" \
+              "https://api.github.com/repos/${{ github.repository }}/releases/$draft_id"
+          done
+          
+          echo ""
+          echo "✅ Final artifacts list:"
+          ls -lh release-assets/
 
       # 创建 GitHub Release
       - name: Create GitHub Release

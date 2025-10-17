@@ -1,0 +1,202 @@
+{
+  "nodes": [
+    {
+      "id": "news-trigger",
+      "type": "trigger",
+      "position": { "x": 100, "y": 200 },
+      "data": { 
+        "label": "新闻触发器",
+        "description": "RSS 订阅财联社新闻"
+      }
+    },
+    {
+      "id": "news-analyzer",
+      "type": "ai-agent",
+      "position": { "x": 400, "y": 200 },
+      "data": { 
+        "label": "新闻分析AI",
+        "description": "分析新闻并总结200字"
+      }
+    },
+    {
+      "id": "ollama-model-1",
+      "type": "llm-model",
+      "position": { "x": 400, "y": 350 },
+      "data": { 
+        "label": "Ollama模型",
+        "model": "gpt-oss:120b"
+      }
+    },
+    {
+      "id": "output-parser",
+      "type": "parser",
+      "position": { "x": 400, "y": 50 },
+      "data": { 
+        "label": "输出解析器",
+        "description": "结构化输出"
+      }
+    },
+    {
+      "id": "stock-selector-ai",
+      "type": "ai-agent",
+      "position": { "x": 700, "y": 200 },
+      "data": { 
+        "label": "选股AI",
+        "description": "提取关键词推荐股票"
+      }
+    },
+    {
+      "id": "ollama-model-2",
+      "type": "llm-model",
+      "position": { "x": 700, "y": 350 },
+      "data": { 
+        "label": "Ollama模型2",
+        "model": "gpt-oss:120b"
+      }
+    },
+    {
+      "id": "keyword-tool",
+      "type": "tool",
+      "position": { "x": 700, "y": 50 },
+      "data": { 
+        "label": "关键字选股工具",
+        "description": "根据关键字查询股票"
+      }
+    },
+    {
+      "id": "memory",
+      "type": "memory",
+      "position": { "x": 850, "y": 350 },
+      "data": { 
+        "label": "记忆模块",
+        "description": "上下文记忆"
+      }
+    },
+    {
+      "id": "decision-ai",
+      "type": "ai-agent",
+      "position": { "x": 1000, "y": 200 },
+      "data": { 
+        "label": "决策AI",
+        "description": "决策是否买入"
+      }
+    },
+    {
+      "id": "ollama-model-3",
+      "type": "llm-model",
+      "position": { "x": 1000, "y": 350 },
+      "data": { 
+        "label": "Ollama模型3",
+        "model": "gpt-oss:120b"
+      }
+    },
+    {
+      "id": "buy-tool",
+      "type": "tool",
+      "position": { "x": 1000, "y": 50 },
+      "data": { 
+        "label": "买入工具",
+        "description": "执行买入操作"
+      }
+    },
+    {
+      "id": "tp-sl-tool",
+      "type": "tool",
+      "position": { "x": 1150, "y": 50 },
+      "data": { 
+        "label": "止盈止损工具",
+        "description": "设置止盈止损"
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "e1",
+      "source": "news-trigger",
+      "target": "news-analyzer",
+      "type": "animatedGradient",
+      "animated": true,
+      "label": "数据流"
+    },
+    {
+      "id": "e2",
+      "source": "news-analyzer",
+      "target": "ollama-model-1",
+      "type": "smoothstep",
+      "animated": false,
+      "label": "使用LLM"
+    },
+    {
+      "id": "e3",
+      "source": "news-analyzer",
+      "target": "output-parser",
+      "type": "smoothstep",
+      "animated": false,
+      "label": "解析输出"
+    },
+    {
+      "id": "e4",
+      "source": "news-analyzer",
+      "target": "stock-selector-ai",
+      "type": "animatedGradient",
+      "animated": true,
+      "label": "数据流"
+    },
+    {
+      "id": "e5",
+      "source": "stock-selector-ai",
+      "target": "ollama-model-2",
+      "type": "smoothstep",
+      "animated": false,
+      "label": "使用LLM"
+    },
+    {
+      "id": "e6",
+      "source": "stock-selector-ai",
+      "target": "keyword-tool",
+      "type": "smoothstep",
+      "animated": false,
+      "label": "调用工具"
+    },
+    {
+      "id": "e7",
+      "source": "stock-selector-ai",
+      "target": "memory",
+      "type": "smoothstep",
+      "animated": false,
+      "label": "读写记忆"
+    },
+    {
+      "id": "e8",
+      "source": "stock-selector-ai",
+      "target": "decision-ai",
+      "type": "animatedGradient",
+      "animated": true,
+      "label": "数据流"
+    },
+    {
+      "id": "e9",
+      "source": "decision-ai",
+      "target": "ollama-model-3",
+      "type": "smoothstep",
+      "animated": false,
+      "label": "使用LLM"
+    },
+    {
+      "id": "e10",
+      "source": "decision-ai",
+      "target": "buy-tool",
+      "type": "smoothstep",
+      "animated": false,
+      "label": "调用工具"
+    },
+    {
+      "id": "e11",
+      "source": "decision-ai",
+      "target": "tp-sl-tool",
+      "type": "smoothstep",
+      "animated": false,
+      "label": "调用工具"
+    }
+  ]
+}
