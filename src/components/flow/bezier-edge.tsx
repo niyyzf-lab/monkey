@@ -5,9 +5,9 @@ import {
 } from '@xyflow/react'
 
 /**
- * 优化的贝塞尔曲线边组件
+ * Shadcn 风格的贝塞尔曲线边组件
  * 用于功能节点到模块节点的连接
- * 更专业的虚线动画效果
+ * 优化的虚线动画 + 更好的视觉反馈
  */
 function BezierEdgeComponent({
   id,
@@ -32,48 +32,56 @@ function BezierEdgeComponent({
 
   return (
     <>
-      {/* 外发光层 */}
-      <path
-        d={edgePath}
-        fill="none"
-        stroke="hsl(var(--accent) / 0.15)"
-        strokeWidth={selected ? 8 : 6}
-        strokeLinecap="round"
-        style={{
-          filter: 'blur(4px)',
-          ...(style as React.CSSProperties),
-        }}
-      />
-
-      {/* 内发光层 */}
-      <path
-        d={edgePath}
-        fill="none"
-        stroke="hsl(var(--accent) / 0.3)"
-        strokeWidth={selected ? 4 : 3}
-        strokeLinecap="round"
-        style={{
-          ...(style as React.CSSProperties),
-        }}
-      />
-
-      {/* 主边缘路径 */}
+      {/* 外层发光 */}
+      {selected && (
+        <path
+          d={edgePath}
+          fill="none"
+          stroke="hsl(var(--primary) / 0.3)"
+          strokeWidth={4}
+          strokeLinecap="round"
+          style={{
+            filter: 'blur(4px)',
+            transition: 'all 0.3s ease',
+            ...(style as React.CSSProperties),
+          }}
+        />
+      )}
+      
+      {/* 主边缘路径 - 优化虚线 */}
       <path
         id={`edge-${id}`}
         d={edgePath}
         fill="none"
-        stroke="hsl(var(--accent))"
+        stroke={selected ? "hsl(var(--primary) / 0.8)" : "hsl(var(--muted-foreground) / 0.4)"}
         strokeWidth={selected ? 2 : 1.5}
         strokeDasharray="4,4"
         strokeLinecap="round"
         strokeLinejoin="round"
         style={{
-          transition: 'all 0.2s ease',
-          animation: selected ? 'dash 1s linear infinite' : 'none',
+          transition: 'all 0.3s ease',
+          animation: selected ? 'dash 2s linear infinite' : 'dash 4s linear infinite',
           ...(style as React.CSSProperties),
         }}
         markerEnd={markerEnd}
       />
+      
+      {/* 内层亮线（选中时） */}
+      {selected && (
+        <path
+          d={edgePath}
+          fill="none"
+          stroke="hsl(var(--accent))"
+          strokeWidth={1}
+          strokeDasharray="2,6"
+          strokeLinecap="round"
+          style={{
+            opacity: 0.6,
+            animation: 'dash 1s linear infinite reverse',
+            ...(style as React.CSSProperties),
+          }}
+        />
+      )}
       
       <style>
         {`

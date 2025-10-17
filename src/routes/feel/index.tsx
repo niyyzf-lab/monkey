@@ -17,10 +17,10 @@ import {
 } from '@xyflow/react'
 import '@xyflow/react/dist/style.css'
 import { UnifiedPageHeader } from '@/components/common/unified-page-header'
-import { ModuleNode } from '@/components/flow/module-node'
-import { FunctionNode } from '@/components/flow/function-node'
 import { AnimatedGradientEdge } from '@/components/flow/animated-gradient-edge'
 import { BezierEdge } from '@/components/flow/bezier-edge'
+import { ModuleNode } from '@/components/flow/module-node'
+import { FunctionNode } from '@/components/flow/function-node'
 import { Button } from '@/components/ui/button'
 import { Download, Upload } from 'lucide-react'
 import workflowData from '@/constants/ai-workflow.json'
@@ -29,16 +29,16 @@ export const Route = createFileRoute('/feel/')({
   component: FeelPage,
 })
 
-// 节点类型映射
-const nodeTypes = {
-  moduleNode: ModuleNode,
-  functionNode: FunctionNode,
-}
-
 // 边类型映射
 const edgeTypes = {
   animatedGradient: AnimatedGradientEdge,
   bezier: BezierEdge,
+}
+
+// 节点类型映射
+const nodeTypes = {
+  moduleNode: ModuleNode as any,
+  functionNode: FunctionNode as any,
 }
 
 // 转换工作流数据为 React Flow 格式
@@ -47,10 +47,10 @@ const convertWorkflowData = () => {
     id: node.id,
     type: node.data.nodeType === 'module' ? 'moduleNode' : 'functionNode',
     position: node.position,
-    data: node.data,
+    data: node.data, // 直接使用原始数据，已经包含 label
   }))
 
-  const edges: Edge[] = workflowData.edges.map((edge) => {
+  const edges: Edge[] = workflowData.edges.map((edge: any) => {
     const edgeConfig: Edge = {
       id: edge.id,
       source: edge.source,
@@ -77,9 +77,10 @@ const { nodes: initialNodes, edges: initialEdges } = convertWorkflowData()
 console.log('=== 工作流调试信息 ===')
 console.log('节点数量:', initialNodes.length)
 console.log('边数量:', initialEdges.length)
-console.log('模块节点:', initialNodes.filter(n => n.type === 'moduleNode').map(n => ({
+console.log('节点详情:', initialNodes.map(n => ({
   id: n.id,
-  functions: (n.data as any).functions
+  type: n.type,
+  label: n.data.label
 })))
 console.log('所有边:', initialEdges.map(e => ({
   id: e.id,
@@ -244,18 +245,6 @@ function FeelPage() {
               <div className="flex items-center gap-2">
                 <span className="text-muted-foreground">连接数:</span>
                 <span className="font-semibold text-foreground">{edges.length}</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="text-muted-foreground">模块:</span>
-                <span className="font-semibold text-primary">
-                  {nodes.filter(n => n.type === 'moduleNode').length}
-                </span>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="text-muted-foreground">功能:</span>
-                <span className="font-semibold text-accent">
-                  {nodes.filter(n => n.type === 'functionNode').length}
-                </span>
               </div>
             </div>
           </Panel>
