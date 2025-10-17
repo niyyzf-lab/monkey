@@ -214,7 +214,7 @@ jobs:
           echo "📦 Generated APK files:"
           find src-tauri/gen/android/app/build/outputs/apk -name "*.apk" -type f -exec ls -lh {} \;
 
-      # 桌面平台使用 tauri-action
+      # 桌面平台使用 tauri-action（仅构建，不推送）
       - uses: tauri-apps/tauri-action@v0
         if: matrix.platform != 'ubuntu-latest'
         env:
@@ -224,17 +224,104 @@ jobs:
           # Vite 环境变量 - 构建时注入
           VITE_API_BASE_URL: ${{ secrets.VITE_API_BASE_URL || 'http://localhost:5678' }}
         with:
-          tagName: ${{ steps.get_version.outputs.tag_name }}
-          releaseName: 'Watch Monkey ${{ steps.get_version.outputs.tag_name }}'
-          releaseBody: ${{ steps.release_notes.outputs.RELEASE_NOTES }}
-          releaseDraft: false
-          prerelease: false
+          # 不设置 tagName，只构建不发布 Release
           includeUpdaterJson: true
           args: ${{ matrix.args }}
 
-      # 为 Android 单独上传 APK 到 Release
-      - name: Upload Android APK to Release
-        if: matrix.platform == 'ubuntu-latest'
+      # 收集构建产物
+      - name: Collect build artifacts
+        shell: bash
+        run: |
+          mkdir -p artifacts
+          
+          if [ "${{ matrix.platform }}" == "ubuntu-latest" ]; then
+            # Android APK
+            echo "📦 Collecting Android APK..."
+            find src-tauri/gen/android/app/build/outputs/apk -name "*.apk" -type f -exec cp {} artifacts/ \;
+          else
+            # 桌面平台构建产物
+            echo "📦 Collecting desktop build artifacts..."
+            find src-tauri/target/${{ matrix.target }}/release/bundle -type f \( -name "*.dmg" -o -name "*.app.tar.gz" -o -name "*.msi" -o -name "*.exe" -o -name "*.json" \) -exec cp {} artifacts/ \; 2>/dev/null || true
+          fi
+          
+          echo "✅ Collected artifacts:"
+          ls -lh artifacts/
+
+      # 上传构建产物为 GitHub Actions Artifacts
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-${{ matrix.target }}
+          path: artifacts/*
+          retention-days: 1
+          if-no-files-found: error
+
+  # 所有平台构建完成后，统一创建 Release 并推送
+  create-release:
+    needs: publish-tauri
+    runs-on: ubuntu-latest
+    if: always() && !cancelled()
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Get version from package.json
+        id: get_version
+        shell: bash
+        run: |
+          VERSION=$(cat package.json | grep '"version"' | head -1 | sed 's/.*"version": "\(.*\)".*/\1/')
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "tag_name=v$VERSION" >> $GITHUB_OUTPUT
+          echo "📦 Version: $VERSION"
+
+      - name: Generate release notes from git commits
+        id: release_notes
+        shell: bash
+        run: |
+          # 获取上一个版本的 tag
+          PREVIOUS_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || git rev-list --max-parents=0 HEAD)
+          
+          # 生成提交日志
+          echo "RELEASE_NOTES<<EOF" >> $GITHUB_OUTPUT
+          echo "## 📝 更新内容" >> $GITHUB_OUTPUT
+          echo "" >> $GITHUB_OUTPUT
+          git log ${PREVIOUS_TAG}..HEAD --pretty=format:"- %s" --no-merges >> $GITHUB_OUTPUT
+          echo "" >> $GITHUB_OUTPUT
+          echo "" >> $GITHUB_OUTPUT
+          echo "### 📦 安装说明" >> $GITHUB_OUTPUT
+          echo "" >> $GITHUB_OUTPUT
+          echo "请从下方 Assets 中下载适合您系统的安装包：" >> $GITHUB_OUTPUT
+          echo "- **macOS (Apple Silicon)**: 下载包含 \`aarch64\` 的 \`.dmg\` 或 \`.app.tar.gz\` 文件" >> $GITHUB_OUTPUT
+          echo "- **macOS (Intel)**: 下载包含 \`x64\` 的 \`.dmg\` 或 \`.app.tar.gz\` 文件" >> $GITHUB_OUTPUT
+          echo "- **Windows**: 下载 \`.msi\` 或 \`.exe\` 安装文件" >> $GITHUB_OUTPUT
+          echo "- **Android**: 下载 \`.apk\` 文件" >> $GITHUB_OUTPUT
+          echo "" >> $GITHUB_OUTPUT
+          echo "### 🔄 自动更新" >> $GITHUB_OUTPUT
+          echo "" >> $GITHUB_OUTPUT
+          echo "如果您已安装旧版本，应用会自动检测并提示更新。" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      # 下载所有平台的构建产物
+      - name: Download all build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: release-assets
+          pattern: build-*
+          merge-multiple: true
+
+      - name: List downloaded artifacts
+        shell: bash
+        run: |
+          echo "📦 Downloaded artifacts:"
+          ls -lh release-assets/
+          echo ""
+          echo "Total files: $(find release-assets -type f | wc -l)"
+
+      # 创建 GitHub Release
+      - name: Create GitHub Release
         uses: softprops/action-gh-release@v1
         with:
           tag_name: ${{ steps.get_version.outputs.tag_name }}
@@ -242,254 +329,15 @@ jobs:
           body: ${{ steps.release_notes.outputs.RELEASE_NOTES }}
           draft: false
           prerelease: false
-          files: |
-            src-tauri/gen/android/app/build/outputs/apk/**/*.apk
+          files: release-assets/*
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      # 实时同步到 Gitea（每个平台构建完成后立即执行）
-      - name: Sync current platform to Gitea
-        if: always() && (success() || failure())
-        shell: bash
-        env:
-          GITEA_TOKEN: ${{ secrets.GITEA_TOKEN }}
-          GITEA_URL: ${{ secrets.GITEA_URL }}
-          GITEA_REPO: ${{ secrets.GITEA_REPO }}
-          TAG_NAME: ${{ steps.get_version.outputs.tag_name }}
-          RELEASE_NAME: 'Watch Monkey ${{ steps.get_version.outputs.tag_name }}'
-          RELEASE_BODY: ${{ steps.release_notes.outputs.RELEASE_NOTES }}
-          PLATFORM: ${{ matrix.platform }}
-          TARGET: ${{ matrix.target }}
-        run: |
-          # 如果没有配置 Gitea，跳过
-          if [ -z "$GITEA_TOKEN" ] || [ -z "$GITEA_URL" ] || [ -z "$GITEA_REPO" ]; then
-            echo "⚠️  Gitea not configured, skipping sync"
-            exit 0
-          fi
-          
-          echo "🚀 Syncing $PLATFORM ($TARGET) to Gitea..."
-          
-          # 检查或创建 Gitea release
-          HTTP_CODE=$(curl -s -w "%{http_code}" -o /tmp/gitea_release.json \
-            -H "Authorization: token $GITEA_TOKEN" \
-            "${GITEA_URL}/api/v1/repos/${GITEA_REPO}/releases/tags/${TAG_NAME}")
-          
-          if [ "$HTTP_CODE" == "404" ]; then
-            echo "📝 Creating new Gitea release..."
-            BODY_JSON=$(printf '%s' "$RELEASE_BODY" | jq -Rs .)
-            CREATE_RESPONSE=$(curl -s -w "\n%{http_code}" \
-              -H "Authorization: token $GITEA_TOKEN" \
-              -H "Content-Type: application/json" \
-              "${GITEA_URL}/api/v1/repos/${GITEA_REPO}/releases" \
-              -d @- <<EOF
-          {
-            "tag_name": "$TAG_NAME",
-            "name": "$RELEASE_NAME",
-            "body": $BODY_JSON,
-            "draft": false,
-            "prerelease": false
-          }
-          EOF
-            )
-            HTTP_CODE=$(echo "$CREATE_RESPONSE" | tail -n1)
-            RESPONSE_BODY=$(echo "$CREATE_RESPONSE" | sed '$d')
-            
-            if [ "$HTTP_CODE" != "201" ]; then
-              echo "❌ Failed to create release (HTTP $HTTP_CODE)"
-              exit 1
-            fi
-            GITEA_RELEASE_ID=$(echo "$RESPONSE_BODY" | jq -r '.id')
-          else
-            GITEA_RELEASE_ID=$(jq -r '.id' /tmp/gitea_release.json)
-            echo "✅ Found existing release with ID: $GITEA_RELEASE_ID"
-          fi
-          
-          # 收集当前平台的构建产物
-          echo "📦 Collecting assets for $PLATFORM..."
-          mkdir -p /tmp/upload-assets
-          
-          if [ "$PLATFORM" == "ubuntu-latest" ]; then
-            # Android APK
-            find src-tauri/gen/android/app/build/outputs/apk -name "*.apk" -type f -exec cp {} /tmp/upload-assets/ \; 2>/dev/null || true
-          else
-            # 桌面平台（从 GitHub Release 下载刚上传的文件）
-            echo "⏳ Waiting 15 seconds for GitHub Release upload to complete..."
-            sleep 15
-            
-            # 获取 GitHub Release 的最新 assets
-            echo "📥 Fetching release assets from GitHub..."
-            GITHUB_ASSETS=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
-              "https://api.github.com/repos/${{ github.repository }}/releases/tags/${TAG_NAME}")
-            
-            # 根据平台确定文件名模式和排除模式
-            case "$TARGET" in
-              "aarch64-apple-darwin")
-                PATTERN="aarch64"
-                EXCLUDE_PATTERN=""
-                ;;
-              "x86_64-apple-darwin")
-                PATTERN="x64"
-                EXCLUDE_PATTERN="msi|exe"  # 排除 Windows 文件
-                ;;
-              "x86_64-pc-windows-msvc")
-                PATTERN="x64"
-                EXCLUDE_PATTERN="dmg|app\\.tar"  # 排除 macOS 文件
-                ;;
-              *)
-                PATTERN="$TARGET"
-                EXCLUDE_PATTERN=""
-                ;;
-            esac
-            
-            echo "🔍 Looking for files matching pattern: $PATTERN"
-            if [ -n "$EXCLUDE_PATTERN" ]; then
-              echo "🚫 Excluding pattern: $EXCLUDE_PATTERN"
-            fi
-            
-            # 根据平台和架构筛选文件
-            if [ -n "$EXCLUDE_PATTERN" ]; then
-              echo "$GITHUB_ASSETS" | jq -r --arg pattern "$PATTERN" --arg exclude "$EXCLUDE_PATTERN" \
-                '.assets[] | select(.name | contains($pattern)) | select(.name | test($exclude) | not) | "\(.id) \(.name)"'
-            else
-              echo "$GITHUB_ASSETS" | jq -r --arg pattern "$PATTERN" \
-                '.assets[] | select(.name | contains($pattern)) | "\(.id) \(.name)"'
-            fi | while read asset_id asset_name; do
-                echo "  ⏳ Downloading $asset_name..."
-                curl -L -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
-                  -H "Accept: application/octet-stream" \
-                  "https://api.github.com/repos/${{ github.repository }}/releases/assets/$asset_id" \
-                  -o "/tmp/upload-assets/$asset_name"
-                
-                if [ -f "/tmp/upload-assets/$asset_name" ]; then
-                  echo "  ✅ Downloaded $asset_name ($(ls -lh "/tmp/upload-assets/$asset_name" | awk '{print $5}'))"
-                fi
-              done
-          fi
-          
-          # 上传文件到 Gitea
-          UPLOADED=0
-          for asset in /tmp/upload-assets/*; do
-            if [ -f "$asset" ]; then
-              filename=$(basename "$asset")
-              filesize=$(ls -lh "$asset" | awk '{print $5}')
-              
-              # 检查文件是否已存在
-              EXISTING_ASSET=$(curl -s -H "Authorization: token $GITEA_TOKEN" \
-                "${GITEA_URL}/api/v1/repos/${GITEA_REPO}/releases/${GITEA_RELEASE_ID}/assets" | \
-                jq -r --arg name "$filename" '.[] | select(.name == $name) | .id')
-              
-              if [ -n "$EXISTING_ASSET" ]; then
-                echo "  ⏭️  Skipping $filename (already exists)"
-                continue
-              fi
-              
-              echo "  ⏳ Uploading $filename ($filesize)..."
-              
-              # 处理 JSON 文件：替换 GitHub URL 为 Gitea URL
-              if [[ "$filename" == *.json ]]; then
-                GITHUB_REPO="${{ github.repository }}"
-                sed -i.bak \
-                  "s|https://github.com/${GITHUB_REPO}/releases/download/|${GITEA_URL}/${GITEA_REPO}/releases/download/|g; \
-                   s|\(${GITEA_URL}/${GITEA_REPO}/releases/download/[^\"]*\)|\1?token=${GITEA_TOKEN}|g" \
-                  "$asset" || true
-                rm -f "${asset}.bak"
-              fi
-              
-              UPLOAD_CODE=$(curl -s -w "%{http_code}" -o /dev/null \
-                -H "Authorization: token $GITEA_TOKEN" \
-                -F "attachment=@${asset}" \
-                "${GITEA_URL}/api/v1/repos/${GITEA_REPO}/releases/${GITEA_RELEASE_ID}/assets?name=${filename}")
-              
-              if [ "$UPLOAD_CODE" == "201" ]; then
-                echo "  ✅ Uploaded $filename"
-                UPLOADED=$((UPLOADED + 1))
-              else
-                echo "  ❌ Failed to upload $filename (HTTP $UPLOAD_CODE)"
-              fi
-            fi
-          done
-          
-          echo ""
-          echo "🎉 Synced $PLATFORM: $UPLOADED file(s) uploaded"
-
-  # 后备同步任务：检查是否有遗漏的文件需要同步
-  # 注意：大部分文件已经在各平台构建完成后实时同步了
-  sync-to-gitea:
-    needs: publish-tauri
-    runs-on: ubuntu-latest
-    if: always()  # 即使某些平台失败也运行
-    permissions:
-      contents: read
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Check and sync any missing files
-        shell: bash
-        run: |
-          echo "🔍 Checking for any missing files that weren't synced in real-time..."
-          echo "ℹ️  Note: Most files should already be synced by individual platform jobs"
-
-      - name: Get latest release info
-        id: release_info
-        shell: bash
-        run: |
-          # 获取最新的 release 信息
-          RELEASE_DATA=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
-            "https://api.github.com/repos/${{ github.repository }}/releases/latest")
-          
-          # 使用简单的单行输出
-          echo "tag_name=$(echo $RELEASE_DATA | jq -r '.tag_name')" >> $GITHUB_OUTPUT
-          echo "name=$(echo $RELEASE_DATA | jq -r '.name')" >> $GITHUB_OUTPUT
-          echo "draft=$(echo $RELEASE_DATA | jq -r '.draft')" >> $GITHUB_OUTPUT
-          echo "prerelease=$(echo $RELEASE_DATA | jq -r '.prerelease')" >> $GITHUB_OUTPUT
-          echo "release_id=$(echo $RELEASE_DATA | jq -r '.id')" >> $GITHUB_OUTPUT
-          
-          # 使用 EOF 分隔符处理多行 body 内容
-          echo "body<<EOF" >> $GITHUB_OUTPUT
-          echo "$RELEASE_DATA" | jq -r '.body' >> $GITHUB_OUTPUT
-          echo "EOF" >> $GITHUB_OUTPUT
-
-      - name: Download release assets
-        shell: bash
-        run: |
-          mkdir -p release-assets
-          
-          # 获取所有 assets
-          ASSETS=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
-            "https://api.github.com/repos/${{ github.repository }}/releases/${{ steps.release_info.outputs.release_id }}/assets")
-          
-          # 显示 asset 信息
-          echo "📦 Found assets:"
-          echo "$ASSETS" | jq -r '.[] | "  - \(.name) (\(.size | tonumber / 1024 / 1024 | floor)MB)"'
-          
-          # 下载每个 asset
-          echo ""
-          echo "⬇️  Downloading assets..."
-          echo "$ASSETS" | jq -r '.[] | "\(.id) \(.name)"' | while read asset_id asset_name; do
-            echo "  ⏳ Downloading $asset_name..."
-            curl -L -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
-              -H "Accept: application/octet-stream" \
-              "https://api.github.com/repos/${{ github.repository }}/releases/assets/$asset_id" \
-              -o "release-assets/$asset_name"
-            
-            if [ -f "release-assets/$asset_name" ]; then
-              echo "  ✅ Downloaded $asset_name ($(ls -lh "release-assets/$asset_name" | awk '{print $5}'))"
-            else
-              echo "  ❌ Failed to download $asset_name"
-            fi
-          done
-          
-          echo ""
-          echo "📋 All downloaded files:"
-          ls -lh release-assets/
-
+      # 同步到 Gitea
       - name: Update URLs in JSON files
         shell: bash
         env:
-          TAG_NAME: ${{ steps.release_info.outputs.tag_name }}
+          TAG_NAME: ${{ steps.get_version.outputs.tag_name }}
           GITEA_URL: ${{ secrets.GITEA_URL }}
           GITEA_REPO: ${{ secrets.GITEA_REPO }}
           GITEA_TOKEN: ${{ secrets.GITEA_TOKEN }}
@@ -497,15 +345,13 @@ jobs:
           # 获取 GitHub 仓库信息
           GITHUB_REPO="${{ github.repository }}"
           
-          echo "🔄 Replacing GitHub URLs with Gitea URLs in JSON files..."
+          echo "📝 Replacing GitHub URLs with Gitea URLs in JSON files..."
           
           # 处理所有 JSON 文件
           find release-assets -name "*.json" -type f | while read -r json_file; do
             echo "  📝 Processing $(basename "$json_file")..."
             
             # 替换 GitHub 下载 URL 为 Gitea URL，并添加访问 token
-            # 格式：https://github.com/USER/REPO/releases/download/TAG/FILE
-            # 替换为：GITEA_URL/GITEA_REPO/releases/download/TAG/FILE?token=TOKEN
             if [ -n "$GITEA_TOKEN" ]; then
               # 如果配置了 token，在 URL 后面添加 token
               sed -i.bak \
@@ -527,22 +373,26 @@ jobs:
           
           echo "✅ All JSON files updated successfully"
 
-      - name: Create or update Gitea release
+      - name: Sync to Gitea
         shell: bash
         env:
           GITEA_TOKEN: ${{ secrets.GITEA_TOKEN }}
           GITEA_URL: ${{ secrets.GITEA_URL }}
           GITEA_REPO: ${{ secrets.GITEA_REPO }}
-          TAG_NAME: ${{ steps.release_info.outputs.tag_name }}
-          RELEASE_NAME: ${{ steps.release_info.outputs.name }}
-          RELEASE_BODY: ${{ steps.release_info.outputs.body }}
-          IS_DRAFT: ${{ steps.release_info.outputs.draft }}
-          IS_PRERELEASE: ${{ steps.release_info.outputs.prerelease }}
+          TAG_NAME: ${{ steps.get_version.outputs.tag_name }}
+          RELEASE_NAME: 'Watch Monkey ${{ steps.get_version.outputs.tag_name }}'
+          RELEASE_BODY: ${{ steps.release_notes.outputs.RELEASE_NOTES }}
         run: |
           set -f
           
-          echo "📦 Syncing release: $RELEASE_NAME ($TAG_NAME)"
-          echo "🎯 Target: $GITEA_URL/$GITEA_REPO"
+          # 如果没有配置 Gitea，跳过
+          if [ -z "$GITEA_TOKEN" ] || [ -z "$GITEA_URL" ] || [ -z "$GITEA_REPO" ]; then
+            echo "⚠️  Gitea not configured, skipping sync"
+            exit 0
+          fi
+          
+          echo "🚀 Syncing release to Gitea: $RELEASE_NAME ($TAG_NAME)"
+          echo "Target: $GITEA_URL/$GITEA_REPO"
           
           # 检查 Gitea release 是否已存在
           HTTP_CODE=$(curl -s -w "%{http_code}" -o /tmp/release.json \
@@ -567,7 +417,7 @@ jobs:
           BODY_JSON=$(printf '%s' "$RELEASE_BODY" | jq -Rs .)
           
           # 创建新的 release
-          echo "🚀 Creating new Gitea release..."
+          echo "📝 Creating new Gitea release..."
           CREATE_RESPONSE=$(curl -s -w "\n%{http_code}" \
             -H "Authorization: token $GITEA_TOKEN" \
             -H "Content-Type: application/json" \
@@ -577,8 +427,8 @@ jobs:
             "tag_name": "$TAG_NAME",
             "name": "$RELEASE_NAME",
             "body": $BODY_JSON,
-            "draft": $IS_DRAFT,
-            "prerelease": $IS_PRERELEASE
+            "draft": false,
+            "prerelease": false
           }
           EOF
           )
@@ -597,7 +447,7 @@ jobs:
           echo "✅ Created Gitea release with ID: $GITEA_RELEASE_ID"
           
           # 上传所有 assets
-          echo "📤 Uploading assets..."
+          echo "📦 Uploading assets..."
           
           # 创建临时文件存储计数
           SUCCESS_COUNT=0
@@ -640,4 +490,3 @@ jobs:
           echo "  - Assets uploaded: $SUCCESS_COUNT"
           echo "  - Assets failed: $FAILED_COUNT"
           echo "  - URL: $GITEA_URL/$GITEA_REPO/releases/tag/$TAG_NAME"
-
