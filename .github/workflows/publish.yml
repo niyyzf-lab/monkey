@@ -112,6 +112,15 @@ jobs:
           echo "VITE_API_BASE_URL=${{ secrets.VITE_API_BASE_URL || 'http://localhost:5678' }}" >> $GITHUB_ENV
           echo "✅ Set VITE_API_BASE_URL for build process"
 
+      - name: Get version from package.json
+        id: get_version
+        shell: bash
+        run: |
+          VERSION=$(cat package.json | grep '"version"' | head -1 | sed 's/.*"version": "\(.*\)".*/\1/')
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "tag_name=v$VERSION" >> $GITHUB_OUTPUT
+          echo "📦 Version: $VERSION"
+
       - name: Generate release notes from git commits
         id: release_notes
         shell: bash
@@ -165,8 +174,8 @@ jobs:
           # Vite 环境变量 - 构建时注入
           VITE_API_BASE_URL: ${{ secrets.VITE_API_BASE_URL || 'http://localhost:5678' }}
         with:
-          tagName: v__VERSION__
-          releaseName: 'Watch Monkey v__VERSION__'
+          tagName: ${{ steps.get_version.outputs.tag_name }}
+          releaseName: 'Watch Monkey ${{ steps.get_version.outputs.tag_name }}'
           releaseBody: ${{ steps.release_notes.outputs.RELEASE_NOTES }}
           releaseDraft: false
           prerelease: false
@@ -178,8 +187,8 @@ jobs:
         if: matrix.platform == 'ubuntu-latest'
         uses: softprops/action-gh-release@v1
         with:
-          tag_name: v__VERSION__
-          name: 'Watch Monkey v__VERSION__'
+          tag_name: ${{ steps.get_version.outputs.tag_name }}
+          name: 'Watch Monkey ${{ steps.get_version.outputs.tag_name }}'
           body: ${{ steps.release_notes.outputs.RELEASE_NOTES }}
           draft: false
           prerelease: false
@@ -226,15 +235,29 @@ jobs:
           ASSETS=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
             "https://api.github.com/repos/${{ github.repository }}/releases/${{ steps.release_info.outputs.release_id }}/assets")
           
+          # 显示 asset 信息
+          echo "📦 Found assets:"
+          echo "$ASSETS" | jq -r '.[] | "  - \(.name) (\(.size | tonumber / 1024 / 1024 | floor)MB)"'
+          
           # 下载每个 asset
+          echo ""
+          echo "⬇️  Downloading assets..."
           echo "$ASSETS" | jq -r '.[] | "\(.id) \(.name)"' | while read asset_id asset_name; do
-            echo "Downloading $asset_name..."
+            echo "  ⏳ Downloading $asset_name..."
             curl -L -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
               -H "Accept: application/octet-stream" \
               "https://api.github.com/repos/${{ github.repository }}/releases/assets/$asset_id" \
               -o "release-assets/$asset_name"
+            
+            if [ -f "release-assets/$asset_name" ]; then
+              echo "  ✅ Downloaded $asset_name ($(ls -lh "release-assets/$asset_name" | awk '{print $5}'))"
+            else
+              echo "  ❌ Failed to download $asset_name"
+            fi
           done
           
+          echo ""
+          echo "📋 All downloaded files:"
           ls -lh release-assets/
 
       - name: Update URLs in JSON files
@@ -347,7 +370,10 @@ jobs:
           
           # 上传所有 assets
           echo "📤 Uploading assets..."
-          ASSET_COUNT=0
+          
+          # 创建临时文件存储计数
+          SUCCESS_COUNT=0
+          FAILED_COUNT=0
           
           # 获取所有文件列表（不使用通配符）
           ASSET_FILES=$(find release-assets -type f -maxdepth 1 2>/dev/null)
@@ -355,7 +381,8 @@ jobs:
           if [ -z "$ASSET_FILES" ]; then
             echo "⚠️  No assets found in release-assets/"
           else
-            echo "$ASSET_FILES" | while read -r asset; do
+            # 使用数组而不是管道来避免子 shell 问题
+            while IFS= read -r asset; do
               if [ -f "$asset" ]; then
                 filename=$(basename "$asset")
                 filesize=$(ls -lh "$asset" | awk '{print $5}')
@@ -368,12 +395,13 @@ jobs:
                 
                 if [ "$UPLOAD_CODE" == "201" ]; then
                   echo "  ✅ Uploaded $filename"
-                  ASSET_COUNT=$((ASSET_COUNT + 1))
+                  SUCCESS_COUNT=$((SUCCESS_COUNT + 1))
                 else
                   echo "  ❌ Failed to upload $filename (HTTP $UPLOAD_CODE)"
+                  FAILED_COUNT=$((FAILED_COUNT + 1))
                 fi
               fi
-            done
+            done <<< "$ASSET_FILES"
           fi
           
           echo ""
@@ -381,6 +409,7 @@ jobs:
           echo "📊 Summary:"
           echo "  - Release: $RELEASE_NAME"
           echo "  - Tag: $TAG_NAME"
-          echo "  - Assets uploaded: $ASSET_COUNT"
+          echo "  - Assets uploaded: $SUCCESS_COUNT"
+          echo "  - Assets failed: $FAILED_COUNT"
           echo "  - URL: $GITEA_URL/$GITEA_REPO/releases/tag/$TAG_NAME"
 
