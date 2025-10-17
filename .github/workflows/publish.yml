@@ -137,7 +137,25 @@ jobs:
           echo "如果您已安装旧版本，应用会自动检测并提示更新。" >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
 
+      # Android 使用 Tauri 的 android build 命令
+      - name: Build Android APK
+        if: matrix.platform == 'ubuntu-latest'
+        env:
+          VITE_API_BASE_URL: ${{ secrets.VITE_API_BASE_URL || 'http://localhost:5678' }}
+        run: |
+          echo "🤖 Building Android APK with Tauri CLI..."
+          # --ci: 非交互模式，跳过提示
+          # --apk: 构建 APK 文件
+          # --split-per-abi: 为每个架构生成单独的 APK（更小的文件）
+          bun tauri android build --ci --apk --split-per-abi
+          
+          echo "✅ Android APK built successfully"
+          echo "📦 Generated APK files:"
+          find src-tauri/gen/android/app/build/outputs/apk -name "*.apk" -type f -exec ls -lh {} \;
+
+      # 桌面平台使用 tauri-action
       - uses: tauri-apps/tauri-action@v0
+        if: matrix.platform != 'ubuntu-latest'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
@@ -152,6 +170,21 @@ jobs:
           prerelease: false
           includeUpdaterJson: true
           args: ${{ matrix.args }}
+
+      # 为 Android 单独上传 APK 到 Release
+      - name: Upload Android APK to Release
+        if: matrix.platform == 'ubuntu-latest'
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: v__VERSION__
+          name: 'Watch Monkey v__VERSION__'
+          body: ${{ steps.release_notes.outputs.RELEASE_NOTES }}
+          draft: false
+          prerelease: false
+          files: |
+            src-tauri/gen/android/app/build/outputs/apk/**/*.apk
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   sync-to-gitea:
     needs: publish-tauri
