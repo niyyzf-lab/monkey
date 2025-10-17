@@ -326,42 +326,6 @@
   }
 }
 
-/* 模块节点动画 */
-@keyframes breathe {
-  0%, 100% {
-    transform: scale(1);
-  }
-  50% {
-    transform: scale(1.05);
-  }
-}
-
-@keyframes float {
-  0%, 100% {
-    transform: translateY(0px);
-  }
-  50% {
-    transform: translateY(-8px);
-  }
-}
-
-@keyframes shimmer {
-  0% {
-    transform: translateX(-100%);
-  }
-  100% {
-    transform: translateX(100%);
-  }
-}
-
-.animate-breathe {
-  animation: breathe 4s ease-in-out infinite;
-}
-
-.animate-shimmer {
-  animation: shimmer 2s ease-in-out;
-}
-
 /* 尊重用户的减少动画偏好 */
 @media (prefers-reduced-motion: reduce) {
   *,

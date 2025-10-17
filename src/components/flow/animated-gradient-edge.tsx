@@ -47,45 +47,45 @@ function AnimatedGradientEdgeComponent({
   const label = data?.label as string | undefined
 
   return (
-    <>
+    <g>
       {/* 定义渐变和滤镜 */}
       <defs>
         {/* 静态基础渐变 - 确保可见 */}
         <linearGradient id={`${gradientId}-base`} x1="0%" y1="0%" x2="100%" y2="0%">
-          <stop offset="0%" stopColor="hsl(var(--foreground))" stopOpacity="0.6" />
-          <stop offset="50%" stopColor="hsl(var(--foreground))" stopOpacity="0.8" />
-          <stop offset="100%" stopColor="hsl(var(--foreground))" stopOpacity="0.6" />
+          <stop offset="0%" stopColor="hsl(var(--chart-1))" stopOpacity="0.6" />
+          <stop offset="50%" stopColor="hsl(var(--chart-2))" stopOpacity="0.8" />
+          <stop offset="100%" stopColor="hsl(var(--chart-1))" stopOpacity="0.6" />
         </linearGradient>
         
         {/* 主渐变 - 流动的色彩 */}
         <linearGradient id={gradientId} x1="0%" y1="0%" x2="100%" y2="0%">
-          <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity="0.9" />
-          <stop offset="50%" stopColor="hsl(var(--accent))" stopOpacity="1" />
-          <stop offset="100%" stopColor="hsl(var(--primary))" stopOpacity="0.9" />
+          <stop offset="0%" stopColor="hsl(var(--chart-1))" stopOpacity="0.95" />
+          <stop offset="50%" stopColor="hsl(var(--chart-2))" stopOpacity="1" />
+          <stop offset="100%" stopColor="hsl(var(--chart-1))" stopOpacity="0.95" />
         </linearGradient>
         
         {/* 发光渐变 */}
         <linearGradient id={glowGradientId} x1="0%" y1="0%" x2="100%" y2="0%">
-          <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity="0.5" />
-          <stop offset="50%" stopColor="hsl(var(--accent))" stopOpacity="0.8" />
-          <stop offset="100%" stopColor="hsl(var(--primary))" stopOpacity="0.5" />
+          <stop offset="0%" stopColor="hsl(var(--chart-1))" stopOpacity="0.6" />
+          <stop offset="50%" stopColor="hsl(var(--chart-2))" stopOpacity="0.9" />
+          <stop offset="100%" stopColor="hsl(var(--chart-1))" stopOpacity="0.6" />
         </linearGradient>
         
         {/* 流动动画渐变 */}
         <linearGradient id={`${gradientId}-flow`}>
-          <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity="0">
+          <stop offset="0%" stopColor="hsl(var(--chart-1))" stopOpacity="0">
             <animate attributeName="offset" values="-0.5;1.5" dur="2s" repeatCount="indefinite" />
           </stop>
-          <stop offset="0.3" stopColor="hsl(var(--accent))" stopOpacity="0.9">
+          <stop offset="0.3" stopColor="hsl(var(--chart-2))" stopOpacity="0.95">
             <animate attributeName="offset" values="-0.2;1.8" dur="2s" repeatCount="indefinite" />
           </stop>
-          <stop offset="0.5" stopColor="hsl(var(--primary))" stopOpacity="1">
+          <stop offset="0.5" stopColor="hsl(var(--chart-1))" stopOpacity="1">
             <animate attributeName="offset" values="0;2" dur="2s" repeatCount="indefinite" />
           </stop>
-          <stop offset="0.7" stopColor="hsl(var(--accent))" stopOpacity="0.9">
+          <stop offset="0.7" stopColor="hsl(var(--chart-2))" stopOpacity="0.95">
             <animate attributeName="offset" values="0.2;2.2" dur="2s" repeatCount="indefinite" />
           </stop>
-          <stop offset="1%" stopColor="hsl(var(--primary))" stopOpacity="0">
+          <stop offset="1%" stopColor="hsl(var(--chart-1))" stopOpacity="0">
             <animate attributeName="offset" values="0.5;2.5" dur="2s" repeatCount="indefinite" />
           </stop>
         </linearGradient>
@@ -193,8 +193,8 @@ function AnimatedGradientEdgeComponent({
           {/* 粒子中层发光 */}
           <circle
             r={selected ? 5 : 4}
-            fill="hsl(var(--accent))"
-            style={{ opacity: 0.85 }}
+            fill="hsl(var(--chart-2))"
+            style={{ opacity: 0.9 }}
           >
             <animateMotion
               dur="3s"
@@ -206,7 +206,7 @@ function AnimatedGradientEdgeComponent({
             {/* 脉冲呼吸 */}
             <animate
               attributeName="opacity"
-              values="0.6;1;0.6"
+              values="0.7;1;0.7"
               dur="1.2s"
               repeatCount="indefinite"
             />
@@ -221,7 +221,8 @@ function AnimatedGradientEdgeComponent({
           {/* 粒子核心亮点 */}
           <circle
             r={selected ? 2.5 : 2}
-            fill="hsl(var(--background))"
+            fill="hsl(var(--chart-1))"
+            style={{ opacity: 0.95 }}
           >
             <animateMotion
               dur="3s"
@@ -250,12 +251,19 @@ function AnimatedGradientEdgeComponent({
               {selected && (
                 <>
                   <div 
-                    className="absolute inset-0 rounded-full blur-lg opacity-40 bg-gradient-to-r from-primary via-accent to-primary animate-pulse"
-                    style={{ animationDuration: '2s' }}
+                    className="absolute inset-0 rounded-full blur-lg opacity-50"
+                    style={{ 
+                      animationDuration: '2s',
+                      background: 'linear-gradient(to right, hsl(var(--chart-1)), hsl(var(--chart-2)), hsl(var(--chart-1)))',
+                      animation: 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite'
+                    }}
                     aria-hidden="true"
                   />
                   <div 
-                    className="absolute inset-0 rounded-full blur-md opacity-30 bg-gradient-to-r from-primary via-accent to-primary"
+                    className="absolute inset-0 rounded-full blur-md opacity-35"
+                    style={{
+                      background: 'linear-gradient(to right, hsl(var(--chart-1)), hsl(var(--chart-2)), hsl(var(--chart-1)))'
+                    }}
                     aria-hidden="true"
                   />
                 </>
@@ -268,9 +276,13 @@ function AnimatedGradientEdgeComponent({
                   "shadow-lg border backdrop-blur-xl",
                   "transition-all duration-300 hover:scale-105",
                   selected
-                    ? "bg-gradient-to-r from-primary/15 via-accent/10 to-primary/15 border-primary/50 text-primary shadow-primary/20"
+                    ? "border-[hsl(var(--chart-1))] shadow-[hsl(var(--chart-1))]/30"
                     : "bg-card/95 border-border/50 text-muted-foreground hover:text-foreground"
                 )}
+                style={selected ? {
+                  background: 'linear-gradient(to right, hsl(var(--chart-1) / 0.15), hsl(var(--chart-2) / 0.1), hsl(var(--chart-1) / 0.15))',
+                  color: 'hsl(var(--chart-1))'
+                } : {}}
               >
                 {label}
               </div>
@@ -278,7 +290,7 @@ function AnimatedGradientEdgeComponent({
           </div>
         </EdgeLabelRenderer>
       )}
-    </>
+    </g>
   )
 }
 

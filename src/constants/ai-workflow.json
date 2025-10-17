@@ -16,6 +16,21 @@
       }
     },
     {
+      "id": "twitter-trigger",
+      "type": "ai-agent",
+      "position": {
+        "x": 40.45410904628065,
+        "y": 368.3514169322216
+      },
+      "data": {
+        "label": "X新闻触发器",
+        "description": "名人新闻监听",
+        "nodeType": "module",
+        "functions": [],
+        "icon": "/monkey/Listener.png"
+      }
+    },
+    {
       "id": "news-analyzer",
       "type": "ai-agent",
       "position": {
@@ -92,7 +107,7 @@
             "label": "止盈止损"
           }
         ],
-        "icon": ""
+        "icon": "/monkey/Decision.png"
       }
     }
   ],
@@ -119,6 +134,15 @@
       "id": "e3",
       "source": "stock-selector-ai",
       "target": "decision-ai",
+      "sourceHandle": "right",
+      "type": "animatedGradient",
+      "animated": true,
+      "label": ""
+    },
+    {
+      "id": "e4",
+      "source": "twitter-trigger",
+      "target": "news-analyzer",
       "sourceHandle": "right",
       "type": "animatedGradient",
       "animated": true,
