@@ -41,17 +41,23 @@ jobs:
       - name: install Rust stable
         uses: dtolnay/rust-toolchain@stable
         with:
-          # Those targets are only used on macos runners so it's in an `if` to slightly speed up windows builds.
-          targets: ${{ matrix.platform == 'macos-latest' && 'aarch64-apple-darwin,x86_64-apple-darwin' || matrix.platform == 'ubuntu-latest' && 'aarch64-linux-android,armv7-linux-androideabi,i686-linux-android,x86_64-linux-android' || '' }}
+          # macOS: 两个架构；Android: 只需要 ARM64；Windows: 使用默认
+          targets: ${{ matrix.platform == 'macos-latest' && 'aarch64-apple-darwin,x86_64-apple-darwin' || matrix.platform == 'ubuntu-latest' && 'aarch64-linux-android' || '' }}
 
       - name: Rust cache
         uses: swatinem/rust-cache@v2
         with:
           workspaces: './src-tauri -> target'
-          shared-key: ${{ matrix.target }}-${{ hashFiles('**/Cargo.lock', '**/Cargo.toml') }}
+          # Android 使用特定的缓存键（只包含 aarch64）
+          shared-key: ${{ matrix.platform == 'ubuntu-latest' && 'android-aarch64' || matrix.target }}-${{ hashFiles('**/Cargo.lock', '**/Cargo.toml') }}
           cache-on-failure: true
           # 设置缓存过期时间,避免缓存过大
           save-if: ${{ github.ref == 'refs/heads/release' }}
+          # 增加 Android 构建的缓存目录
+          cache-directories: |
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
 
       - name: Install Bun
         uses: oven-sh/setup-bun@v2
@@ -188,17 +194,17 @@ jobs:
           echo "如果您已安装旧版本，应用会自动检测并提示更新。" >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
 
-      # Android 使用 Tauri 的 android build 命令
+      # Android 使用 Tauri 的 android build 命令（仅 ARM64）
       - name: Build Android APK
         if: matrix.platform == 'ubuntu-latest'
         env:
           VITE_API_BASE_URL: ${{ secrets.VITE_API_BASE_URL || 'http://localhost:5678' }}
         run: |
-          echo "🤖 Building Android APK with Tauri CLI..."
+          echo "🤖 Building Android APK (ARM64 only)..."
           # --ci: 非交互模式，跳过提示
           # --apk: 构建 APK 文件
-          # --split-per-abi: 为每个架构生成单独的 APK（更小的文件）
-          bun tauri android build --ci --apk --split-per-abi
+          # --target: 只构建 ARM64 架构（现代 Android 设备）
+          bun tauri android build --ci --apk --target aarch64
           
           echo "✅ Android APK built successfully"
           echo "📦 Generated APK files:"
