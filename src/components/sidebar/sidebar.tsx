@@ -41,8 +41,8 @@ export const Sidebar = React.memo(React.forwardRef<HTMLDivElement, SidebarProps>
             "overflow-hidden shadow-lg select-none relative",
             // 桌面端：左侧边框
             !isMobile && "border-r border-sidebar-border",
-            // 移动端：固定在右侧，左侧边框
-            isMobile && "fixed top-0 right-0 z-50 h-screen-safe border-l border-sidebar-border",
+            // 移动端：固定在右侧，左侧边框，层级高于底部导航栏
+            isMobile && "fixed top-0 right-0 z-[60] h-screen-safe border-l border-sidebar-border",
             className
           )}
           style={{

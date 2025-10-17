@@ -138,11 +138,11 @@ function RootLayoutContent() {
             </SidebarFooter>
           </Sidebar>
 
-          {/* 遮罩层 - 仅移动端显示 */}
+          {/* 遮罩层 - 仅移动端显示，层级高于底部导航栏 */}
           <AnimatePresence>
             {isMobile && isOpen && (
               <motion.div
-                className="fixed inset-0 bg-black/50 z-40"
+                className="fixed inset-0 bg-black/50 z-[55]"
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
@@ -155,9 +155,6 @@ function RootLayoutContent() {
           {/* 主内容区域 - 重新设计的页面切换动画 */}
           <motion.main 
             className="flex-1 relative overflow-hidden pb-0 md:pb-0"
-            style={{
-              paddingBottom: isMobileOS ? '96px' : '0',
-            }}
             layout
             transition={{ 
               duration: 0.3,

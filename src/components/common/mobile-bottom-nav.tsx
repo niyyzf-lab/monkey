@@ -1,8 +1,9 @@
 import { AnimatePresence, motion } from 'motion/react'
-import { useNavigate, useLocation } from '@tanstack/react-router'
-import { HatGlasses, Banana, HandMetal, MessageSquareHeart, Unlink } from 'lucide-react'
+import { useNavigate, useLocation, useRouter } from '@tanstack/react-router'
+import { HatGlasses, Banana, HandMetal, MessageSquareHeart, Unlink, ChevronLeft } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useDeviceDetect } from '@/hooks/use-device-detect'
+import { useState, useEffect } from 'react'
 
 interface NavItem {
   id: string
@@ -12,10 +13,10 @@ interface NavItem {
 }
 
 const navItems: NavItem[] = [
-  { id: 'chat', path: '/chat', icon: MessageSquareHeart, label: '聊天' },
-  { id: 'pick', path: '/pick', icon: Banana, label: '自选' },
   { id: 'feel', path: '/feel', icon: HatGlasses, label: '猴园儿' },
+  { id: 'pick', path: '/pick', icon: Banana, label: '自选' },
   { id: 'hold', path: '/hold', icon: HandMetal, label: '持仓' },
+  { id: 'chat', path: '/chat', icon: MessageSquareHeart, label: '聊天' },
   { id: 'data', path: '/data', icon: Unlink, label: '数据' },
 ]
 
@@ -23,19 +24,56 @@ const navItems: NavItem[] = [
  * 移动端底部导航栏组件
  * 
  * 特性：
- * - 仅在移动设备显示
+ * - 仅在移动设备竖屏时显示（横屏时隐藏，因为侧边栏会显示）
  * - 固定在底部，适配安全区域
  * - 毛玻璃背景效果
  * - 激活状态高亮动画
  * - 点击反馈动画
+ * - 智能返回按钮（在子页面或有历史记录时显示）
  */
 export function MobileBottomNav() {
   const navigate = useNavigate()
+  const router = useRouter()
   const location = useLocation()
   const { isMobileDevice } = useDeviceDetect()
+  const [isPortrait, setIsPortrait] = useState(true)
+  const [canGoBack, setCanGoBack] = useState(false)
 
-  // 仅在移动设备显示
-  if (!isMobileDevice) {
+  // 监听屏幕方向变化
+  useEffect(() => {
+    const checkOrientation = () => {
+      // 竖屏：高度大于宽度
+      setIsPortrait(window.innerHeight > window.innerWidth)
+    }
+
+    // 初始检测
+    checkOrientation()
+
+    // 监听窗口大小变化（包括旋转）
+    window.addEventListener('resize', checkOrientation)
+    // 监听方向变化事件
+    window.addEventListener('orientationchange', checkOrientation)
+
+    return () => {
+      window.removeEventListener('resize', checkOrientation)
+      window.removeEventListener('orientationchange', checkOrientation)
+    }
+  }, [])
+
+  // 检测是否可以返回（检查历史记录）
+  useEffect(() => {
+    // 检查是否在子页面（路径中有多个斜杠）
+    const pathSegments = location.pathname.split('/').filter(Boolean)
+    const isSubPage = pathSegments.length > 1
+    
+    // 检查是否有历史记录可以返回
+    const hasHistory = window.history.length > 1
+    
+    setCanGoBack(isSubPage || hasHistory)
+  }, [location.pathname])
+
+  // 仅在移动设备且竖屏时显示
+  if (!isMobileDevice || !isPortrait) {
     return null
   }
 
@@ -55,20 +93,25 @@ export function MobileBottomNav() {
     navigate({ to: path })
   }
 
+  const handleBack = () => {
+    router.history.back()
+  }
+
   return (
     <div
-      className="fixed bottom-0 left-0 right-0 z-30 flex justify-center pointer-events-none px-6"
+      className="fixed bottom-0 left-0 right-0 z-50 flex justify-center pointer-events-none px-6"
       style={{
-        paddingBottom: 'calc(env(safe-area-inset-bottom) + 24px)',
+        paddingBottom: 'calc(env(safe-area-inset-bottom) + 16px)',
       }}
     >
+      {/* 底部导航栏 */}
       <motion.nav
         className={cn(
-          'pointer-events-auto',
+          'pointer-events-auto relative',
           'max-w-md w-full px-1 py-1 h-14 rounded-[20px]',
-          'border border-border/40',
-          'backdrop-blur-3xl bg-background/85 supports-[backdrop-filter]:bg-background/75',
-          'shadow-[0_2px_16px_rgba(0,0,0,0.06),0_8px_32px_rgba(0,0,0,0.04)] dark:shadow-[0_2px_16px_rgba(0,0,0,0.3),0_8px_32px_rgba(0,0,0,0.2)]'
+          'border border-border/20',
+          'backdrop-blur-xl bg-background/50 supports-[backdrop-filter]:bg-background/40',
+          'shadow-[0_8px_32px_rgba(0,0,0,0.12),0_2px_8px_rgba(0,0,0,0.08)] dark:shadow-[0_8px_32px_rgba(0,0,0,0.5),0_2px_8px_rgba(0,0,0,0.3)]'
         )}
         initial={{ y: 60, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
@@ -80,6 +123,36 @@ export function MobileBottomNav() {
           mass: 0.7,
         }}
       >
+        {/* 返回按钮 - 融入底栏右上角 */}
+        <AnimatePresence>
+          {canGoBack && (
+            <motion.button
+              onClick={handleBack}
+              className={cn(
+                'absolute -top-[6px] -right-[6px] z-10',
+                'w-6 h-6 rounded-full',
+                'border border-border/25',
+                'backdrop-blur-xl bg-background/60 supports-[backdrop-filter]:bg-background/50',
+                'shadow-[0_2px_8px_rgba(0,0,0,0.1)] dark:shadow-[0_2px_8px_rgba(0,0,0,0.3)]',
+                'flex items-center justify-center',
+                'focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40',
+                'active:opacity-70'
+              )}
+              initial={{ scale: 0, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0, opacity: 0 }}
+              whileTap={{ scale: 0.80 }}
+              transition={{
+                type: 'spring',
+                stiffness: 600,
+                damping: 25,
+                mass: 0.3,
+              }}
+            >
+              <ChevronLeft className="w-3.5 h-3.5 text-foreground/75" strokeWidth={2.5} />
+            </motion.button>
+          )}
+        </AnimatePresence>
         <div className="h-full flex items-center justify-between gap-0.5">
           {navItems.map((item) => {
           const Icon = item.icon
