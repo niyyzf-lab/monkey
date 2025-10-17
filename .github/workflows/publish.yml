@@ -308,21 +308,56 @@ jobs:
             find src-tauri/gen/android/app/build/outputs/apk -name "*.apk" -type f -exec cp {} /tmp/upload-assets/ \; 2>/dev/null || true
           else
             # 桌面平台（从 GitHub Release 下载刚上传的文件）
-            sleep 10  # 等待 GitHub Release 上传完成
+            echo "⏳ Waiting 15 seconds for GitHub Release upload to complete..."
+            sleep 15
             
             # 获取 GitHub Release 的最新 assets
+            echo "📥 Fetching release assets from GitHub..."
             GITHUB_ASSETS=$(curl -s -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
               "https://api.github.com/repos/${{ github.repository }}/releases/tags/${TAG_NAME}")
             
+            # 根据平台确定文件名模式和排除模式
+            case "$TARGET" in
+              "aarch64-apple-darwin")
+                PATTERN="aarch64"
+                EXCLUDE_PATTERN=""
+                ;;
+              "x86_64-apple-darwin")
+                PATTERN="x64"
+                EXCLUDE_PATTERN="msi|exe"  # 排除 Windows 文件
+                ;;
+              "x86_64-pc-windows-msvc")
+                PATTERN="x64"
+                EXCLUDE_PATTERN="dmg|app\\.tar"  # 排除 macOS 文件
+                ;;
+              *)
+                PATTERN="$TARGET"
+                EXCLUDE_PATTERN=""
+                ;;
+            esac
+            
+            echo "🔍 Looking for files matching pattern: $PATTERN"
+            if [ -n "$EXCLUDE_PATTERN" ]; then
+              echo "🚫 Excluding pattern: $EXCLUDE_PATTERN"
+            fi
+            
             # 根据平台和架构筛选文件
-            echo "$GITHUB_ASSETS" | jq -r --arg target "$TARGET" \
-              '.assets[] | select(.name | contains($target)) | "\(.id) \(.name)"' | \
-              while read asset_id asset_name; do
+            if [ -n "$EXCLUDE_PATTERN" ]; then
+              echo "$GITHUB_ASSETS" | jq -r --arg pattern "$PATTERN" --arg exclude "$EXCLUDE_PATTERN" \
+                '.assets[] | select(.name | contains($pattern)) | select(.name | test($exclude) | not) | "\(.id) \(.name)"'
+            else
+              echo "$GITHUB_ASSETS" | jq -r --arg pattern "$PATTERN" \
+                '.assets[] | select(.name | contains($pattern)) | "\(.id) \(.name)"'
+            fi | while read asset_id asset_name; do
                 echo "  ⏳ Downloading $asset_name..."
                 curl -L -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
                   -H "Accept: application/octet-stream" \
                   "https://api.github.com/repos/${{ github.repository }}/releases/assets/$asset_id" \
                   -o "/tmp/upload-assets/$asset_name"
+                
+                if [ -f "/tmp/upload-assets/$asset_name" ]; then
+                  echo "  ✅ Downloaded $asset_name ($(ls -lh "/tmp/upload-assets/$asset_name" | awk '{print $5}'))"
+                fi
               done
           fi
           
