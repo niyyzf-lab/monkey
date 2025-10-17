@@ -13,7 +13,7 @@ import { useEffect, useState } from 'react'
 import { useViewportHeight } from '../hooks/use-viewport-height'
 import { UpdaterProvider } from '../components/updater'
 import { useDeviceDetect } from '../hooks/use-device-detect'
-import { useAndroidBackButton } from '../hooks/use-android-back-button'
+import { MobileBottomNav } from '../components/common/mobile-bottom-nav'
 
 export const Route = createRootRoute({
   component: RootLayout,
@@ -66,9 +66,6 @@ function RootLayoutContent() {
   
   // 初始化视口高度监听，修复移动端 100vh 问题
   useViewportHeight()
-  
-  // 监听 Android 返回键，触发网页历史记录返回
-  useAndroidBackButton()
   
   // 检测是否为 iOS 或 Android 设备
   const isMobileOS = isIOS || isAndroid
@@ -157,7 +154,10 @@ function RootLayoutContent() {
 
           {/* 主内容区域 - 重新设计的页面切换动画 */}
           <motion.main 
-            className="flex-1 relative overflow-hidden"
+            className="flex-1 relative overflow-hidden pb-0 md:pb-0"
+            style={{
+              paddingBottom: isMobileOS ? '96px' : '0',
+            }}
             layout
             transition={{ 
               duration: 0.3,
@@ -178,6 +178,9 @@ function RootLayoutContent() {
             </AnimatePresence>
           </motion.main>
         </div>
+
+        {/* 移动端底部导航 */}
+        <MobileBottomNav />
       </motion.div>
   )
 }

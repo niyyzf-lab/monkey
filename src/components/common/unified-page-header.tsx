@@ -1,10 +1,12 @@
 import { ReactNode, useState, useEffect } from 'react'
-import { Search, X, Menu } from 'lucide-react'
+import { Search, X, Menu, ArrowLeft } from 'lucide-react'
 import { Input } from '../ui/input'
 import { motion } from 'motion/react'
 import { cn } from '@/lib/utils'
 import { useSidebar } from '../sidebar'
 import { Button } from '../ui/button'
+import { useRouter, useLocation } from '@tanstack/react-router'
+import { useDeviceDetect } from '@/hooks/use-device-detect'
 
 interface SearchConfig {
   value: string
@@ -41,6 +43,24 @@ export function UnifiedPageHeader({
 }: UnifiedPageHeaderProps) {
   const [isScrolled, setIsScrolled] = useState(false)
   const { setIsOpen, isMobile } = useSidebar()
+  const router = useRouter()
+  const location = useLocation()
+  const { isAndroid, isIOS } = useDeviceDetect()
+  
+  // 判断是否为移动设备
+  const isMobileDevice = isAndroid || isIOS
+  
+  // 根页面路径列表（这些页面不显示返回按钮）
+  const rootPaths = ['/', '/feel', '/hold', '/pick', '/data', '/chat', '/mind', '/settings']
+  const isRootPage = rootPaths.includes(location.pathname)
+  
+  // 只在移动设备且不在根页面时显示返回按钮
+  const shouldShowBackButton = isMobileDevice && !isRootPage
+  
+  // 处理返回按钮点击
+  const handleBack = () => {
+    router.history.back()
+  }
 
   // 监听滚动，动态调整悬浮样式
   useEffect(() => {
@@ -64,8 +84,28 @@ export function UnifiedPageHeader({
       )}
       data-tauri-drag-region
     >
-      {/* 左侧：标题区域 */}
-      <div className="flex items-center gap-3 min-w-0 flex-1" data-tauri-drag-region>
+      {/* 左侧：返回按钮（移动设备子页面）+ 标题区域 */}
+      <div className="flex items-center gap-2 min-w-0 flex-1" data-tauri-drag-region>
+        {/* 移动设备返回按钮 - 仅在子页面显示 */}
+        {shouldShowBackButton && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.8 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.8 }}
+            transition={{ duration: 0.15 }}
+          >
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={handleBack}
+              className="flex-shrink-0 h-8 w-8 -ml-1"
+              aria-label="返回"
+            >
+              <ArrowLeft className="h-4 w-4" />
+            </Button>
+          </motion.div>
+        )}
+        
         <motion.div
           initial={{ opacity: 0, x: -10 }}
           animate={{ opacity: 1, x: 0 }}

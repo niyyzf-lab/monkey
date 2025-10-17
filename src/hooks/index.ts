@@ -5,9 +5,6 @@ export type { DeviceInfo, DeviceType } from './use-device-detect'
 // 视口高度
 export { useViewportHeight, useSafeViewportHeight } from './use-viewport-height'
 
-// Android 返回键处理
-export { useAndroidBackButton } from './use-android-back-button'
-
 // 其他 hooks
 export { useHeaderCollapse } from './use-header-collapse'
 export { useHoldingsFilter } from './use-holdings-filter'

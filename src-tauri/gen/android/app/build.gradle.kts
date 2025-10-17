@@ -50,7 +50,8 @@ android {
             isDebuggable = true
             isJniDebuggable = true
             isMinifyEnabled = false
-            packaging {                jniLibs.keepDebugSymbols.add("*/arm64-v8a/*.so")
+            packaging {                
+                jniLibs.keepDebugSymbols.add("*/arm64-v8a/*.so")
                 jniLibs.keepDebugSymbols.add("*/armeabi-v7a/*.so")
                 jniLibs.keepDebugSymbols.add("*/x86/*.so")
                 jniLibs.keepDebugSymbols.add("*/x86_64/*.so")
@@ -64,6 +65,18 @@ android {
                     .plus(getDefaultProguardFile("proguard-android-optimize.txt"))
                     .toList().toTypedArray()
             )
+        }
+    }
+    
+    // 配置 splits - 只在 release 构建时生成多个 APK
+    // Debug 构建保持单一 APK 以简化开发流程
+    splits {
+        abi {
+            // 只在 release 构建时启用
+            isEnable = gradle.startParameter.taskNames.any { it.contains("Release") }
+            reset()
+            include("arm64-v8a")
+            isUniversalApk = true  // 生成一个包含所有架构的 APK
         }
     }
     kotlinOptions {
