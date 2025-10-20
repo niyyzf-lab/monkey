@@ -23,8 +23,8 @@
         "y": 368.3514169322216
       },
       "data": {
-        "label": "X新闻触发器",
-        "description": "名人新闻监听",
+        "label": "X 新闻触发器",
+        "description": "监听名人动态与市场热点",
         "nodeType": "module",
         "functions": [],
         "icon": "/monkey/Listener.png"
@@ -38,45 +38,79 @@
         "y": 279.27272727272725
       },
       "data": {
-        "label": "新闻分析AI",
-        "description": "分析新闻并总结200字",
+        "label": "新闻分析 AI",
+        "description": "分析新闻内容并生成摘要",
         "nodeType": "module",
         "functions": [
           {
             "id": "llm-1",
-            "label": "LLM"
+            "label": "LLM",
+            "icon": "🤖"
           },
           {
             "id": "parser-1",
-            "label": "解析器"
+            "label": "解析器",
+            "icon": "📝"
           }
         ],
         "icon": "/monkey/Analyze.png"
       }
     },
     {
+      "id": "news-quality-check",
+      "type": "if-node",
+      "position": {
+        "x": 606.8074086869798,
+        "y": 525.4730200278884
+      },
+      "data": {
+        "label": "新闻质量检查",
+        "description": "判断新闻是否有价值",
+        "nodeType": "if",
+        "condition": "新闻价值 > 7分",
+        "icon": "🔍"
+      }
+    },
+    {
+      "id": "idle-node",
+      "type": "idle-node",
+      "position": {
+        "x": 872.7003713863728,
+        "y": 465.2657625630278
+      },
+      "data": {
+        "label": "等待新闻",
+        "description": "暂不处理，等待下一条",
+        "nodeType": "idle",
+        "icon": "⏸️"
+      }
+    },
+    {
       "id": "stock-selector-ai",
       "type": "ai-agent",
       "position": {
-        "x": 689.0909090909091,
-        "y": 44.363636363636346
+        "x": 750,
+        "y": 120
       },
       "data": {
-        "label": "选股AI",
-        "description": "提取关键词推荐股票",
+        "label": "选股 AI",
+        "description": "基于新闻提取关键词并推荐股票",
         "nodeType": "module",
         "functions": [
           {
             "id": "llm-2",
-            "label": "LLM"
+            "label": "LLM",
+            "icon": "🤖"
           },
           {
             "id": "tool-1",
-            "label": "选股工具"
+            "label": "选股工具",
+            "icon": "🔍"
           },
           {
             "id": "mem-1",
-            "label": "记忆"
+            "label": "记忆",
+            "icon": "💾"
           }
         ],
         "icon": "/monkey/Choose.png"
@@ -86,28 +120,204 @@
       "id": "decision-ai",
       "type": "ai-agent",
       "position": {
-        "x": 1072,
-        "y": 261.8181818181818
+        "x": 1233.1364238660303,
+        "y": -43.71045829361465
       },
       "data": {
-        "label": "决策AI",
-        "description": "决策是否买入",
+        "label": "决策 AI",
+        "description": "综合分析并决策交易策略",
         "nodeType": "module",
         "functions": [
           {
             "id": "llm-3",
-            "label": "LLM"
+            "label": "LLM",
+            "icon": "🤖",
+            "embedded": false
           },
           {
             "id": "tool-2",
-            "label": "买入"
+            "label": "交易工具",
+            "icon": "💼",
+            "embedded": false
           },
           {
             "id": "tool-3",
-            "label": "止盈止损"
+            "label": "现状分析工具",
+            "icon": "📊",
+            "embedded": false
+          },
+          {
+            "id": "tool-4",
+            "label": "外部分析工具",
+            "icon": "🌐",
+            "embedded": false
+          },
+          {
+            "id": "tool-5",
+            "label": "K线分析工具",
+            "icon": "📈",
+            "embedded": false
           }
         ],
         "icon": "/monkey/Decision.png"
+      }
+    },
+    {
+      "id": "data-processor",
+      "type": "tool-ai",
+      "position": {
+        "x": 1174.5288453863182,
+        "y": 283.2072686390281
+      },
+      "data": {
+        "label": "交易执行 AI",
+        "description": "理解决策指令并执行交易操作",
+        "nodeType": "tool-ai",
+        "functions": [
+          {
+            "id": "buy-tool",
+            "label": "买入工具",
+            "icon": "💰"
+          },
+          {
+            "id": "sell-tool",
+            "label": "卖出工具",
+            "icon": "💸"
+          },
+          {
+            "id": "order-tool",
+            "label": "挂单工具",
+            "icon": "📋"
+          },
+          {
+            "id": "stop-tool",
+            "label": "止盈止损工具",
+            "icon": "🎯"
+          }
+        ],
+        "icon": ""
+      }
+    },
+    {
+      "id": "ai-status-provider",
+      "type": "tool-ai",
+      "position": {
+        "x": 1313.0910058789982,
+        "y": 443.01704395451225
+      },
+      "data": {
+        "label": "现状分析 AI",
+        "description": "提供账户持仓、资金、交易记录等实时信息",
+        "nodeType": "tool-ai",
+        "functions": [
+          {
+            "id": "get-positions",
+            "label": "获取持仓",
+            "icon": "📊"
+          },
+          {
+            "id": "get-watchlist",
+            "label": "获取自选",
+            "icon": "⭐"
+          },
+          {
+            "id": "get-funds-status",
+            "label": "获取资金状态",
+            "icon": "💵"
+          },
+          {
+            "id": "get-transaction-history",
+            "label": "获取交易记录",
+            "icon": "📄"
+          }
+        ],
+        "icon": ""
+      }
+    },
+    {
+      "id": "external-analysis-ai",
+      "type": "tool-ai",
+      "position": {
+        "x": 1437.2300291044612,
+        "y": 225.03684631946658
+      },
+      "data": {
+        "label": "外部分析 AI",
+        "description": "提供新闻、研报、机构评级等外部分析信息",
+        "nodeType": "tool-ai",
+        "functions": [
+          {
+            "id": "get-news-data",
+            "label": "获取新闻数据",
+            "icon": "📰"
+          },
+          {
+            "id": "get-research-report",
+            "label": "获取研报",
+            "icon": "📑"
+          },
+          {
+            "id": "get-institution-rating",
+            "label": "获取机构评级",
+            "icon": "⭐"
+          },
+          {
+            "id": "get-industry-analysis",
+            "label": "获取行业分析",
+            "icon": "📊"
+          }
+        ],
+        "icon": ""
+      }
+    },
+    {
+      "id": "kline-analysis-ai",
+      "type": "tool-ai",
+      "position": {
+        "x": 1645.6994289554157,
+        "y": 353.32580004464364
+      },
+      "data": {
+        "label": "K线分析 AI",
+        "description": "提供K线数据、技术指标、形态识别等技术分析",
+        "nodeType": "tool-ai",
+        "functions": [
+          {
+            "id": "get-kline-data",
+            "label": "获取K线数据",
+            "icon": "📉"
+          },
+          {
+            "id": "calc-tech-indicators",
+            "label": "计算技术指标",
+            "icon": "📐"
+          },
+          {
+            "id": "recognize-pattern",
+            "label": "识别形态",
+            "icon": "🔍"
+          },
+          {
+            "id": "analyze-trend",
+            "label": "分析趋势",
+            "icon": "📈"
+          }
+        ],
+        "icon": ""
+      }
+    },
+    {
+      "id": "gpt-oss-120b-decision",
+      "type": "function",
+      "position": {
+        "x": 1160.880679226314,
+        "y": 202.09123065168603
+      },
+      "data": {
+        "label": "GPT OSS 120B",
+        "description": "大语言模型推理引擎",
+        "nodeType": "function",
+        "icon": "🤖"
       }
     }
   ],
@@ -124,7 +334,7 @@
     {
       "id": "e2",
       "source": "news-analyzer",
-      "target": "stock-selector-ai",
+      "target": "news-quality-check",
       "sourceHandle": "right",
       "type": "animatedGradient",
       "animated": true,
@@ -132,6 +342,24 @@
     },
     {
       "id": "e3",
+      "source": "news-quality-check",
+      "target": "stock-selector-ai",
+      "sourceHandle": "true",
+      "type": "animatedGradient",
+      "animated": true,
+      "label": "有价值"
+    },
+    {
+      "id": "e4",
+      "source": "news-quality-check",
+      "target": "idle-node",
+      "sourceHandle": "false",
+      "type": "animatedGradient",
+      "animated": true,
+      "label": "无价值"
+    },
+    {
+      "id": "e5",
       "source": "stock-selector-ai",
       "target": "decision-ai",
       "sourceHandle": "right",
@@ -140,12 +368,57 @@
       "label": ""
     },
     {
-      "id": "e4",
+      "id": "e6",
       "source": "twitter-trigger",
       "target": "news-analyzer",
       "sourceHandle": "right",
       "type": "animatedGradient",
       "animated": true,
+      "label": ""
+    },
+    {
+      "id": "e-decision-llm",
+      "source": "decision-ai",
+      "target": "gpt-oss-120b-decision",
+      "sourceHandle": "llm-3",
+      "type": "bezier",
+      "animated": false,
+      "label": ""
+    },
+    {
+      "id": "e7",
+      "source": "decision-ai",
+      "target": "data-processor",
+      "sourceHandle": "tool-2",
+      "type": "bezier",
+      "animated": false,
+      "label": ""
+    },
+    {
+      "id": "e8",
+      "source": "decision-ai",
+      "target": "ai-status-provider",
+      "sourceHandle": "tool-3",
+      "type": "bezier",
+      "animated": false,
+      "label": ""
+    },
+    {
+      "id": "xy-edge__decision-aitool-4-external-analysis-ai",
+      "source": "decision-ai",
+      "target": "external-analysis-ai",
+      "sourceHandle": "tool-4",
+      "type": "bezier",
+      "animated": false,
+      "label": ""
+    },
+    {
+      "id": "xy-edge__decision-aitool-5-kline-analysis-ai",
+      "source": "decision-ai",
+      "target": "kline-analysis-ai",
+      "sourceHandle": "tool-5",
+      "type": "bezier",
+      "animated": false,
       "label": ""
     }
   ]

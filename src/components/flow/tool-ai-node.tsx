@@ -10,49 +10,79 @@ interface FunctionHandle {
   embedded?: boolean // 是否嵌入显示，false 则作为独立节点连接
 }
 
-interface ModuleNodeData extends Record<string, unknown> {
+interface ToolAINodeData extends Record<string, unknown> {
   label: string
   description?: string
   functions?: FunctionHandle[]
   icon?: string
 }
 
-type ModuleNodeType = Node<ModuleNodeData>
+type ToolAINodeType = Node<ToolAINodeData>
 
 /**
- * 模块节点 - shadcn 卡片风格
+ * 工具AI节点 - shadcn 卡片风格
  * 上方：图标（96px）
  * 下方：精简信息卡片（220px 宽，标题、描述、小圆形功能图标）
  * 选中效果：内部渐变光效 + 边框高亮 + 阴影增强
- * 连接点：卡片左右两侧居中
+ * 连接点：顶部输入（图标顶部或卡片顶部）
  * 功能图标：小圆形设计（28px），左对齐，显示 emoji 图标，悬停时显示标签
  * 配置：functions 中 embedded=false 的工具将作为独立节点连接，不显示在卡片内
  */
-function ModuleNodeComponent({ data, selected }: NodeProps<ModuleNodeType>) {
+function ToolAINodeComponent({ data, selected }: NodeProps<ToolAINodeType>) {
   const allFunctions = (data?.functions as FunctionHandle[] | undefined) || []
   const iconSrc = data?.icon as string | undefined
   const label = (data?.label as string) || ''
   const description = data?.description as string | undefined
+  const hasIcon = !!iconSrc
   
   return (
     <div className="relative group/node animate-in fade-in duration-500">
       {/* 主容器 - 垂直布局 */}
       <div className="relative flex flex-col items-center gap-2.5">
-        {/* 上方：缩小的图标 */}
-        <div 
-          className={cn(
-            "relative w-24 h-24 transition-all duration-500 ease-out",
-            "group-hover/node:scale-[1.03] group-hover/node:-translate-y-0.5",
-            selected && "scale-105"
-          )}
-        >
-          {/* 图标背景光晕 */}
-          <div className={cn(
-            "absolute inset-0 rounded-xl bg-gradient-radial from-primary/5 to-transparent opacity-0 transition-opacity duration-500",
-            "group-hover/node:opacity-100"
-          )} />
-          
-          {iconSrc ? (
+        {/* 上方：缩小的图标（如果有的话） */}
+        {hasIcon && (
+          <div 
+            className={cn(
+              "relative w-24 h-24 transition-all duration-500 ease-out",
+              "group-hover/node:scale-[1.03] group-hover/node:-translate-y-0.5",
+              selected && "scale-105"
+            )}
+          >
+            {/* 顶部输入手柄定位父容器 - 在图标顶部 */}
+            <div
+              className="absolute z-10"
+              style={{
+                left: '50%',
+                top: 0,
+                transform: 'translateX(-50%)',
+              }}
+            >
+              <Handle
+                type="target"
+                position={Position.Top}
+                id="top"
+                className={cn(
+                  "!w-4 !h-4 !border-2 !rounded-full !bg-background",
+                  "transition-all duration-300 ease-out",
+                  "hover:!w-5 hover:!h-5",
+                  selected 
+                    ? "!border-foreground !shadow-lg !shadow-foreground/30" 
+                    : "!border-foreground/80 hover:!border-foreground hover:!shadow-md hover:!shadow-foreground/20"
+                )}
+                style={{
+                  boxShadow: selected 
+                    ? '0 0 8px rgba(0, 0, 0, 0.3), inset 0 0 0 2px white'
+                    : 'inset 0 0 0 2px white'
+                }}
+              />
+            </div>
+
+            {/* 图标背景光晕 */}
+            <div className={cn(
+              "absolute inset-0 rounded-xl bg-gradient-radial from-primary/5 to-transparent opacity-0 transition-opacity duration-500",
+              "group-hover/node:opacity-100"
+            )} />
+            
             <img 
               src={iconSrc} 
               alt={label}
@@ -74,15 +104,42 @@ function ModuleNodeComponent({ data, selected }: NodeProps<ModuleNodeType>) {
                 }
               }}
             />
-          ) : (
-            <div className="relative w-full h-full flex items-center justify-center text-5xl font-bold text-muted-foreground/50 bg-muted rounded-xl">
-              {label.substring(0, 2)}
-            </div>
-          )}
-        </div>
+          </div>
+        )}
 
         {/* 下方：精简信息卡片容器 */}
         <div className="relative">
+          {!hasIcon && (
+            /* 顶部输入手柄定位父容器 - 在卡片顶部 */
+            <div
+              className="absolute z-10"
+              style={{
+                left: '50%',
+                top: 0,
+                transform: 'translateX(-50%)',
+              }}
+            >
+              <Handle
+                type="target"
+                position={Position.Top}
+                id="top"
+                className={cn(
+                  "!w-4 !h-4 !border-2 !rounded-full !bg-background",
+                  "transition-all duration-300 ease-out",
+                  "hover:!w-5 hover:!h-5",
+                  selected 
+                    ? "!border-foreground !shadow-lg !shadow-foreground/30" 
+                    : "!border-foreground/80 hover:!border-foreground hover:!shadow-md hover:!shadow-foreground/20"
+                )}
+                style={{
+                  boxShadow: selected 
+                    ? '0 0 8px rgba(0, 0, 0, 0.3), inset 0 0 0 2px white'
+                    : 'inset 0 0 0 2px white'
+                }}
+              />
+            </div>
+          )}
+
           {/* 卡片装饰层 */}
           <div className="relative group/card">
             {/* 外层细微光晕 - 仅悬浮和选中时显示 */}
@@ -267,71 +324,12 @@ function ModuleNodeComponent({ data, selected }: NodeProps<ModuleNodeType>) {
               )}
             </Card>
           </div>
-
-          {/* 左侧手柄定位父容器 */}
-          <div
-            className="absolute"
-            style={{
-              left: 0,
-              top: '50%',
-              transform: 'translateY(-50%)',
-            }}
-          >
-            {/* 主连接手柄 - 黑边框白内圆样式 */}
-            <Handle
-              type="target"
-              position={Position.Left}
-              id="left"
-              className={cn(
-                "!w-4 !h-4 !border-2 !rounded-full !bg-background",
-                "transition-all duration-300 ease-out",
-                "hover:!w-5 hover:!h-5",
-                selected 
-                  ? "!border-foreground !shadow-lg !shadow-foreground/30" 
-                  : "!border-foreground/80 hover:!border-foreground hover:!shadow-md hover:!shadow-foreground/20"
-              )}
-              style={{
-                boxShadow: selected 
-                  ? '0 0 8px rgba(0, 0, 0, 0.3), inset 0 0 0 2px white'
-                  : 'inset 0 0 0 2px white'
-              }}
-            />
-          </div>
-
-          {/* 右侧手柄定位父容器 */}
-          <div
-            className="absolute"
-            style={{
-              right: 0,
-              top: '50%',
-              transform: 'translateY(-50%)',
-            }}
-          >
-            <Handle
-              type="source"
-              position={Position.Right}
-              id="right"
-              className={cn(
-                "!w-4 !h-4 !border-2 !rounded-full !bg-background",
-                "transition-all duration-300 ease-out",
-                "hover:!w-5 hover:!h-5",
-                selected 
-                  ? "!border-foreground !shadow-lg !shadow-foreground/30" 
-                  : "!border-foreground/80 hover:!border-foreground hover:!shadow-md hover:!shadow-foreground/20"
-              )}
-              style={{
-                boxShadow: selected 
-                  ? '0 0 8px rgba(0, 0, 0, 0.3), inset 0 0 0 2px white'
-                  : 'inset 0 0 0 2px white'
-              }}
-            />
-          </div>
-
         </div>
       </div>
     </div>
   )
 }
 
-export const ModuleNode = memo(ModuleNodeComponent)
-ModuleNode.displayName = 'ModuleNode'
+export const ToolAINode = memo(ToolAINodeComponent)
+ToolAINode.displayName = 'ToolAINode'
+

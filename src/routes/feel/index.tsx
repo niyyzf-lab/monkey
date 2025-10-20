@@ -21,10 +21,12 @@ import { AnimatedGradientEdge } from '@/components/flow/animated-gradient-edge'
 import { BezierEdge } from '@/components/flow/bezier-edge'
 import { ModuleNode } from '@/components/flow/module-node'
 import { FunctionNode } from '@/components/flow/function-node'
+import { IfNode } from '@/components/flow/if-node'
+import { IdleNode } from '@/components/flow/idle-node'
+import { ToolAINode } from '@/components/flow/tool-ai-node'
 import { Button } from '@/components/ui/button'
-import { Download, Upload } from 'lucide-react'
+import { Download, Upload, Copy } from 'lucide-react'
 import workflowData from '@/constants/ai-workflow.json'
-
 export const Route = createFileRoute('/feel/')({
   component: FeelPage,
 })
@@ -39,13 +41,18 @@ const edgeTypes = {
 const nodeTypes = {
   moduleNode: ModuleNode as any,
   functionNode: FunctionNode as any,
+  'if-node': IfNode as any,
+  'idle-node': IdleNode as any,
+  'ai-agent': ModuleNode as any, // ai-agent 使用 ModuleNode
+  'function': FunctionNode as any, // function 使用 FunctionNode
+  'tool-ai': ToolAINode as any, // tool-ai 使用 ToolAINode
 }
 
 // 转换工作流数据为 React Flow 格式
 const convertWorkflowData = () => {
   const nodes: Node[] = workflowData.nodes.map((node) => ({
     id: node.id,
-    type: node.data.nodeType === 'module' ? 'moduleNode' : 'functionNode',
+    type: node.type, // 直接使用 JSON 中的 type 字段
     position: node.position,
     data: node.data, // 直接使用原始数据，已经包含 label
   }))
@@ -118,7 +125,7 @@ function FeelPage() {
     const exportData = {
       nodes: nodes.map(node => ({
         id: node.id,
-        type: node.type === 'moduleNode' ? 'ai-agent' : 'tool',
+        type: node.type, // 保持原始类型
         position: node.position,
         data: node.data,
       })),
@@ -143,6 +150,39 @@ function FeelPage() {
     link.click()
     document.body.removeChild(link)
     URL.revokeObjectURL(url)
+    
+    alert('导出成功：工作流配置已下载')
+  }, [nodes, edges])
+
+  // 复制到剪贴板
+  const handleCopyToClipboard = useCallback(async () => {
+    const exportData = {
+      nodes: nodes.map(node => ({
+        id: node.id,
+        type: node.type,
+        position: node.position,
+        data: node.data,
+      })),
+      edges: edges.map(edge => ({
+        id: edge.id,
+        source: edge.source,
+        target: edge.target,
+        sourceHandle: edge.sourceHandle,
+        type: edge.type,
+        animated: edge.animated,
+        label: edge.data?.label || '',
+      })),
+    }
+
+    const dataStr = JSON.stringify(exportData, null, 2)
+    
+    try {
+      await navigator.clipboard.writeText(dataStr)
+      alert('复制成功：工作流配置已复制到剪贴板')
+    } catch (error) {
+      console.error('复制失败:', error)
+      alert('复制失败：无法访问剪贴板')
+    }
   }, [nodes, edges])
 
   // 导入工作流配置
@@ -159,7 +199,7 @@ function FeelPage() {
             const importedData = JSON.parse(event.target?.result as string)
             console.log('导入的工作流数据:', importedData)
             // 这里可以添加数据验证和转换逻辑
-            alert('工作流导入成功！刷新页面查看新配置。')
+            alert('导入成功：工作流导入成功！刷新页面查看新配置。')
           } catch (error) {
             console.error('导入失败:', error)
             alert('导入失败：文件格式错误')
@@ -215,6 +255,15 @@ function FeelPage() {
           
           {/* 工具面板 */}
           <Panel position="top-right" className="flex gap-2">
+            <Button
+              size="sm"
+              variant="secondary"
+              onClick={handleCopyToClipboard}
+              className="shadow-lg backdrop-blur-sm bg-card/95 hover:bg-card border"
+            >
+              <Copy className="w-4 h-4 mr-1.5" />
+              复制配置
+            </Button>
             <Button
               size="sm"
               variant="secondary"
