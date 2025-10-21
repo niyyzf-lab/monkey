@@ -21,7 +21,7 @@ import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { SettingsSection, SettingsItem } from '@/components/settings';
 import { useSettings } from '@/hooks/use-settings';
-import { UpdateButton } from '@/components/updater';
+import { UpdateButton, UpdaterDebugPanel } from '@/components/updater';
 import { getVersion } from '@tauri-apps/api/app';
 import { toast } from 'sonner';
 import { API_BASE_URL } from '@/api/api';
@@ -663,6 +663,9 @@ function SettingsPage() {
                 </div>
               </div>
             </SettingsSection>
+
+            {/* 开发调试面板 - 仅在开发环境显示 */}
+            <UpdaterDebugPanel />
           </TabsContent>
         </Tabs>
       </div>

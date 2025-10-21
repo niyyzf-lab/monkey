@@ -1,4 +1,4 @@
-import { useEffect, useState, createContext, useContext } from 'react';
+import { useEffect, useState } from 'react';
 import { check, type Update } from '@tauri-apps/plugin-updater';
 import { relaunch } from '@tauri-apps/plugin-process';
 import { getVersion } from '@tauri-apps/api/app';
@@ -13,34 +13,74 @@ import {
 } from '@/components/ui/dialog';
 import { Progress } from '@/components/ui/progress';
 import { toast } from 'sonner';
+import { UpdaterContext, UpdateStatus, useUpdater } from './updater-context';
 
 // 日志前缀
 const LOG_PREFIX = '[AppUpdater]';
-
-// 创建更新器上下文
-interface UpdaterContextType {
-  checkForUpdates: (silent?: boolean) => Promise<void>;
-  isChecking: boolean;
-}
-
-const UpdaterContext = createContext<UpdaterContextType | null>(null);
-
-// 导出 hook 供其他组件使用
-export function useUpdater() {
-  const context = useContext(UpdaterContext);
-  if (!context) {
-    throw new Error('useUpdater must be used within UpdaterProvider');
-  }
-  return context;
-}
 
 // Provider 组件 - 提供全局更新功能
 export function UpdaterProvider({ children }: { children: React.ReactNode }) {
   const [update, setUpdate] = useState<Update | null>(null);
   const [isChecking, setIsChecking] = useState(false);
-  const [isDownloading, setIsDownloading] = useState(false);
+  const [updateStatus, setUpdateStatus] = useState<UpdateStatus>(UpdateStatus.IDLE);
   const [downloadProgress, setDownloadProgress] = useState(0);
   const [showDialog, setShowDialog] = useState(false);
+
+  // 屏蔽对话框显示时的键盘快捷键
+  useEffect(() => {
+    if (!showDialog) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // 如果正在处理更新，屏蔽所有快捷键
+      const isProcessing = [
+        UpdateStatus.DOWNLOADING,
+        UpdateStatus.INSTALLING,
+        UpdateStatus.READY_TO_RELAUNCH,
+        UpdateStatus.RELAUNCHING
+      ].includes(updateStatus);
+
+      if (isProcessing) {
+        // 屏蔽 ESC 键
+        if (e.key === 'Escape') {
+          e.preventDefault();
+          e.stopPropagation();
+          console.log(`${LOG_PREFIX} 已阻止 ESC 键关闭更新对话框`);
+          return;
+        }
+
+        // 屏蔽 Cmd/Ctrl + W (关闭窗口)
+        if ((e.metaKey || e.ctrlKey) && e.key === 'w') {
+          e.preventDefault();
+          e.stopPropagation();
+          console.log(`${LOG_PREFIX} 已阻止 Cmd/Ctrl+W 快捷键`);
+          return;
+        }
+
+        // 屏蔽 Cmd/Ctrl + Q (退出应用)
+        if ((e.metaKey || e.ctrlKey) && e.key === 'q') {
+          e.preventDefault();
+          e.stopPropagation();
+          console.log(`${LOG_PREFIX} 已阻止 Cmd/Ctrl+Q 快捷键`);
+          return;
+        }
+
+        // 屏蔽 Alt + F4 (Windows 关闭)
+        if (e.altKey && e.key === 'F4') {
+          e.preventDefault();
+          e.stopPropagation();
+          console.log(`${LOG_PREFIX} 已阻止 Alt+F4 快捷键`);
+          return;
+        }
+      }
+    };
+
+    // 在捕获阶段监听，确保优先级最高
+    window.addEventListener('keydown', handleKeyDown, true);
+    
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown, true);
+    };
+  }, [showDialog, updateStatus]);
 
   // 检查更新
   const checkForUpdates = async (silent = false) => {
@@ -53,6 +93,7 @@ export function UpdaterProvider({ children }: { children: React.ReactNode }) {
     console.log(`${LOG_PREFIX} 静默模式: ${silent}`);
     
     setIsChecking(true);
+    setUpdateStatus(UpdateStatus.CHECKING);
     
     try {
       // 获取当前版本
@@ -73,6 +114,7 @@ export function UpdaterProvider({ children }: { children: React.ReactNode }) {
         console.log(`${LOG_PREFIX} 更新说明: ${updateInfo.body}`);
         
         setUpdate(updateInfo);
+        setUpdateStatus(UpdateStatus.AVAILABLE);
         setShowDialog(true);
         
         if (!silent) {
@@ -80,6 +122,7 @@ export function UpdaterProvider({ children }: { children: React.ReactNode }) {
         }
       } else {
         console.log(`${LOG_PREFIX} ✅ 已是最新版本`);
+        setUpdateStatus(UpdateStatus.IDLE);
         if (!silent) {
           toast.success('已是最新版本');
         }
@@ -92,12 +135,38 @@ export function UpdaterProvider({ children }: { children: React.ReactNode }) {
         stack: (error as Error).stack
       });
       
+      setUpdateStatus(UpdateStatus.IDLE);
+      
       if (!silent) {
         toast.error(`检查更新失败: ${(error as Error).message}`);
       }
     } finally {
       setIsChecking(false);
       console.log(`${LOG_PREFIX} ========== 检查更新结束 ==========`);
+    }
+  };
+
+  // 执行重启应用
+  const executeRelaunch = async () => {
+    try {
+      console.log(`${LOG_PREFIX} 🚀 开始执行重启...`);
+      setUpdateStatus(UpdateStatus.RELAUNCHING);
+      
+      // 直接调用 relaunch，不再延迟
+      await relaunch();
+      
+      // 如果执行到这里，说明重启可能失败
+      console.error(`${LOG_PREFIX} ⚠️ relaunch() 调用完成但应用仍在运行`);
+    } catch (error) {
+      console.error(`${LOG_PREFIX} ❌ 重启应用失败:`, error);
+      console.error(`${LOG_PREFIX} 错误详情:`, {
+        name: (error as Error).name,
+        message: (error as Error).message,
+        stack: (error as Error).stack
+      });
+      
+      toast.error(`重启失败: ${(error as Error).message}，请手动重启应用`);
+      setUpdateStatus(UpdateStatus.READY_TO_RELAUNCH);
     }
   };
 
@@ -108,8 +177,8 @@ export function UpdaterProvider({ children }: { children: React.ReactNode }) {
       return;
     }
     
-    if (isDownloading) {
-      console.log(`${LOG_PREFIX} 正在下载中，跳过重复请求`);
+    if (updateStatus === UpdateStatus.DOWNLOADING || updateStatus === UpdateStatus.INSTALLING) {
+      console.log(`${LOG_PREFIX} 正在处理更新中，跳过重复请求`);
       return;
     }
 
@@ -117,7 +186,7 @@ export function UpdaterProvider({ children }: { children: React.ReactNode }) {
     console.log(`${LOG_PREFIX} 更新版本: ${update.version}`);
     console.log(`${LOG_PREFIX} 更新日期: ${update.date}`);
     
-    setIsDownloading(true);
+    setUpdateStatus(UpdateStatus.DOWNLOADING);
     setDownloadProgress(0);
 
     try {
@@ -158,20 +227,26 @@ export function UpdaterProvider({ children }: { children: React.ReactNode }) {
             const totalTime = ((Date.now() - startTime) / 1000).toFixed(1);
             console.log(`${LOG_PREFIX} ✅ 下载完成！总用时: ${totalTime}s`);
             console.log(`${LOG_PREFIX} 🔧 开始安装更新...`);
+            setUpdateStatus(UpdateStatus.INSTALLING);
             setDownloadProgress(100);
             break;
         }
       });
 
-      console.log(`${LOG_PREFIX} ✅ 更新安装完成`);
+      console.log(`${LOG_PREFIX} ✅ 更新安装完成！`);
       console.log(`${LOG_PREFIX} 🔄 准备重启应用...`);
-      toast.success('更新安装成功，即将重启应用...');
       
-      // 等待一秒后重启应用
-      setTimeout(async () => {
-        console.log(`${LOG_PREFIX} 🚀 正在重启应用...`);
-        await relaunch();
-      }, 1000);
+      setUpdateStatus(UpdateStatus.READY_TO_RELAUNCH);
+      toast.success('更新安装成功，正在重启应用...', { duration: 2000 });
+      
+      // 关闭对话框，让用户看到即将重启
+      setShowDialog(false);
+      
+      // 延迟 500ms 后执行重启，让 toast 和状态更新完成
+      setTimeout(() => {
+        executeRelaunch();
+      }, 500);
+      
     } catch (error) {
       console.error(`${LOG_PREFIX} ❌ 下载/安装更新失败:`, error);
       console.error(`${LOG_PREFIX} 错误详情:`, {
@@ -181,7 +256,88 @@ export function UpdaterProvider({ children }: { children: React.ReactNode }) {
       });
       
       toast.error(`下载更新失败: ${(error as Error).message}`);
-      setIsDownloading(false);
+      setUpdateStatus(UpdateStatus.AVAILABLE);
+    }
+  };
+
+  // 开发调试方法：强制显示更新对话框（模拟有更新）
+  const forceShowUpdateDialog = () => {
+    console.log(`${LOG_PREFIX} 🔧 [开发模式] 强制显示更新对话框`);
+    
+    // 创建一个模拟的更新对象
+    const mockUpdate = {
+      currentVersion: '0.0.0',
+      version: '999.999.999',
+      date: new Date().toISOString(),
+      body: '这是一个开发调试模拟更新\n\n功能：\n- 测试更新弹窗显示\n- 测试下载进度\n- 测试重启功能\n\n⚠️ 注意：这是开发模式的模拟更新，不会真正下载或安装任何内容。',
+      downloadAndInstall: async () => {
+        console.log(`${LOG_PREFIX} 🔧 [开发模式] 这是模拟更新，不会实际下载`);
+        throw new Error('这是开发模式的模拟更新，不支持实际下载');
+      }
+    } as unknown as Update;
+    
+    setUpdate(mockUpdate);
+    setUpdateStatus(UpdateStatus.AVAILABLE);
+    setShowDialog(true);
+    toast.info('🔧 开发模式：已显示模拟更新对话框');
+  };
+
+  // 开发调试方法：强制执行下载和安装（绕过版本检查）
+  const forceDownloadAndInstall = async () => {
+    console.log(`${LOG_PREFIX} 🔧 [开发模式] 强制执行更新（绕过版本检查）`);
+    
+    try {
+      setIsChecking(true);
+      setUpdateStatus(UpdateStatus.CHECKING);
+      
+      // 注意：Tauri 的 check() 只会在有更新时返回 Update 对象
+      // 如果当前版本已经是最新或更高，check() 会返回 null
+      // 这是 Tauri updater 的内置行为，无法绕过
+      
+      const updateInfo = await check();
+      
+      if (updateInfo) {
+        console.log(`${LOG_PREFIX} 🔧 [开发模式] 检测到可用更新`);
+        console.log(`${LOG_PREFIX} 当前版本: ${updateInfo.currentVersion}`);
+        console.log(`${LOG_PREFIX} 远程版本: ${updateInfo.version}`);
+        console.log(`${LOG_PREFIX} 更新日期: ${updateInfo.date}`);
+        
+        setUpdate(updateInfo);
+        setUpdateStatus(UpdateStatus.AVAILABLE);
+        setShowDialog(true);
+        
+        toast.info(`🔧 强制更新模式：发现版本 ${updateInfo.version}`, { duration: 3000 });
+        
+        // 1秒后自动开始下载
+        setTimeout(() => {
+          console.log(`${LOG_PREFIX} 🔧 [开发模式] 自动开始下载安装`);
+          downloadAndInstall();
+        }, 1000);
+      } else {
+        // 这意味着远程版本不高于当前版本
+        const currentVersion = await getVersion();
+        console.log(`${LOG_PREFIX} 🔧 [开发模式] 无可用更新`);
+        console.log(`${LOG_PREFIX} 当前版本: ${currentVersion}`);
+        console.log(`${LOG_PREFIX} ⚠️ 注意：Tauri updater 只会在远程版本 > 当前版本时返回更新`);
+        console.log(`${LOG_PREFIX} 💡 提示：如需测试，请确保服务器上的版本号高于 ${currentVersion}`);
+        
+        toast.warning(
+          `当前版本 ${currentVersion} 已是最新或更高\n\n` +
+          `Tauri updater 的内置行为：只有当远程版本号大于当前版本时才会下载。\n` +
+          `如需测试强制更新，请在更新服务器上发布一个版本号更高的版本。`,
+          { duration: 8000 }
+        );
+      }
+    } catch (error) {
+      console.error(`${LOG_PREFIX} 🔧 [开发模式] 强制更新检查失败:`, error);
+      console.error(`${LOG_PREFIX} 错误详情:`, {
+        name: (error as Error).name,
+        message: (error as Error).message,
+        stack: (error as Error).stack
+      });
+      toast.error(`强制更新失败: ${(error as Error).message}`);
+    } finally {
+      setIsChecking(false);
     }
   };
 
@@ -209,13 +365,71 @@ export function UpdaterProvider({ children }: { children: React.ReactNode }) {
     };
   }, []);
 
+  // 根据状态获取显示文本
+  const getStatusText = () => {
+    switch (updateStatus) {
+      case UpdateStatus.CHECKING:
+        return '检查中...';
+      case UpdateStatus.DOWNLOADING:
+        return `下载中... (${downloadProgress}%)`;
+      case UpdateStatus.INSTALLING:
+        return '安装中...';
+      case UpdateStatus.READY_TO_RELAUNCH:
+        return '准备重启...';
+      case UpdateStatus.RELAUNCHING:
+        return '重启中...';
+      default:
+        return '立即更新';
+    }
+  };
+
+  const isProcessing = [
+    UpdateStatus.DOWNLOADING,
+    UpdateStatus.INSTALLING,
+    UpdateStatus.READY_TO_RELAUNCH,
+    UpdateStatus.RELAUNCHING
+  ].includes(updateStatus);
+
   return (
-    <UpdaterContext.Provider value={{ checkForUpdates, isChecking }}>
+    <UpdaterContext.Provider value={{ 
+      checkForUpdates, 
+      isChecking, 
+      updateStatus,
+      forceShowUpdateDialog,
+      forceDownloadAndInstall
+    }}>
       {children}
       
-      {/* 更新对话框 */}
-      <Dialog open={showDialog} onOpenChange={setShowDialog}>
-        <DialogContent className="sm:max-w-[425px]">
+      {/* 更新对话框 - 屏蔽键盘快捷键 */}
+      <Dialog open={showDialog} onOpenChange={(open) => {
+        // 如果正在处理更新，不允许关闭对话框
+        if (!isProcessing) {
+          setShowDialog(open);
+        }
+      }}>
+        <DialogContent 
+          className="sm:max-w-[425px]"
+          onOpenAutoFocus={(e) => e.preventDefault()}
+          onCloseAutoFocus={(e) => e.preventDefault()}
+          onEscapeKeyDown={(e) => {
+            // 屏蔽 ESC 键
+            if (isProcessing) {
+              e.preventDefault();
+            }
+          }}
+          onPointerDownOutside={(e) => {
+            // 处理更新时阻止点击外部关闭
+            if (isProcessing) {
+              e.preventDefault();
+            }
+          }}
+          onInteractOutside={(e) => {
+            // 处理更新时阻止任何外部交互
+            if (isProcessing) {
+              e.preventDefault();
+            }
+          }}
+        >
           <DialogHeader>
             <DialogTitle>发现新版本</DialogTitle>
             <DialogDescription>
@@ -225,17 +439,33 @@ export function UpdaterProvider({ children }: { children: React.ReactNode }) {
             </DialogDescription>
           </DialogHeader>
 
-          {isDownloading && (
+          {/* 显示下载/安装进度 */}
+          {isProcessing && (
             <div className="space-y-2">
               <div className="flex items-center justify-between text-sm">
-                <span>下载进度</span>
-                <span>{downloadProgress}%</span>
+                <span>{getStatusText()}</span>
+                {updateStatus === UpdateStatus.DOWNLOADING && (
+                  <span>{downloadProgress}%</span>
+                )}
               </div>
-              <Progress value={downloadProgress} />
+              {updateStatus === UpdateStatus.DOWNLOADING && (
+                <Progress value={downloadProgress} />
+              )}
+              {updateStatus === UpdateStatus.INSTALLING && (
+                <div className="text-sm text-muted-foreground text-center py-2">
+                  正在安装更新，请稍候...
+                </div>
+              )}
+              {(updateStatus === UpdateStatus.READY_TO_RELAUNCH || updateStatus === UpdateStatus.RELAUNCHING) && (
+                <div className="text-sm text-muted-foreground text-center py-2">
+                  更新已完成，正在重启应用...
+                </div>
+              )}
             </div>
           )}
 
-          {update?.body && !isDownloading && (
+          {/* 显示更新说明 */}
+          {update?.body && !isProcessing && (
             <div className="max-h-[300px] overflow-y-auto rounded-md border p-4">
               <h4 className="mb-2 font-semibold">更新内容：</h4>
               <div className="whitespace-pre-wrap text-sm text-muted-foreground">
@@ -248,15 +478,15 @@ export function UpdaterProvider({ children }: { children: React.ReactNode }) {
             <Button
               variant="outline"
               onClick={() => setShowDialog(false)}
-              disabled={isDownloading}
+              disabled={isProcessing}
             >
               稍后更新
             </Button>
             <Button
               onClick={downloadAndInstall}
-              disabled={isDownloading}
+              disabled={isProcessing}
             >
-              {isDownloading ? '下载中...' : '立即更新'}
+              {getStatusText()}
             </Button>
           </DialogFooter>
         </DialogContent>
