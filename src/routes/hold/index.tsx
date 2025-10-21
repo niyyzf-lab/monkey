@@ -7,6 +7,7 @@ import { VirtualizedGridNew } from '../../components/holdings/hold-virtualized-g
 import { HoldingsSkeleton } from '../../components/holdings/hold-holdings-skeleton';
 import { HoldingsCardSkeleton } from '../../components/holdings/hold-holdings-card-skeleton';
 import { UnifiedPageHeader } from '../../components/common/unified-page-header';
+import { EmptyState } from '../../components/common/empty-state';
 import { ArrowLeftRight } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../../components/ui/tooltip';
 import { FilterBarModern } from '../../components/holdings/filter-bar-modern';
@@ -198,7 +199,7 @@ function HoldPage() {
     return <HoldingsSkeleton />;
   }
 
-  // 错误状态
+  // 错误状态 - 使用统一空状态组件
   if (error) {
     return (
       <div className="h-full overflow-y-auto">
@@ -229,29 +230,15 @@ function HoldPage() {
           />
         </TooltipProvider>
 
-        <div className="max-w-[1800px] mx-auto p-4 space-y-4">
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.3 }}
-            className="rounded-lg border-2 border-destructive/30 bg-destructive/15 dark:shadow-destructive/10 p-4"
-          >
-            <div className="flex items-start gap-3">
-              <AlertCircle className="h-5 w-5 text-destructive shrink-0 mt-0.5" />
-              <div className="flex-1">
-                <p className="font-medium text-sm">{error}</p>
-                <Button 
-                  onClick={() => loadData()} 
-                  variant="outline" 
-                  size="sm"
-                  className="mt-3"
-                >
-                  重新加载
-                </Button>
-              </div>
-            </div>
-          </motion.div>
-        </div>
+        <EmptyState
+          icon={AlertCircle}
+          title="加载失败"
+          description={error}
+          action={{
+            label: "重新加载",
+            onClick: () => loadData()
+          }}
+        />
       </div>
     );
   }
@@ -306,7 +293,7 @@ function HoldPage() {
         )}
       </AnimatePresence>
       
-      <div className="@container max-w-[1850px] mx-auto px-4 pb-4 space-y-4" data-holdings-container>
+      <div className="@container max-w-[1850px] mx-auto pt-4 px-4 pb-4 space-y-4" data-holdings-container>
         {/* 统计卡片 - 更紧凑 */}
         {hasHoldings && (
           <StatisticsCards 
@@ -367,42 +354,51 @@ function HoldPage() {
 
                 {/* 无筛选结果 */}
                 {filteredHoldings.length === 0 && (
-                  <div className="rounded-lg border bg-card p-12 text-center">
-                    <p className="text-sm text-muted-foreground">没有符合条件的持仓</p>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={resetFilters}
-                      className="mt-4"
-                    >
-                      重置筛选
-                    </Button>
-                  </div>
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.95 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ duration: 0.4 }}
+                    className="min-h-[400px] flex items-center justify-center"
+                  >
+                    <div className="text-center space-y-5 max-w-sm px-6">
+                      <motion.div
+                        initial={{ scale: 0 }}
+                        animate={{ scale: 1 }}
+                        transition={{ duration: 0.5, type: "spring", stiffness: 200 }}
+                        className="mx-auto w-20 h-20 rounded-full bg-gradient-to-br from-muted/20 to-muted/5 flex items-center justify-center relative"
+                      >
+                        <AlertCircle className="w-9 h-9 text-muted-foreground/30" strokeWidth={1.5} />
+                        <motion.div
+                          animate={{ scale: [1, 1.15, 1], opacity: [0.1, 0.15, 0.1] }}
+                          transition={{ duration: 2.5, repeat: Infinity, ease: "easeInOut" }}
+                          className="absolute inset-0 rounded-full bg-primary/5"
+                        />
+                      </motion.div>
+                      
+                      <div className="space-y-2">
+                        <h3 className="text-lg font-semibold text-foreground/90">没有符合条件的持仓</h3>
+                        <p className="text-sm text-muted-foreground/70">尝试调整筛选条件查看更多数据</p>
+                      </div>
+                      
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={resetFilters}
+                        className="shadow-sm hover:shadow-md transition-shadow"
+                      >
+                        重置筛选
+                      </Button>
+                    </div>
+                  </motion.div>
                 )}
               </motion.div>
             )
           ) : (
-            <motion.div
-              key="empty-state"
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              transition={{ duration: 0.3 }}
-              className="rounded-lg border-2 border-border/50 bg-gradient-to-br from-card via-muted/10 to-card overflow-hidden min-h-[400px] flex items-center justify-center relative"
-            >
-              <div className="text-center px-8 relative z-10">
-                <motion.div
-                  initial={{ scale: 0 }}
-                  animate={{ scale: 1 }}
-                  transition={{ duration: 0.4, type: "spring" }}
-                  className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-muted/30 mb-4"
-                >
-                  <Wallet className="h-8 w-8 text-muted-foreground/70" />
-                </motion.div>
-                <h3 className="text-base font-semibold text-foreground mb-2">暂无持仓</h3>
-                <p className="text-sm text-muted-foreground">当前账户未持有任何股票</p>
-              </div>
-            </motion.div>
+            <EmptyState
+              icon={Wallet}
+              title="暂无持仓"
+              description="当前账户未持有任何股票"
+            />
           )}
         </AnimatePresence>
       </div>

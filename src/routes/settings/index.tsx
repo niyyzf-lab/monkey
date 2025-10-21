@@ -223,7 +223,7 @@ function SettingsPage() {
         subtitle="管理应用的所有配置和偏好设置"
       />
       
-      <div className="max-w-4xl mx-auto p-6 space-y-6">
+      <div className="max-w-4xl mx-auto pt-8 px-6 pb-6 space-y-6">
 
         {/* 标签页 */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">

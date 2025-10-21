@@ -220,7 +220,7 @@ function FeelPage() {
       />
       
       {/* React Flow 画布 */}
-      <div className="flex-1 w-full">
+      <div className="flex-1 w-full pt-4">
         <ReactFlow
           nodes={nodes}
           edges={edges}

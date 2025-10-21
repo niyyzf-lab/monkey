@@ -6,6 +6,7 @@ import { MacTrafficLights } from "@/components/common/mac-traffic-lights"
 import { useSidebar } from "./sidebar-context"
 import { resetMenuItemCounter } from "./sidebar-menu"
 import { useDeviceDetect } from "@/hooks/use-device-detect"
+import { UserInfoModal } from "./user-info-modal"
 
 interface SidebarProps extends React.HTMLAttributes<HTMLDivElement> {}
 
@@ -14,6 +15,7 @@ export const Sidebar = React.memo(React.forwardRef<HTMLDivElement, SidebarProps>
   ({ className, children }, ref) => {
     const { isOpen, isMobile } = useSidebar()
     const { isIOS, isAndroid } = useDeviceDetect()
+    const [isUserModalOpen, setIsUserModalOpen] = React.useState(false)
     
     // 每次渲染时重置菜单项计数器
     React.useEffect(() => {
@@ -95,7 +97,7 @@ export const Sidebar = React.memo(React.forwardRef<HTMLDivElement, SidebarProps>
               >
                 <CoolMode>
                   <motion.div 
-                    className="w-8 h-8 select-none bg-sidebar-accent rounded-lg flex items-center justify-center text-lg shrink-0 cursor-pointer"
+                    className="w-10 h-10 select-none bg-sidebar-accent rounded-lg flex items-center justify-center text-lg shrink-0 cursor-pointer"
                     initial={{ rotate: -180, scale: 0.5 }}
                     animate={{ rotate: 0, scale: 1 }}
                     transition={{ 
@@ -106,9 +108,10 @@ export const Sidebar = React.memo(React.forwardRef<HTMLDivElement, SidebarProps>
                     }}
                     whileHover={{ scale: 1.15, rotate: 10 }}
                     whileTap={{ scale: 0.9, rotate: -10 }}
+                    onClick={() => setIsUserModalOpen(true)}
                     data-tauri-drag-region={false}
                   >
-                    🐒
+                    <img src="/monkey/User.png" className="w-10 h-10 object-cover rounded-lg" />
                   </motion.div>
                 </CoolMode>
                 <motion.div 
@@ -152,9 +155,10 @@ export const Sidebar = React.memo(React.forwardRef<HTMLDivElement, SidebarProps>
                     whileHover={{ scale: 1.3, rotate: 15 }}
                     whileTap={{ scale: 0.9, rotate: -15 }}
                     transition={{ type: "spring", stiffness: 500, damping: 20 }}
+                    onClick={() => setIsUserModalOpen(true)}
                     data-tauri-drag-region={false}
                   >
-                    🐒
+                    <img src="/monkey/User.png" className="w-10 h-10 object-cover rounded-lg" />
                   </motion.div>
                 </CoolMode>
               </motion.div>
@@ -170,6 +174,12 @@ export const Sidebar = React.memo(React.forwardRef<HTMLDivElement, SidebarProps>
           {children}
         </div>
       </motion.div>
+      
+      {/* 用户信息模态框 */}
+      <UserInfoModal 
+        isOpen={isUserModalOpen} 
+        onClose={() => setIsUserModalOpen(false)} 
+      />
       </>
     )
   }

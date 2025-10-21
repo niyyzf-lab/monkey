@@ -8,5 +8,6 @@ export * from './sidebar-trigger'
 export * from './sidebar-menu-button'
 export * from './theme-toggler'
 export * from './system-monitor'
+export * from './user-info-modal'
 
 
