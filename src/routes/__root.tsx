@@ -62,13 +62,10 @@ function RootLayoutContent() {
   const location = useLocation()
   const [activeItem, setActiveItem] = useState('/')
   const { isOpen, setIsOpen, isMobile } = useSidebar()
-  const { isIOS, isAndroid } = useDeviceDetect()
+  const { isIOS } = useDeviceDetect()
   
   // 初始化视口高度监听，修复移动端 100vh 问题
   useViewportHeight()
-  
-  // 检测是否为 iOS 或 Android 设备
-  const isMobileOS = isIOS || isAndroid
 
   // 根据当前路径设置活跃状态
   useEffect(() => {
@@ -98,7 +95,11 @@ function RootLayoutContent() {
 
   return (
       <motion.div 
-        className="h-screen-safe relative overflow-hidden"
+        className="relative overflow-hidden h-full"
+        style={{
+          // 仅 iOS 需要顶部 padding 来适配安全区域（0.65 倍）
+          paddingTop: isIOS ? 'calc(var(--safe-area-inset-top) * 0.65)' : '0',
+        }}
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ 
@@ -109,10 +110,7 @@ function RootLayoutContent() {
         {/* <div className='absolute top-0 left-0 w-screen h-8 z-50 select-none' data-tauri-drag-region></div> */}
         
         <div 
-          className="flex h-full relative" 
-          style={{ 
-            paddingTop: isMobileOS ? '20px' : '0'
-          }}
+          className="flex h-full relative"
         >
           {/* 侧边栏 */}
           <Sidebar>

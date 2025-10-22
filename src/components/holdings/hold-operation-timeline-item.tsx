@@ -99,36 +99,48 @@ export function OperationTimelineItem({
       </div>
 
       {/* 右侧：交易信息 */}
-      <div className="flex-1 pb-3">
-        <div className={`flex items-center gap-2 px-2 py-1.5 rounded ${typeStyle.lightBg} ${typeStyle.darkBg} hover:shadow-sm transition-shadow`}>
-          {/* 图标 */}
-          <Icon className={`h-3.5 w-3.5 ${typeStyle.color} flex-shrink-0`} />
-          
-          {/* 数据 */}
-          <div className="flex items-center gap-3 flex-1 text-xs">
-            <div className={`font-semibold ${typeStyle.color} min-w-[2.5rem]`}>
+      <div className="flex-1 pb-2 md:pb-3">
+        <div className={`flex flex-col md:flex-row md:items-center gap-1.5 md:gap-2 px-2 py-1.5 rounded ${typeStyle.lightBg} ${typeStyle.darkBg} hover:shadow-sm transition-shadow`}>
+          {/* 移动端：上层 - 类型、价格和状态 */}
+          <div className="flex items-center gap-2 md:flex-1">
+            {/* 图标 */}
+            <Icon className={`h-3 w-3 md:h-3.5 md:w-3.5 ${typeStyle.color} flex-shrink-0`} />
+            
+            {/* 操作类型 */}
+            <div className={`font-semibold ${typeStyle.color} text-[11px] md:text-xs min-w-[2rem] md:min-w-[2.5rem]`}>
               {operation.OperationType}
             </div>
             
-            <div className="flex items-center gap-3 flex-1 tabular-nums text-foreground/80">
-              <span>¥{formatNumber(operation.Price)}</span>
+            {/* 交易数据 */}
+            <div className="flex items-center gap-1.5 md:gap-3 flex-1 tabular-nums text-foreground/80 text-[11px] md:text-xs overflow-x-auto">
+              <span className="whitespace-nowrap">¥{formatNumber(operation.Price)}</span>
               <span className="text-muted-foreground">×</span>
-              <span>{formatNumber(operation.Quantity, 0)}</span>
-              <span className="text-muted-foreground">=</span>
-              <span className={`font-semibold ${typeStyle.color}`}>
+              <span className="whitespace-nowrap">{formatNumber(operation.Quantity, 0)}</span>
+              <span className="text-muted-foreground hidden xs:inline">=</span>
+              <span className={`font-semibold ${typeStyle.color} whitespace-nowrap hidden xs:inline`}>
                 ¥{formatNumber(operation.Amount)}
               </span>
             </div>
             
-            {/* 状态 */}
-            <div className="text-[10px] text-muted-foreground px-1.5 py-0.5 bg-background/50 rounded">
+            {/* 状态 - 桌面端 */}
+            <div className="hidden md:block text-[10px] text-muted-foreground px-1.5 py-0.5 bg-background/50 rounded whitespace-nowrap">
               {operation.Status}
+            </div>
+            
+            {/* ID - 桌面端 */}
+            <div className="hidden md:block text-[9px] text-muted-foreground/40 font-mono whitespace-nowrap">
+              #{operation.Id}
             </div>
           </div>
           
-          {/* ID */}
-          <div className="text-[9px] text-muted-foreground/40 font-mono">
-            #{operation.Id}
+          {/* 移动端：下层 - 总金额和ID（仅在小屏显示） */}
+          <div className="flex items-center justify-between xs:hidden text-[10px] pl-5">
+            <span className={`font-semibold ${typeStyle.color} tabular-nums`}>
+              总额: ¥{formatNumber(operation.Amount)}
+            </span>
+            <span className="text-muted-foreground/40 font-mono">
+              #{operation.Id}
+            </span>
           </div>
         </div>
         

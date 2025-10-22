@@ -17,7 +17,8 @@ interface ModuleNodeData extends Record<string, unknown> {
   description?: string
   functions?: FunctionHandle[]
   icon?: string
-  prompt?: string // 提示词内容
+  prompt?: string // 提示词内容（已废弃，使用 promptFile 代替）
+  promptFile?: string // 提示词文件路径
 }
 
 type ModuleNodeType = Node<ModuleNodeData>
@@ -37,6 +38,7 @@ function ModuleNodeComponent({ data, selected }: NodeProps<ModuleNodeType>) {
   const label = (data?.label as string) || ''
   const description = data?.description as string | undefined
   const prompt = data?.prompt as string | undefined
+  const promptFile = data?.promptFile as string | undefined
   const [isDialogOpen, setIsDialogOpen] = useState(false)
   
   return (
@@ -47,9 +49,10 @@ function ModuleNodeComponent({ data, selected }: NodeProps<ModuleNodeType>) {
       icon={iconSrc}
       label={label}
       description={description}
+      promptFile={promptFile}
     >
-      {/* 提示词内容 */}
-      {prompt ? (
+      {/* 提示词内容 - 仅在使用旧的 prompt 字段时显示 */}
+      {!promptFile && prompt ? (
         <div className="space-y-4">
           <div>
             <h3 className="text-base font-semibold mb-2">系统提示词</h3>
@@ -58,11 +61,11 @@ function ModuleNodeComponent({ data, selected }: NodeProps<ModuleNodeType>) {
             </div>
           </div>
         </div>
-      ) : (
+      ) : !promptFile && !prompt ? (
         <div className="text-center text-muted-foreground py-8">
           暂无提示词内容
         </div>
-      )}
+      ) : null}
     </PromptDialog>
     <div className="relative group/node animate-in fade-in duration-500">
       {/* 主容器 - 垂直布局 */}

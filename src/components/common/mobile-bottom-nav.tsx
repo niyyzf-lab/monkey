@@ -35,7 +35,7 @@ export function MobileBottomNav() {
   const navigate = useNavigate()
   const router = useRouter()
   const location = useLocation()
-  const { isMobileDevice } = useDeviceDetect()
+  const { isMobileDevice, isIOS } = useDeviceDetect()
   const [isPortrait, setIsPortrait] = useState(true)
   const [canGoBack, setCanGoBack] = useState(false)
 
@@ -99,9 +99,11 @@ export function MobileBottomNav() {
 
   return (
     <div
-      className="fixed bottom-0 left-0 right-0 z-50 flex justify-center pointer-events-none px-6"
+      className="fixed left-0 right-0 z-50 flex justify-center pointer-events-none px-6"
       style={{
-        paddingBottom: 'calc(env(safe-area-inset-bottom) + 16px)',
+        // iOS: 定位在安全区域之上（砍一半），Android: 固定在底部
+        bottom: isIOS ? 'calc(var(--safe-area-inset-bottom) / 2)' : '0',
+        paddingBottom: '16px',
       }}
     >
       {/* 底部导航栏 */}

@@ -377,7 +377,7 @@ function HoldingDetailPage() {
 
   return (
     <div className="h-full overflow-y-auto bg-background">
-      <div className="max-w-[1800px] mx-auto px-4 py-4 space-y-4">
+      <div className="max-w-[1800px] mx-auto px-2 md:px-4 py-2 md:py-4 pb-[10vh] space-y-2 md:space-y-4">
         {/* 顶部导航 */}
         <motion.div
           initial={{ opacity: 0, y: -10 }}
@@ -390,14 +390,16 @@ function HoldingDetailPage() {
             size="sm"
             onClick={() => navigate({ to: '/hold' })}
             data-tauri-drag-region
+            className="text-xs md:text-sm"
           >
-            <ArrowLeft className="h-4 w-4 mr-2" data-tauri-drag-region />
-            返回持仓列表
+            <ArrowLeft className="h-4 w-4 mr-1 md:mr-2" data-tauri-drag-region />
+            <span className="hidden xs:inline">返回持仓列表</span>
+            <span className="xs:hidden">返回</span>
           </Button>
         </motion.div>
 
         {/* 主要内容区域 - 不对称网格布局 */}
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-3 md:gap-4">
           {/* 左侧：K线图（占3列，更大空间） */}
           <motion.div
             initial={{ opacity: 0, y: 5 }}
@@ -433,7 +435,7 @@ function HoldingDetailPage() {
                       duration: 0.2,
                       ease: "easeInOut"
                     }}
-                    className="h-[600px] flex items-center justify-center"
+                    className="h-[400px] md:h-[500px] lg:h-[600px] flex items-center justify-center"
                   >
                     <div className="text-center">
                       <motion.div 
@@ -461,18 +463,19 @@ function HoldingDetailPage() {
                       duration: 0.35,
                       ease: [0.25, 0.1, 0.25, 1]
                     }}
-                    className="h-[600px]"
+                    className="h-[400px] md:h-[500px] lg:h-[600px] w-full"
                   >
-                    <StockChart
-                      data={chartData}
-                      height={600}
-                      interval={chartInterval}
-                      chartType={chartType}
-                      onLoadMore={handleLoadMore}
-                      isLoadingMore={isLoadingMore}
-                      tradeMarkers={tradeMarkers}
-                      onMarkerClick={handleMarkerClick}
-                    />
+                    <div className="w-full h-full">
+                      <StockChart
+                        data={chartData}
+                        interval={chartInterval}
+                        chartType={chartType}
+                        onLoadMore={handleLoadMore}
+                        isLoadingMore={isLoadingMore}
+                        tradeMarkers={tradeMarkers}
+                        onMarkerClick={handleMarkerClick}
+                      />
+                    </div>
                   </motion.div>
                 ) : (
                   <motion.div
@@ -484,7 +487,7 @@ function HoldingDetailPage() {
                       duration: 0.2,
                       ease: "easeInOut"
                     }}
-                    className="h-[600px] flex items-center justify-center"
+                    className="h-[400px] md:h-[500px] lg:h-[600px] flex items-center justify-center"
                   >
                     <p className="text-sm text-muted-foreground">暂无图表数据</p>
                   </motion.div>
@@ -494,10 +497,12 @@ function HoldingDetailPage() {
         </motion.div>
 
           {/* 右侧：股票信息 + 交易统计 */}
-          <div className="space-y-4">
+          <div className="grid grid-cols-2 gap-2 md:flex md:flex-col md:space-y-4">
             {/* 股票信息卡片 */}
             {holding && (
-              <StockInfoCard holding={holding} isProfitable={isProfitable} />
+              <div className="col-span-2 md:col-span-1">
+                <StockInfoCard holding={holding} isProfitable={isProfitable} />
+              </div>
             )}
 
             {/* 交易统计卡片组 */}
@@ -505,16 +510,16 @@ function HoldingDetailPage() {
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.2 }}
-              className="space-y-3"
+              className="col-span-2 md:col-span-1 grid grid-cols-3 md:grid-cols-1 gap-2 md:flex md:flex-col md:space-y-3"
             >
               {/* 总交易次数 */}
-              <div className="rounded-lg border border-border/60 dark:border-0 bg-gradient-to-br from-card via-card to-card/95 dark:from-muted dark:via-muted/80 dark:to-secondary p-3 shadow-sm hover:shadow-lg hover:border-primary/40 dark:hover:shadow-primary/10 transition-all cursor-pointer relative overflow-hidden">
+              <div className="rounded-lg border border-border/60 dark:border-0 bg-gradient-to-br from-card via-card to-card/95 dark:from-muted dark:via-muted/80 dark:to-secondary p-2.5 md:p-3 shadow-sm hover:shadow-lg hover:border-primary/40 dark:hover:shadow-primary/10 transition-all cursor-pointer relative overflow-hidden">
                 <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-white/20 dark:via-white/30 to-transparent" />
-                <div className="flex items-start justify-between mb-2 relative z-10">
-                  <div className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">总交易次数</div>
-                  <Receipt className="h-3.5 w-3.5 text-primary/70 dark:text-primary shrink-0" />
+                <div className="flex items-start justify-between mb-1.5 md:mb-2 relative z-10">
+                  <div className="text-[9px] md:text-[10px] font-medium text-muted-foreground uppercase tracking-wide">总交易次数</div>
+                  <Receipt className="h-3 w-3 md:h-3.5 md:w-3.5 text-primary/70 dark:text-primary shrink-0" />
                 </div>
-                <div className="text-2xl font-bold tabular-nums text-foreground relative z-10">
+                <div className="text-lg md:text-xl lg:text-2xl font-bold tabular-nums text-foreground relative z-10">
                   <CountUp
                     from={0}
                     to={stats.totalOperations}
@@ -523,17 +528,17 @@ function HoldingDetailPage() {
                     className="tabular-nums"
                   />
                 </div>
-                <div className="text-[10px] text-muted-foreground mt-0.5">Total Operations</div>
+                <div className="text-[9px] md:text-[10px] text-muted-foreground mt-0.5">Total Operations</div>
               </div>
 
               {/* 买入金额/数量 */}
-              <div className="rounded-lg border border-border/60 dark:border-0 bg-gradient-to-br from-card via-card to-card/95 dark:from-muted dark:via-muted/80 dark:to-secondary p-3 shadow-sm hover:shadow-lg hover:border-red-500/40 dark:hover:shadow-red-500/10 transition-all cursor-pointer relative overflow-hidden">
+              <div className="rounded-lg border border-border/60 dark:border-0 bg-gradient-to-br from-card via-card to-card/95 dark:from-muted dark:via-muted/80 dark:to-secondary p-2.5 md:p-3 shadow-sm hover:shadow-lg hover:border-red-500/40 dark:hover:shadow-red-500/10 transition-all cursor-pointer relative overflow-hidden">
                 <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-white/20 dark:via-white/30 to-transparent" />
-                <div className="flex items-start justify-between mb-2 relative z-10">
-                  <div className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">买入金额</div>
-                  <ShoppingCart className="h-3.5 w-3.5 text-red-500/70 dark:text-red-400 shrink-0" />
+                <div className="flex items-start justify-between mb-1.5 md:mb-2 relative z-10">
+                  <div className="text-[9px] md:text-[10px] font-medium text-muted-foreground uppercase tracking-wide">买入金额</div>
+                  <ShoppingCart className="h-3 w-3 md:h-3.5 md:w-3.5 text-red-500/70 dark:text-red-400 shrink-0" />
                 </div>
-                <div className="text-xl font-bold tabular-nums text-red-600 dark:text-red-400 relative z-10">
+                <div className="text-lg md:text-xl lg:text-2xl font-bold tabular-nums text-red-600 dark:text-red-400 relative z-10">
                   <CountUp
                     from={0}
                     to={stats.totalBuyAmount / 10000}
@@ -543,19 +548,19 @@ function HoldingDetailPage() {
                   />
                   <span className="text-xs font-normal text-muted-foreground ml-1">万</span>
                 </div>
-                <div className="text-[10px] text-muted-foreground mt-0.5">
+                <div className="text-[9px] md:text-[10px] text-muted-foreground mt-0.5">
                   {formatNumber(stats.totalBuyQuantity, 0)} 股
                 </div>
               </div>
 
               {/* 卖出金额/数量 */}
-              <div className="rounded-lg border border-border/60 dark:border-0 bg-gradient-to-br from-card via-card to-card/95 dark:from-muted dark:via-muted/80 dark:to-secondary p-3 shadow-sm hover:shadow-lg hover:border-green-500/40 dark:hover:shadow-green-500/10 transition-all cursor-pointer relative overflow-hidden">
+              <div className="rounded-lg border border-border/60 dark:border-0 bg-gradient-to-br from-card via-card to-card/95 dark:from-muted dark:via-muted/80 dark:to-secondary p-2.5 md:p-3 shadow-sm hover:shadow-lg hover:border-green-500/40 dark:hover:shadow-green-500/10 transition-all cursor-pointer relative overflow-hidden">
                 <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-white/20 dark:via-white/30 to-transparent" />
-                <div className="flex items-start justify-between mb-2 relative z-10">
-                  <div className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">卖出金额</div>
-                  <Package className="h-3.5 w-3.5 text-green-500/70 dark:text-green-400 shrink-0" />
+                <div className="flex items-start justify-between mb-1.5 md:mb-2 relative z-10">
+                  <div className="text-[9px] md:text-[10px] font-medium text-muted-foreground uppercase tracking-wide">卖出金额</div>
+                  <Package className="h-3 w-3 md:h-3.5 md:w-3.5 text-green-500/70 dark:text-green-400 shrink-0" />
                 </div>
-                <div className="text-xl font-bold tabular-nums text-green-600 dark:text-green-400 relative z-10">
+                <div className="text-lg md:text-xl lg:text-2xl font-bold tabular-nums text-green-600 dark:text-green-400 relative z-10">
                   <CountUp
                     from={0}
                     to={stats.totalSellAmount / 10000}
@@ -565,7 +570,7 @@ function HoldingDetailPage() {
                   />
                   <span className="text-xs font-normal text-muted-foreground ml-1">万</span>
                 </div>
-                <div className="text-[10px] text-muted-foreground mt-0.5">
+                <div className="text-[9px] md:text-[10px] text-muted-foreground mt-0.5">
                 {formatNumber(stats.totalSellQuantity, 0)} 股
                 </div>
               </div>

@@ -124,25 +124,25 @@ export function OperationsList({ operations, animationDelay = 0.25 }: Operations
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: animationDelay }}
     >
-      <div className="rounded-lg border border-border/60 bg-card dark:bg-muted/50 p-3 shadow-sm">
+      <div className="rounded-lg border border-border/60 bg-card dark:bg-muted/50 p-2 md:p-3 shadow-sm">
         {/* 头部 */}
-        <div className="flex items-center justify-between mb-3 pb-2 border-b border-border/50">
-          <div className="flex items-center gap-2">
-            <Receipt className="h-4 w-4 text-muted-foreground" />
-            <h3 className="text-sm font-semibold">交易记录</h3>
-            <Badge variant="secondary" className="text-[10px] h-5">
+        <div className="flex items-center justify-between mb-2 md:mb-3 pb-2 border-b border-border/50">
+          <div className="flex items-center gap-1.5 md:gap-2">
+            <Receipt className="h-3.5 w-3.5 md:h-4 md:w-4 text-muted-foreground" />
+            <h3 className="text-xs md:text-sm font-semibold">交易记录</h3>
+            <Badge variant="secondary" className="text-[9px] md:text-[10px] h-4 md:h-5 px-1.5">
               {operations.length}
             </Badge>
           </div>
           
           {operations.length > 0 && (
-            <div className="flex items-center gap-2 text-[10px]">
-              <div className="flex items-center gap-1 text-red-600 dark:text-red-400">
-                <TrendingDown className="h-3 w-3" />
+            <div className="flex items-center gap-1.5 md:gap-2 text-[9px] md:text-[10px]">
+              <div className="flex items-center gap-0.5 md:gap-1 text-red-600 dark:text-red-400">
+                <TrendingDown className="h-2.5 w-2.5 md:h-3 md:w-3" />
                 <span>{operations.filter(op => op.OperationType.toLowerCase().includes('买')).length}</span>
               </div>
-              <div className="flex items-center gap-1 text-green-600 dark:text-green-400">
-                <TrendingUp className="h-3 w-3" />
+              <div className="flex items-center gap-0.5 md:gap-1 text-green-600 dark:text-green-400">
+                <TrendingUp className="h-2.5 w-2.5 md:h-3 md:w-3" />
                 <span>{operations.filter(op => op.OperationType.toLowerCase().includes('卖')).length}</span>
               </div>
             </div>
@@ -154,7 +154,7 @@ export function OperationsList({ operations, animationDelay = 0.25 }: Operations
           {operations.length === 0 ? (
             <OperationsEmptyState />
           ) : (
-            <div className="space-y-3">
+            <div className="space-y-2 md:space-y-3">
               <AnimatePresence>
                 {dateGroups.map((group, groupIndex) => (
                   <motion.div
@@ -165,19 +165,19 @@ export function OperationsList({ operations, animationDelay = 0.25 }: Operations
                     className="space-y-1"
                   >
                     {/* 日期标签 */}
-                    <div className="flex items-center gap-2 px-2 py-0.5">
-                      <div className="text-xs font-semibold text-foreground/70">
+                    <div className="flex items-center gap-1.5 md:gap-2 px-1 md:px-2 py-0.5">
+                      <div className="text-[11px] md:text-xs font-semibold text-foreground/70 whitespace-nowrap">
                         {group.displayDate}
                       </div>
                       <div className="h-px flex-1 bg-border/30" />
-                      <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
+                      <div className="flex items-center gap-1.5 md:gap-2 text-[9px] md:text-[10px] text-muted-foreground">
                         {group.buyCount > 0 && (
-                          <span className="text-red-600 dark:text-red-400">
+                          <span className="text-red-600 dark:text-red-400 whitespace-nowrap">
                             买{group.buyCount} ¥{formatNumber(group.buyAmount)}
                           </span>
                         )}
                         {group.sellCount > 0 && (
-                          <span className="text-green-600 dark:text-green-400">
+                          <span className="text-green-600 dark:text-green-400 whitespace-nowrap">
                             卖{group.sellCount} ¥{formatNumber(group.sellAmount)}
                           </span>
                         )}

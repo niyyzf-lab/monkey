@@ -168,6 +168,7 @@ export function StockChart(props: StockChartProps) {
       if (chartRef.current && chartContainerRef.current) {
         chartRef.current.applyOptions({
           width: chartContainerRef.current.clientWidth,
+          height: chartContainerRef.current.clientHeight || height,
         });
       }
     };
@@ -184,7 +185,7 @@ export function StockChart(props: StockChartProps) {
         fontSize: 11,
       },
       width: chartContainerRef.current.clientWidth,
-      height: height,
+      height: chartContainerRef.current.clientHeight || height,
       grid: {
         vertLines: {
           color: 'rgba(197, 203, 206, 0.12)',
@@ -685,10 +686,9 @@ export function StockChart(props: StockChartProps) {
       {/* 图表容器 */}
       <div
         ref={chartContainerRef}
-        className="w-full rounded-lg overflow-hidden border border-border/60 bg-card/50 shadow-sm transition-all duration-500 hover:border-border/80 hover:shadow-md"
+        className="w-full h-full rounded-lg overflow-hidden border border-border/60 bg-card/50 shadow-sm transition-all duration-500 hover:border-border/80 hover:shadow-md"
         style={{ 
           opacity: isInternalLoading ? 0 : 1,
-          height: `${height}px`,
         }}
       />
 

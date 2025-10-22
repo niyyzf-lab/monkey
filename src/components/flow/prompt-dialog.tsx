@@ -1,7 +1,7 @@
-import { memo, type ReactNode, useEffect } from 'react'
+import { memo, type ReactNode, useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { X } from 'lucide-react'
+import { X, FileText } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -12,6 +12,8 @@ export interface PromptDialogProps {
   icon?: string
   label: string
   description?: string
+  // 支持 prompt 文件路径
+  promptFile?: string
   // 支持插槽 - 自定义右侧内容
   children?: ReactNode
 }
@@ -27,8 +29,49 @@ function PromptDialogComponent({
   icon,
   label,
   description,
+  promptFile,
   children,
 }: PromptDialogProps) {
+  const [promptContent, setPromptContent] = useState<string>('')
+  const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  // 加载 prompt 文件内容
+  useEffect(() => {
+    if (!open || !promptFile) {
+      return
+    }
+
+    const loadPromptFile = async () => {
+      setIsLoading(true)
+      setError(null)
+      
+      try {
+        // 使用 fetch 从 public 目录或 src 目录加载文件
+        // Vite 在开发模式下会自动处理 src 目录下的文件
+        const filePath = promptFile.startsWith('/src') 
+          ? promptFile.substring(4) // 移除 /src 前缀
+          : promptFile
+        
+        const response = await fetch(filePath)
+        
+        if (!response.ok) {
+          throw new Error(`无法加载文件 (${response.status}): ${response.statusText}`)
+        }
+        
+        const content = await response.text()
+        setPromptContent(content)
+      } catch (err) {
+        console.error('加载 prompt 文件失败:', err)
+        setError(err instanceof Error ? err.message : '加载文件失败')
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    loadPromptFile()
+  }, [open, promptFile])
+
   // 处理 ESC 键关闭
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
@@ -166,9 +209,34 @@ function PromptDialogComponent({
                 <ScrollArea className="h-full">
                   <div className="pr-4">
                     {children || (
-                      <div className="flex flex-col items-center justify-center h-60 text-muted-foreground gap-3">
-                        <div className="text-4xl opacity-20">📝</div>
-                        <p>暂无内容</p>
+                      <div className="space-y-4">
+                        {isLoading ? (
+                          <div className="flex flex-col items-center justify-center h-60 text-muted-foreground gap-3">
+                            <motion.div
+                              animate={{ rotate: 360 }}
+                              transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
+                            >
+                              <FileText className="h-10 w-10 opacity-50" />
+                            </motion.div>
+                            <p>加载中...</p>
+                          </div>
+                        ) : error ? (
+                          <div className="flex flex-col items-center justify-center h-60 text-destructive gap-3">
+                            <div className="text-4xl opacity-50">⚠️</div>
+                            <p>{error}</p>
+                          </div>
+                        ) : promptContent ? (
+                          <div className="prose prose-sm dark:prose-invert max-w-none">
+                            <pre className="whitespace-pre-wrap text-sm leading-relaxed bg-muted/50 p-4 rounded-lg border">
+                              {promptContent}
+                            </pre>
+                          </div>
+                        ) : (
+                          <div className="flex flex-col items-center justify-center h-60 text-muted-foreground gap-3">
+                            <div className="text-4xl opacity-20">📝</div>
+                            <p>暂无内容</p>
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>

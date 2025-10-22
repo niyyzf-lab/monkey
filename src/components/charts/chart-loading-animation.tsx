@@ -604,7 +604,7 @@ export function ChartLoadingAnimation({ height = 400, onComplete, realData }: Ch
     <div
       ref={containerRef}
       className="absolute inset-0 z-10 bg-background/98 backdrop-blur-sm rounded-lg border border-border/60 overflow-hidden transition-opacity duration-400"
-      style={{ height: `${height}px`, opacity }}
+      style={{ opacity }}
     >
       {/* K线渲染 */}
       {barStates.length > 0 && (

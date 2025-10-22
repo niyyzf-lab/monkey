@@ -84,6 +84,12 @@
   /* 移动端视口高度修复 - 由 useViewportHeight hook 动态设置 */
   --vh: 1vh;
   
+  /* iOS 安全区域支持 */
+  --safe-area-inset-top: env(safe-area-inset-top);
+  --safe-area-inset-right: env(safe-area-inset-right);
+  --safe-area-inset-bottom: env(safe-area-inset-bottom);
+  --safe-area-inset-left: env(safe-area-inset-left);
+  
   --background: oklch(1 0 0);
   --foreground: oklch(0.145 0 0);
   --card: oklch(1 0 0);
@@ -163,8 +169,20 @@
   * {
     @apply border-border outline-ring/50;
   }
+  
+  html,
   body {
     @apply bg-background text-foreground;
+    height: 100%;
+    width: 100%;
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+  }
+  
+  #root {
+    height: 100%;
+    width: 100%;
   }
   
   /* 优化滚动性能 */
@@ -352,6 +370,37 @@
 
 .max-h-screen-safe {
   max-height: calc(var(--vh, 1vh) * 100);
+}
+
+/* iOS 安全区域 padding 工具类 */
+.pt-safe {
+  padding-top: var(--safe-area-inset-top);
+}
+
+.pr-safe {
+  padding-right: var(--safe-area-inset-right);
+}
+
+.pb-safe {
+  padding-bottom: var(--safe-area-inset-bottom);
+}
+
+.pl-safe {
+  padding-left: var(--safe-area-inset-left);
+}
+
+.px-safe {
+  padding-left: var(--safe-area-inset-left);
+  padding-right: var(--safe-area-inset-right);
+}
+
+.py-safe {
+  padding-top: var(--safe-area-inset-top);
+  padding-bottom: var(--safe-area-inset-bottom);
+}
+
+.p-safe {
+  padding: var(--safe-area-inset-top) var(--safe-area-inset-right) var(--safe-area-inset-bottom) var(--safe-area-inset-left);
 }
 
 /* Tauri 拖拽区域样式 - 元素及其所有子元素都可拖拽窗口 */
