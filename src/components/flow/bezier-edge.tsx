@@ -3,6 +3,7 @@ import {
   getBezierPath,
   type EdgeProps,
 } from '@xyflow/react'
+import { useThemeColors } from '@/hooks/use-theme-colors'
 
 /**
  * 现代化贝塞尔曲线边组件
@@ -26,6 +27,9 @@ function BezierEdgeComponent({
   markerEnd,
   selected,
 }: EdgeProps) {
+  // 获取主题颜色
+  const { primary, secondary, accent } = useThemeColors()
+  
   const [edgePath] = getBezierPath({
     sourceX,
     sourceY,
@@ -48,39 +52,39 @@ function BezierEdgeComponent({
       <defs>
         {/* 主渐变 - 霓虹蓝紫 */}
         <linearGradient id={primaryGradientId} gradientUnits="userSpaceOnUse">
-          <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity="0.4">
+          <stop offset="0%" stopColor={primary} stopOpacity="0.4">
             <animate attributeName="stop-opacity" values="0.4;0.7;0.4" dur="3s" repeatCount="indefinite" />
           </stop>
-          <stop offset="50%" stopColor="hsl(var(--accent))" stopOpacity="0.9">
+          <stop offset="50%" stopColor={accent} stopOpacity="0.9">
             <animate attributeName="stop-opacity" values="0.9;1;0.9" dur="3s" repeatCount="indefinite" />
           </stop>
-          <stop offset="100%" stopColor="hsl(var(--primary))" stopOpacity="0.4">
+          <stop offset="100%" stopColor={primary} stopOpacity="0.4">
             <animate attributeName="stop-opacity" values="0.4;0.7;0.4" dur="3s" repeatCount="indefinite" />
           </stop>
         </linearGradient>
 
         {/* 强调渐变 - 彩虹流光 */}
         <linearGradient id={accentGradientId} gradientUnits="userSpaceOnUse">
-          <stop offset="0%" stopColor="hsl(var(--accent))" stopOpacity="0.2" />
-          <stop offset="25%" stopColor="hsl(var(--primary))" stopOpacity="0.8" />
-          <stop offset="50%" stopColor="hsl(var(--accent))" stopOpacity="1" />
-          <stop offset="75%" stopColor="hsl(var(--primary))" stopOpacity="0.8" />
-          <stop offset="100%" stopColor="hsl(var(--accent))" stopOpacity="0.2" />
+          <stop offset="0%" stopColor={accent} stopOpacity="0.2" />
+          <stop offset="25%" stopColor={primary} stopOpacity="0.8" />
+          <stop offset="50%" stopColor={accent} stopOpacity="1" />
+          <stop offset="75%" stopColor={primary} stopOpacity="0.8" />
+          <stop offset="100%" stopColor={accent} stopOpacity="0.2" />
         </linearGradient>
 
         {/* 流动渐变 - 能量波 */}
         <linearGradient id={flowGradientId} gradientUnits="userSpaceOnUse">
           <stop offset="0%" stopColor="transparent" />
-          <stop offset="20%" stopColor="hsl(var(--primary) / 0.3)" />
-          <stop offset="50%" stopColor="hsl(var(--accent))" />
-          <stop offset="80%" stopColor="hsl(var(--primary) / 0.3)" />
+          <stop offset="20%" stopColor={primary} stopOpacity="0.3" />
+          <stop offset="50%" stopColor={accent} />
+          <stop offset="80%" stopColor={primary} stopOpacity="0.3" />
           <stop offset="100%" stopColor="transparent" />
         </linearGradient>
 
         {/* 脉冲渐变 - 心跳效果 */}
         <radialGradient id={pulseGradientId}>
-          <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity="1" />
-          <stop offset="70%" stopColor="hsl(var(--accent))" stopOpacity="0.6" />
+          <stop offset="0%" stopColor={primary} stopOpacity="1" />
+          <stop offset="70%" stopColor={accent} stopOpacity="0.6" />
           <stop offset="100%" stopColor="transparent" stopOpacity="0" />
         </radialGradient>
 
@@ -124,11 +128,12 @@ function BezierEdgeComponent({
       <path
         d={edgePath}
         fill="none"
-        stroke={selected ? "hsl(var(--primary) / 0.15)" : "hsl(var(--primary) / 0.06)"}
+        stroke={primary}
         strokeWidth={selected ? 28 : 20}
         strokeLinecap="round"
         style={{
           filter: 'blur(16px)',
+          opacity: selected ? 0.15 : 0.06,
           transition: 'all 0.6s cubic-bezier(0.4, 0, 0.2, 1)',
           ...(style as React.CSSProperties),
         }}
@@ -138,11 +143,12 @@ function BezierEdgeComponent({
       <path
         d={edgePath}
         fill="none"
-        stroke={selected ? "hsl(var(--accent) / 0.25)" : "hsl(var(--primary) / 0.12)"}
+        stroke={selected ? accent : primary}
         strokeWidth={selected ? 18 : 14}
         strokeLinecap="round"
         style={{
           filter: 'blur(10px)',
+          opacity: selected ? 0.25 : 0.12,
           transition: 'all 0.5s cubic-bezier(0.4, 0, 0.2, 1)',
           ...(style as React.CSSProperties),
         }}
@@ -153,11 +159,12 @@ function BezierEdgeComponent({
         <path
           d={edgePath}
           fill="none"
-          stroke="hsl(var(--primary) / 0.6)"
+          stroke={primary}
           strokeWidth={12}
           strokeLinecap="round"
           style={{
             filter: `url(#${enhancedGlowId})`,
+            opacity: 0.6,
             animation: 'neon-pulse 2s ease-in-out infinite',
             ...(style as React.CSSProperties),
           }}
@@ -169,11 +176,12 @@ function BezierEdgeComponent({
         id={pathId}
         d={edgePath}
         fill="none"
-        stroke={selected ? "hsl(var(--primary) / 0.9)" : "hsl(var(--muted-foreground) / 0.35)"}
+        stroke={selected ? primary : secondary}
         strokeWidth={selected ? 4 : 2.5}
         strokeLinecap="round"
         strokeLinejoin="round"
         style={{
+          opacity: selected ? 0.9 : 0.35,
           transition: 'all 0.3s ease',
           ...(style as React.CSSProperties),
         }}
@@ -207,7 +215,7 @@ function BezierEdgeComponent({
         strokeDasharray="30 150"
         style={{
           animation: 'energy-wave 2s ease-out infinite',
-          filter: 'drop-shadow(0 0 8px hsl(var(--accent)))',
+          filter: `drop-shadow(0 0 8px ${accent})`,
           opacity: selected ? 1 : 0.7,
           ...(style as React.CSSProperties),
         }}
@@ -217,13 +225,13 @@ function BezierEdgeComponent({
       <path
         d={edgePath}
         fill="none"
-        stroke="hsl(var(--accent))"
+        stroke={accent}
         strokeWidth={2.5}
         strokeLinecap="round"
         strokeDasharray="4 28"
         style={{
           animation: 'photon-flow 1s linear infinite',
-          filter: 'drop-shadow(0 0 6px hsl(var(--accent)))',
+          filter: `drop-shadow(0 0 6px ${accent})`,
           opacity: selected ? 1 : 0.7,
           ...(style as React.CSSProperties),
         }}
@@ -233,13 +241,13 @@ function BezierEdgeComponent({
       <path
         d={edgePath}
         fill="none"
-        stroke="hsl(var(--background))"
+        stroke={secondary}
         strokeWidth={3}
         strokeLinecap="round"
         strokeDasharray="6 36"
         style={{
           animation: 'data-spark 1.8s linear infinite',
-          filter: 'drop-shadow(0 0 10px hsl(var(--primary))) drop-shadow(0 0 4px hsl(var(--accent)))',
+          filter: `drop-shadow(0 0 10px ${primary}) drop-shadow(0 0 4px ${accent})`,
           opacity: selected ? 1 : 0.6,
           ...(style as React.CSSProperties),
         }}
@@ -252,13 +260,14 @@ function BezierEdgeComponent({
           <path
             d={edgePath}
             fill="none"
-            stroke="hsl(var(--primary) / 0.5)"
+            stroke={primary}
             strokeWidth={2}
             strokeLinecap="round"
             strokeDasharray="8 20"
             style={{
+              opacity: 0.5,
               animation: 'reverse-stream 3.5s linear infinite reverse',
-              filter: 'drop-shadow(0 0 4px hsl(var(--primary)))',
+              filter: `drop-shadow(0 0 4px ${primary})`,
               ...(style as React.CSSProperties),
             }}
           />
@@ -267,13 +276,14 @@ function BezierEdgeComponent({
           <path
             d={edgePath}
             fill="none"
-            stroke="hsl(var(--accent) / 0.8)"
+            stroke={accent}
             strokeWidth={1.5}
             strokeLinecap="round"
             strokeDasharray="2 50"
             style={{
+              opacity: 0.8,
               animation: 'burst-particles 2.2s linear infinite',
-              filter: 'drop-shadow(0 0 8px hsl(var(--accent)))',
+              filter: `drop-shadow(0 0 8px ${accent})`,
               ...(style as React.CSSProperties),
             }}
           />
@@ -286,7 +296,7 @@ function BezierEdgeComponent({
             strokeWidth={1.5}
             strokeLinecap="round"
             style={{
-              filter: 'drop-shadow(0 0 6px hsl(var(--primary))) drop-shadow(0 0 12px hsl(var(--accent)))',
+              filter: `drop-shadow(0 0 6px ${primary}) drop-shadow(0 0 12px ${accent})`,
               ...(style as React.CSSProperties),
             }}
           />

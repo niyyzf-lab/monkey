@@ -1,7 +1,9 @@
-import { memo } from 'react'
+import { memo, useState } from 'react'
 import { Handle, Position, type NodeProps, type Node } from '@xyflow/react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { cn } from '@/lib/utils'
+import { PromptDialog } from './prompt-dialog'
+import { Info } from 'lucide-react'
 
 interface FunctionHandle {
   id: string
@@ -15,6 +17,7 @@ interface ModuleNodeData extends Record<string, unknown> {
   description?: string
   functions?: FunctionHandle[]
   icon?: string
+  prompt?: string // 提示词内容
 }
 
 type ModuleNodeType = Node<ModuleNodeData>
@@ -33,18 +36,49 @@ function ModuleNodeComponent({ data, selected }: NodeProps<ModuleNodeType>) {
   const iconSrc = data?.icon as string | undefined
   const label = (data?.label as string) || ''
   const description = data?.description as string | undefined
+  const prompt = data?.prompt as string | undefined
+  const [isDialogOpen, setIsDialogOpen] = useState(false)
   
   return (
+    <>
+    <PromptDialog
+      open={isDialogOpen}
+      onOpenChange={setIsDialogOpen}
+      icon={iconSrc}
+      label={label}
+      description={description}
+    >
+      {/* 提示词内容 */}
+      {prompt ? (
+        <div className="space-y-4">
+          <div>
+            <h3 className="text-base font-semibold mb-2">系统提示词</h3>
+            <div className="bg-muted/50 rounded-lg p-4 text-sm leading-relaxed whitespace-pre-wrap">
+              {prompt}
+            </div>
+          </div>
+        </div>
+      ) : (
+        <div className="text-center text-muted-foreground py-8">
+          暂无提示词内容
+        </div>
+      )}
+    </PromptDialog>
     <div className="relative group/node animate-in fade-in duration-500">
       {/* 主容器 - 垂直布局 */}
       <div className="relative flex flex-col items-center gap-2.5">
         {/* 上方：缩小的图标 */}
         <div 
           className={cn(
-            "relative w-24 h-24 transition-all duration-500 ease-out",
+            "relative w-24 h-24 transition-all duration-500 ease-out cursor-pointer",
             "group-hover/node:scale-[1.03] group-hover/node:-translate-y-0.5",
             selected && "scale-105"
           )}
+          onClick={(e) => {
+            e.stopPropagation()
+            setIsDialogOpen(true)
+          }}
+          title="点击查看详情"
         >
           {/* 图标背景光晕 */}
           <div className={cn(
@@ -125,17 +159,44 @@ function ModuleNodeComponent({ data, selected }: NodeProps<ModuleNodeType>) {
               )}
               
               <CardHeader className="!pb-0 !px-3 !gap-0 relative z-10">
-                <CardTitle className={cn(
-                  "text-sm transition-colors duration-300",
-                  selected && "text-primary"
-                )}>
-                  {label}
-                </CardTitle>
-                {description && (
-                  <CardDescription className="text-[10px] leading-tight mt-0.5">
-                    {description}
-                  </CardDescription>
-                )}
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex-1 min-w-0">
+                    <CardTitle className={cn(
+                      "text-sm transition-colors duration-300",
+                      selected && "text-primary"
+                    )}>
+                      {label}
+                    </CardTitle>
+                    {description && (
+                      <CardDescription className="text-[10px] leading-tight mt-0.5">
+                        {description}
+                      </CardDescription>
+                    )}
+                  </div>
+                  
+                  {/* 信息按钮 - 常显 */}
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      setIsDialogOpen(true)
+                    }}
+                    className={cn(
+                      "flex-shrink-0 w-6 h-6 rounded-full",
+                      "flex items-center justify-center",
+                      "transition-all duration-200 ease-out cursor-pointer",
+                      "bg-gradient-to-br from-primary/10 to-primary/5",
+                      "border backdrop-blur-sm",
+                      "hover:scale-110 hover:shadow-md hover:from-primary/20 hover:to-primary/10",
+                      "active:scale-95",
+                      selected 
+                        ? "border-primary/40 shadow-sm ring-1 ring-primary/20" 
+                        : "border-border/50 hover:border-primary/30"
+                    )}
+                    title="查看提示词"
+                  >
+                    <Info className="w-3.5 h-3.5 text-primary" />
+                  </button>
+                </div>
               </CardHeader>
               
               {allFunctions.length > 0 && (
@@ -330,6 +391,7 @@ function ModuleNodeComponent({ data, selected }: NodeProps<ModuleNodeType>) {
         </div>
       </div>
     </div>
+    </>
   )
 }
 
