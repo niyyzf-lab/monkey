@@ -47,11 +47,11 @@ export function TableView({ holdings }: TableViewProps) {
 
   return (
     <>
-      <div className="@container rounded-lg border bg-card overflow-hidden">
+      <div className="@container rounded-xl border border-border/30 dark:border-border/20 bg-card shadow-[0_1px_3px_rgba(0,0,0,0.05),0_1px_2px_rgba(0,0,0,0.03)] overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full">
             {/* 表头 */}
-            <thead className="bg-muted/30 border-b sticky top-0 z-10">
+            <thead className="bg-muted/30 border-b border-border/30 dark:border-border/20 sticky top-0 z-10 backdrop-blur-sm">
               <tr>
                 <th className="text-left text-xs font-medium text-muted-foreground px-4 py-3 whitespace-nowrap">
                   股票
@@ -102,10 +102,10 @@ export function TableView({ holdings }: TableViewProps) {
                     onMouseEnter={() => setHoveredRow(holding.stockCode)}
                     onMouseLeave={() => setHoveredRow(null)}
                     onClick={() => navigateToHoldingDetail(navigate, holding)}
-                    className={`border-b transition-colors cursor-pointer ${
-                      hoveredRow === holding.stockCode ? 'bg-muted/30' : ''
-                    } ${nearStop ? 'bg-red-50/50 dark:bg-red-950/10' : ''} ${
-                      nearProfit && !nearStop ? 'bg-green-50/50 dark:bg-green-950/10' : ''
+                    className={`border-b border-border/20 dark:border-border/10 transition-all duration-200 cursor-pointer ${
+                      hoveredRow === holding.stockCode ? 'bg-muted/40 shadow-[inset_0_1px_0_rgba(0,0,0,0.02)]' : ''
+                    } ${nearStop ? 'bg-red-50/50 dark:bg-red-950/10 border-red-200/30 dark:border-red-900/20' : ''} ${
+                      nearProfit && !nearStop ? 'bg-green-50/50 dark:bg-green-950/10 border-green-200/30 dark:border-green-900/20' : ''
                     }`}
                   >
                     {/* 股票信息 */}

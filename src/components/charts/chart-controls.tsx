@@ -75,7 +75,7 @@ export function ChartControls(props: ChartControlsProps) {
         duration: 0.4,
         ease: [0.16, 1, 0.3, 1], // 自定义贝塞尔曲线，更优雅的缓动
       }}
-      className="rounded-lg border bg-card px-2 md:px-3 py-2 shadow-sm"
+      className="rounded-lg border border-border/40 bg-card px-2 md:px-3 py-2"
     >
       {/* 桌面端：完整布局 */}
       <div className="hidden md:flex items-center justify-between gap-3">

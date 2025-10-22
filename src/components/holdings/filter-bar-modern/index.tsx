@@ -103,11 +103,11 @@ export function FilterBarModern({
       initial={{ opacity: 0, y: -10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3 }}
-      className="backdrop-blur-md bg-background/80 border border-border/50 rounded-lg overflow-hidden"
+      className="bg-card dark:bg-card border border-border/40 dark:border-border/50 rounded-xl overflow-hidden"
     >
-          <div className="flex items-center justify-between gap-2 py-1.5 px-3">
+          <div className="flex items-center justify-between gap-2.5 py-1.5 px-3">
             {/* 左侧：排序快捷按钮 + 筛选 Popover */}
-            <div className="flex items-center gap-1.5 flex-1 min-w-0">
+            <div className="flex items-center gap-2 flex-1 min-w-0">
               {/* 购入时间排序按钮 - 容器宽度 >= 800px 时显示 */}
               {!isCompact && (
                 <Button
@@ -120,10 +120,10 @@ export function FilterBarModern({
                       onSortByChange('holdingDays');
                     }
                   }}
-                  className={`h-7 px-2.5 text-xs ${
+                  className={`h-7 px-2.5 text-xs rounded-lg transition-all duration-200 ${
                     sortBy === 'holdingDays' 
-                      ? 'bg-primary/15 text-primary border-primary/30' 
-                      : 'hover:bg-secondary/50'
+                      ? 'bg-primary/10 dark:bg-primary/15 text-primary border border-primary/30 dark:border-primary/40' 
+                      : 'border border-transparent hover:bg-muted/80'
                   }`}
                 >
                   购入时间
@@ -147,10 +147,10 @@ export function FilterBarModern({
                       onSortByChange('todayPL');
                     }
                   }}
-                  className={`h-7 px-2.5 text-xs ${
+                  className={`h-7 px-2.5 text-xs rounded-lg transition-all duration-200 ${
                     sortBy === 'todayPL' 
-                      ? 'bg-primary/15 text-primary border-primary/30' 
-                      : 'hover:bg-secondary/50'
+                      ? 'bg-primary/10 dark:bg-primary/15 text-primary border border-primary/30 dark:border-primary/40' 
+                      : 'border border-transparent hover:bg-muted/80'
                   }`}
                 >
                   今日收益
@@ -168,7 +168,7 @@ export function FilterBarModern({
                   <Button
                     variant="ghost"
                     size="sm"
-                    className={`h-7 px-2.5 text-xs ${hasActiveFilters ? 'bg-primary/10 text-primary' : 'hover:bg-secondary/50'}`}
+                    className={`h-7 px-2.5 text-xs rounded-lg transition-all duration-200 ${hasActiveFilters ? 'bg-primary/10 dark:bg-primary/15 text-primary border border-primary/30 dark:border-primary/40' : 'border border-transparent hover:bg-muted/80'}`}
                   >
                     <Filter className="h-3 w-3 mr-1" />
                     {isCompact ? '筛选&排序' : '筛选'}
@@ -177,11 +177,11 @@ export function FilterBarModern({
                     )}
                   </Button>
                 </PopoverTrigger>
-                <PopoverContent className="w-64 p-3 bg-popover/98 backdrop-blur-sm" align="start">
+                <PopoverContent className="w-64 p-3.5 bg-popover rounded-xl border border-border/50" align="start">
                   {/* 排序方式 - 仅在紧凑模式显示 */}
                   {isCompact && (
                     <div className="mb-3">
-                      <div className="text-xs font-medium text-muted-foreground mb-2">排序方式</div>
+                      <div className="text-xs font-semibold text-foreground/90 mb-2">排序方式</div>
                       <div className="flex flex-col gap-1">
                         {sortOptions.map(option => (
                           <button
@@ -193,10 +193,10 @@ export function FilterBarModern({
                                 onSortByChange(option.value);
                               }
                             }}
-                            className={`px-2.5 py-1.5 text-sm rounded-md text-left transition-all flex items-center justify-between ${
+                            className={`px-2.5 py-1.5 text-sm rounded-lg text-left transition-all flex items-center justify-between border ${
                               sortBy === option.value
-                                ? 'bg-primary/15 text-primary font-medium'
-                                : 'bg-secondary/20 hover:bg-secondary/50 text-muted-foreground'
+                                ? 'bg-primary/10 dark:bg-primary/15 text-primary border-primary/30 dark:border-primary/40 font-medium'
+                                : 'bg-muted/50 hover:bg-muted text-muted-foreground border-border/30 dark:border-border/40'
                             }`}
                           >
                             <span>{option.label}</span>
@@ -213,39 +213,39 @@ export function FilterBarModern({
 
                   {/* 分隔线 - 仅在紧凑模式显示 */}
                   {isCompact && (
-                    <div className="mb-3 border-t border-border/50" />
+                    <div className="my-3 border-t border-border/50 dark:border-border/60" />
                   )}
 
                   {/* 盈亏筛选 */}
                   <div className="mb-3">
-                    <div className="text-xs font-medium text-muted-foreground mb-2">盈亏筛选</div>
+                    <div className="text-xs font-semibold text-foreground/90 mb-2">盈亏筛选</div>
                     <div className="flex gap-1.5">
                       <button
                         onClick={() => onProfitFilterChange('all')}
-                        className={`flex-1 px-2.5 py-1.5 text-sm rounded-md transition-all ${
+                        className={`flex-1 px-2.5 py-1.5 text-sm rounded-lg transition-all border ${
                           profitFilter === 'all'
-                            ? 'bg-primary/15 text-primary font-medium'
-                            : 'bg-secondary/40 hover:bg-secondary/60 text-muted-foreground'
+                            ? 'bg-primary/10 dark:bg-primary/15 text-primary border-primary/30 dark:border-primary/40 font-medium'
+                            : 'bg-muted/50 hover:bg-muted text-muted-foreground border-border/30'
                         }`}
                       >
                         全部 <span className="text-xs opacity-70">({stats.total})</span>
                       </button>
                       <button
                         onClick={() => onProfitFilterChange('profit')}
-                        className={`flex-1 px-2.5 py-1.5 text-sm rounded-md transition-all ${
+                        className={`flex-1 px-2.5 py-1.5 text-sm rounded-lg transition-all border ${
                           profitFilter === 'profit'
-                            ? 'bg-red-100 text-red-700 dark:bg-red-950/80 dark:text-red-400 font-medium'
-                            : 'bg-secondary/40 hover:bg-secondary/60 text-muted-foreground'
+                            ? 'bg-red-50 text-red-700 dark:bg-red-950/50 dark:text-red-400 border-red-200/50 dark:border-red-800/50 font-medium'
+                            : 'bg-muted/50 hover:bg-muted text-muted-foreground border-border/30'
                         }`}
                       >
                         盈利 <span className="text-xs opacity-70">({stats.profitable})</span>
                       </button>
                       <button
                         onClick={() => onProfitFilterChange('loss')}
-                        className={`flex-1 px-2.5 py-1.5 text-sm rounded-md transition-all ${
+                        className={`flex-1 px-2.5 py-1.5 text-sm rounded-lg transition-all border ${
                           profitFilter === 'loss'
-                            ? 'bg-green-100 text-green-700 dark:bg-green-950/80 dark:text-green-400 font-medium'
-                            : 'bg-secondary/40 hover:bg-secondary/60 text-muted-foreground'
+                            ? 'bg-green-50 text-green-700 dark:bg-green-950/50 dark:text-green-400 border-green-200/50 dark:border-green-800/50 font-medium'
+                            : 'bg-muted/50 hover:bg-muted text-muted-foreground border-border/30'
                         }`}
                       >
                         亏损 <span className="text-xs opacity-70">({stats.losing})</span>
@@ -255,15 +255,15 @@ export function FilterBarModern({
 
                   {/* 风险筛选 */}
                   {(stats.nearStop > 0 || stats.nearProfit > 0) && (
-                    <div className="mb-3">
-                      <div className="text-xs font-medium text-muted-foreground mb-2">风险筛选</div>
-                      <div className="flex gap-1.5">
+                    <div className="mb-4">
+                      <div className="text-xs font-semibold text-foreground/90 mb-2.5">风险筛选</div>
+                      <div className="flex gap-2">
                         <button
                           onClick={() => onRiskFilterChange('all')}
-                          className={`flex-1 px-2.5 py-1.5 text-sm rounded-md transition-all ${
+                          className={`flex-1 px-2.5 py-2 text-sm rounded-lg transition-all border ${
                             riskFilter === 'all'
-                              ? 'bg-primary/15 text-primary font-medium'
-                              : 'bg-secondary/40 hover:bg-secondary/60 text-muted-foreground'
+                              ? 'bg-primary/10 dark:bg-primary/15 text-primary border-primary/30 dark:border-primary/40 font-medium'
+                              : 'bg-muted/50 hover:bg-muted text-muted-foreground border-border/30'
                           }`}
                         >
                           全部
@@ -271,10 +271,10 @@ export function FilterBarModern({
                         {stats.nearStop > 0 && (
                           <button
                             onClick={() => onRiskFilterChange('nearStop')}
-                            className={`flex-1 px-2.5 py-1.5 text-sm rounded-md transition-all ${
+                            className={`flex-1 px-2.5 py-2 text-sm rounded-lg transition-all border ${
                               riskFilter === 'nearStop'
-                                ? 'bg-green-100 text-green-700 dark:bg-green-950/80 dark:text-green-400 font-medium'
-                                : 'bg-secondary/40 hover:bg-secondary/60 text-muted-foreground'
+                                ? 'bg-orange-50 text-orange-700 dark:bg-orange-950/50 dark:text-orange-400 border-orange-200/50 dark:border-orange-800/50 font-medium'
+                                : 'bg-muted/50 hover:bg-muted text-muted-foreground border-border/30'
                             }`}
                           >
                             止损 <span className="text-xs opacity-70">({stats.nearStop})</span>
@@ -283,10 +283,10 @@ export function FilterBarModern({
                         {stats.nearProfit > 0 && (
                           <button
                             onClick={() => onRiskFilterChange('nearProfit')}
-                            className={`flex-1 px-2.5 py-1.5 text-sm rounded-md transition-all ${
+                            className={`flex-1 px-2.5 py-2 text-sm rounded-lg transition-all border ${
                               riskFilter === 'nearProfit'
-                                ? 'bg-red-100 text-red-700 dark:bg-red-950/80 dark:text-red-400 font-medium'
-                                : 'bg-secondary/40 hover:bg-secondary/60 text-muted-foreground'
+                                ? 'bg-blue-50 text-blue-700 dark:bg-blue-950/50 dark:text-blue-400 border-blue-200/50 dark:border-blue-800/50 font-medium'
+                                : 'bg-muted/50 hover:bg-muted text-muted-foreground border-border/30'
                             }`}
                           >
                             止盈 <span className="text-xs opacity-70">({stats.nearProfit})</span>
@@ -302,7 +302,7 @@ export function FilterBarModern({
                       variant="outline"
                       size="sm"
                       onClick={onResetFilters}
-                      className="w-full h-8 text-sm text-destructive hover:text-destructive hover:bg-destructive/10"
+                      className="w-full h-9 text-sm text-destructive hover:text-destructive hover:bg-destructive/10 border-destructive/30 dark:border-destructive/40"
                     >
                       <X className="h-3.5 w-3.5 mr-1.5" />
                       重置所有筛选
@@ -312,24 +312,24 @@ export function FilterBarModern({
               </Popover>
 
               {/* 统计信息 */}
-              <span className="text-xs text-muted-foreground ml-1.5">
+              <span className="text-xs text-muted-foreground ml-2 px-2 py-0.5 rounded-md bg-muted/40 border border-border/30 dark:border-border/40">
                 <span className="font-semibold text-foreground">{filteredCount}</span>
                 <span className="opacity-60">/{stats.total}</span>
               </span>
             </div>
 
             {/* 右侧：刷新 + 布局切换 */}
-            <div className="flex items-center gap-1.5">
+            <div className="flex items-center gap-2">
               {/* 刷新按钮 */}
               <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <Button
+                      <Button
                       variant="ghost"
                       size="sm"
                       onClick={onRefresh}
                       disabled={isRefreshing}
-                      className="h-7 px-2 relative hover:bg-secondary/80"
+                      className="h-7 px-2 relative rounded-lg border border-transparent hover:bg-muted/80 transition-all duration-200"
                     >
                       <motion.div
                         animate={isRefreshing ? { rotate: 360 } : { rotate: 0 }}
@@ -390,15 +390,15 @@ export function FilterBarModern({
               </TooltipProvider>
 
               {/* 布局切换 - 重新设计 */}
-              <div className="flex items-center gap-0.5">
+              <div className="flex items-center gap-0.5 p-0.5 rounded-lg bg-muted/40 border border-border/30 dark:border-border/40">
                 <Button
                   variant="ghost"
                   size="sm"
                   onClick={() => onViewModeChange('card')}
-                  className={`h-7 px-2 transition-all ${
+                  className={`h-6 px-2 rounded-md transition-all duration-200 ${
                     viewMode === 'card' 
-                      ? 'bg-primary/10 text-primary hover:bg-primary/15' 
-                      : 'text-muted-foreground hover:text-foreground hover:bg-secondary/80'
+                      ? 'bg-background text-foreground' 
+                      : 'text-muted-foreground hover:text-foreground hover:bg-background/50'
                   }`}
                   title="卡片视图"
                 >
@@ -408,10 +408,10 @@ export function FilterBarModern({
                   variant="ghost"
                   size="sm"
                   onClick={() => onViewModeChange('table')}
-                  className={`h-7 px-2 transition-all ${
+                  className={`h-6 px-2 rounded-md transition-all duration-200 ${
                     viewMode === 'table' 
-                      ? 'bg-primary/10 text-primary hover:bg-primary/15' 
-                      : 'text-muted-foreground hover:text-foreground hover:bg-secondary/80'
+                      ? 'bg-background text-foreground' 
+                      : 'text-muted-foreground hover:text-foreground hover:bg-background/50'
                   }`}
                   title="表格视图"
                 >

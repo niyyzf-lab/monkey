@@ -199,8 +199,8 @@ export const HoldingCard = memo(function HoldingCard({ holding, onUpdate }: Hold
         ease: [0.22, 1, 0.36, 1]
       }}
       whileHover={{ 
-        y: -4,
-        transition: { duration: 0.15 }
+        y: -2,
+        transition: { duration: 0.2 }
       }}
       onMouseEnter={() => {
         setShowActions(true);
@@ -210,7 +210,7 @@ export const HoldingCard = memo(function HoldingCard({ holding, onUpdate }: Hold
       }}
     >
         <Card 
-          className="py-0 gap-0 @container group border border-border/30 dark:border-border/10 bg-card dark:bg-card shadow-sm hover:shadow-lg transition-all duration-200 relative cursor-pointer overflow-hidden"
+          className="py-0 gap-0 @container group border border-border/30 dark:border-border/20 bg-card dark:bg-card shadow-[0_1px_3px_rgba(0,0,0,0.05),0_1px_2px_rgba(0,0,0,0.03)] hover:shadow-[0_8px_16px_rgba(0,0,0,0.08),0_4px_8px_rgba(0,0,0,0.04)] dark:hover:shadow-[0_8px_16px_rgba(0,0,0,0.2),0_4px_8px_rgba(0,0,0,0.12)] transition-all duration-300 relative cursor-pointer overflow-hidden rounded-xl"
           onClick={() => navigateToHoldingDetail(navigate, holding)}
         >
           
@@ -228,7 +228,7 @@ export const HoldingCard = memo(function HoldingCard({ holding, onUpdate }: Hold
                   <Button
                     size="icon"
                     variant="ghost"
-                    className="h-7 w-7 bg-background/90 backdrop-blur-sm hover:bg-muted shadow-md border border-border/80 dark:border-border/40"
+                    className="h-7 w-7 rounded-lg bg-background/95 backdrop-blur-sm hover:bg-muted shadow-[0_2px_8px_rgba(0,0,0,0.08)] hover:shadow-[0_4px_12px_rgba(0,0,0,0.12)] border border-border/40 dark:border-border/30 transition-all duration-200"
                     onClick={(e) => {
                       e.stopPropagation();
                       setIsEditDialogOpen(true);
@@ -242,7 +242,7 @@ export const HoldingCard = memo(function HoldingCard({ holding, onUpdate }: Hold
                   <Button
                     size="icon"
                     variant="ghost"
-                    className="h-7 w-7 bg-background/90 backdrop-blur-sm hover:bg-muted shadow-md border border-border/80 dark:border-border/40"
+                    className="h-7 w-7 rounded-lg bg-background/95 backdrop-blur-sm hover:bg-muted shadow-[0_2px_8px_rgba(0,0,0,0.08)] hover:shadow-[0_4px_12px_rgba(0,0,0,0.12)] border border-border/40 dark:border-border/30 transition-all duration-200"
                     onClick={(e) => {
                       e.stopPropagation();
                       navigateToHoldingDetail(navigate, holding);
@@ -317,7 +317,7 @@ export const HoldingCard = memo(function HoldingCard({ holding, onUpdate }: Hold
 
           <CardContent className="space-y-2.5 pt-2.5 px-4 pb-3">
             {/* 盈亏核心数据 */}
-            <div className="px-3 py-2.5 rounded-lg bg-muted/40 dark:bg-muted/40 relative overflow-hidden">
+            <div className="px-3 py-2.5 rounded-xl bg-muted/40 dark:bg-muted/40 border border-border/20 dark:border-border/10 relative overflow-hidden">
               <div className="space-y-2 relative z-10">
                 {/* 总盈亏行 - 增强视觉层级 */}
                 <div className="flex items-baseline justify-between gap-2">
@@ -380,12 +380,12 @@ export const HoldingCard = memo(function HoldingCard({ holding, onUpdate }: Hold
             {/* 止损止盈可视化进度条 */}
             <>
               <div
-                className={`px-3 py-2.5 rounded-lg transition-all duration-200 relative overflow-hidden ${
+                className={`px-3 py-2.5 rounded-xl transition-all duration-300 relative overflow-hidden ${
                   nearStopLoss 
-                    ? 'bg-orange-50/80 dark:bg-orange-950/40 ring-2 ring-amber-500/50 dark:ring-amber-400/40 shadow-[0_0_15px_rgba(245,158,11,0.2)]' 
+                    ? 'bg-orange-50/80 dark:bg-orange-950/40 border-2 border-amber-500/40 dark:border-amber-400/30 shadow-[0_2px_12px_rgba(245,158,11,0.15),0_0_0_1px_rgba(245,158,11,0.05)]' 
                     : nearTakeProfit
-                    ? 'bg-blue-50/80 dark:bg-blue-950/40 ring-2 ring-blue-500/50 dark:ring-blue-400/40 shadow-[0_0_15px_rgba(59,130,246,0.2)]'
-                    : 'bg-muted/40 dark:bg-muted/40'
+                    ? 'bg-blue-50/80 dark:bg-blue-950/40 border-2 border-blue-500/40 dark:border-blue-400/30 shadow-[0_2px_12px_rgba(59,130,246,0.15),0_0_0_1px_rgba(59,130,246,0.05)]'
+                    : 'bg-muted/40 dark:bg-muted/40 border border-border/20 dark:border-border/10'
                 }`}
               >
                 {!hasStopLossOrTakeProfit ? (

@@ -92,8 +92,8 @@ export function StatisticsCards({ statistics, todayTotalProfitLoss, displayMode 
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.3, delay: 0.05 }}
-            whileHover={{ y: -4 }}
-            className="@[1200px]:col-span-1 rounded-lg border border-border/60 dark:border-0 bg-gradient-to-br from-card via-card to-card/95 dark:from-muted dark:via-muted/80 dark:to-secondary p-3 shadow-sm hover:shadow-lg hover:border-blue-500/40 dark:hover:shadow-blue-500/10 transition-all cursor-pointer min-w-0 relative overflow-hidden"
+            whileHover={{ y: -2 }}
+            className="@[1200px]:col-span-1 rounded-xl border border-border/30 dark:border-border/20 bg-gradient-to-br from-card via-card to-card/95 dark:from-muted dark:via-muted/80 dark:to-secondary p-3 shadow-[0_1px_3px_rgba(0,0,0,0.05),0_1px_2px_rgba(0,0,0,0.03)] hover:shadow-[0_4px_12px_rgba(0,0,0,0.08),0_2px_4px_rgba(0,0,0,0.04)] hover:border-blue-500/30 dark:hover:shadow-[0_4px_12px_rgba(59,130,246,0.08)] transition-all duration-300 cursor-pointer min-w-0 relative overflow-hidden"
           >
             {/* 顶部高光 */}
             <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-white/20 dark:via-white/30 to-transparent" />
@@ -140,8 +140,8 @@ export function StatisticsCards({ statistics, todayTotalProfitLoss, displayMode 
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.3, delay: 0.1 }}
-            whileHover={{ y: -4 }}
-            className="@[1200px]:col-span-1 rounded-lg border border-border/60 dark:border-0 bg-gradient-to-br from-card via-card to-card/95 dark:from-muted dark:via-muted/80 dark:to-secondary p-3 shadow-sm hover:shadow-lg hover:border-purple-500/40 dark:hover:shadow-purple-500/10 transition-all cursor-pointer min-w-0 relative overflow-hidden"
+            whileHover={{ y: -2 }}
+            className="@[1200px]:col-span-1 rounded-xl border border-border/30 dark:border-border/20 bg-gradient-to-br from-card via-card to-card/95 dark:from-muted dark:via-muted/80 dark:to-secondary p-3 shadow-[0_1px_3px_rgba(0,0,0,0.05),0_1px_2px_rgba(0,0,0,0.03)] hover:shadow-[0_4px_12px_rgba(0,0,0,0.08),0_2px_4px_rgba(0,0,0,0.04)] hover:border-purple-500/30 dark:hover:shadow-[0_4px_12px_rgba(168,85,247,0.08)] transition-all duration-300 cursor-pointer min-w-0 relative overflow-hidden"
           >
             {/* 顶部高光 */}
             <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-white/20 dark:via-white/30 to-transparent" />
@@ -188,11 +188,11 @@ export function StatisticsCards({ statistics, todayTotalProfitLoss, displayMode 
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.3, delay: 0.15 }}
-            whileHover={{ y: -4 }}
-            className={`@[1200px]:col-span-2 rounded-lg p-3 shadow-sm hover:shadow-md transition-all cursor-pointer min-w-0 ${
+            whileHover={{ y: -2 }}
+            className={`@[1200px]:col-span-2 rounded-xl p-3 border transition-all duration-300 cursor-pointer min-w-0 ${
               isProfitable 
-                ? 'bg-red-50 dark:bg-red-600/90' 
-                : 'bg-green-50 dark:bg-green-600/90'
+                ? 'bg-red-50 dark:bg-red-600/90 border-red-200/40 dark:border-red-500/20 shadow-[0_1px_3px_rgba(220,38,38,0.08),0_1px_2px_rgba(220,38,38,0.04)] hover:shadow-[0_4px_12px_rgba(220,38,38,0.12),0_2px_4px_rgba(220,38,38,0.06)]' 
+                : 'bg-green-50 dark:bg-green-600/90 border-green-200/40 dark:border-green-500/20 shadow-[0_1px_3px_rgba(22,163,74,0.08),0_1px_2px_rgba(22,163,74,0.04)] hover:shadow-[0_4px_12px_rgba(22,163,74,0.12),0_2px_4px_rgba(22,163,74,0.06)]'
             }`}
           >
             <ClickSpark
@@ -267,11 +267,11 @@ export function StatisticsCards({ statistics, todayTotalProfitLoss, displayMode 
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.3, delay: 0.2 }}
-            whileHover={{ y: -4 }}
-            className={`@[1200px]:col-span-2 rounded-lg p-3 shadow-sm hover:shadow-md transition-all cursor-pointer min-w-0 ${
+            whileHover={{ y: -2 }}
+            className={`@[1200px]:col-span-2 rounded-xl p-3 border transition-all duration-300 cursor-pointer min-w-0 ${
               isTodayProfitable 
-                ? 'bg-red-50 dark:bg-red-600/90' 
-                : 'bg-green-50 dark:bg-green-600/90'
+                ? 'bg-red-50 dark:bg-red-600/90 border-red-200/40 dark:border-red-500/20 shadow-[0_1px_3px_rgba(220,38,38,0.08),0_1px_2px_rgba(220,38,38,0.04)] hover:shadow-[0_4px_12px_rgba(220,38,38,0.12),0_2px_4px_rgba(220,38,38,0.06)]' 
+                : 'bg-green-50 dark:bg-green-600/90 border-green-200/40 dark:border-green-500/20 shadow-[0_1px_3px_rgba(22,163,74,0.08),0_1px_2px_rgba(22,163,74,0.04)] hover:shadow-[0_4px_12px_rgba(22,163,74,0.12),0_2px_4px_rgba(22,163,74,0.06)]'
             }`}
           >
             <ClickSpark

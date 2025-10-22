@@ -65,7 +65,7 @@ function LazyCard({ holding, onUpdate, index }: LazyCardProps) {
         />
       ) : (
         // 占位符，保持布局稳定，显示序号
-        <div className="h-[260px] rounded-lg bg-muted/20 animate-pulse relative">
+        <div className="h-[260px] rounded-xl bg-muted/20 border border-border/20 dark:border-border/10 animate-pulse relative">
           <div className="absolute top-3 left-4 flex items-center justify-center min-w-[16px] h-4 px-1 rounded text-[10px] bg-muted/40 text-muted-foreground/50 font-bold tabular-nums leading-none">
             {index + 1}
           </div>
@@ -272,7 +272,7 @@ export function VirtualizedGridNew({ holdings, onUpdate }: VirtualizedGridProps)
             exit={{ opacity: 0, scale: 0.8, y: 20 }}
             transition={{ type: "spring", stiffness: 300, damping: 30 }}
             onClick={scrollToTop}
-            className="fixed bottom-8 right-8 z-50 w-14 h-14 rounded-full bg-gradient-to-br from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 shadow-lg shadow-green-500/30 flex items-center justify-center text-white group"
+            className="fixed bottom-8 right-8 z-50 w-14 h-14 rounded-full bg-gradient-to-br from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 shadow-[0_4px_16px_rgba(34,197,94,0.3),0_2px_8px_rgba(34,197,94,0.2),0_0_0_1px_rgba(255,255,255,0.1)_inset] hover:shadow-[0_6px_20px_rgba(34,197,94,0.4),0_3px_10px_rgba(34,197,94,0.25)] flex items-center justify-center text-white group transition-all duration-200 border border-green-400/20"
             whileHover={{ scale: 1.1 }}
             whileTap={{ scale: 0.9 }}
           >
@@ -442,7 +442,7 @@ export function VirtualizedGridNew({ holdings, onUpdate }: VirtualizedGridProps)
                 viewport={{ once: false }}
                 transition={{ delay: 0.8, duration: 0.8 }}
               >
-                <div className="bg-green-500/5 rounded-xl sm:rounded-2xl p-4 sm:p-6 md:p-8 lg:p-10 border border-green-500/10 backdrop-blur-sm">
+                <div className="bg-green-500/5 rounded-2xl sm:rounded-3xl p-4 sm:p-6 md:p-8 lg:p-10 border border-green-500/20 dark:border-green-500/15 shadow-[0_2px_12px_rgba(34,197,94,0.08),inset_0_1px_0_rgba(34,197,94,0.05)] backdrop-blur-sm">
                   <p className="text-xs sm:text-sm md:text-base lg:text-lg xl:text-xl leading-relaxed sm:leading-loose text-foreground/90 drop-shadow-md font-light tracking-wide">
                     {randomStory.story.content}
                   </p>
@@ -463,7 +463,7 @@ export function VirtualizedGridNew({ holdings, onUpdate }: VirtualizedGridProps)
                   <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
                     <Button 
                       size="lg" 
-                      className="h-9 sm:h-10 md:h-11 px-4 sm:px-6 md:px-8 text-xs sm:text-sm md:text-base font-bold tracking-wider bg-green-600 text-white hover:bg-green-700 shadow-lg shadow-green-500/30 w-full sm:w-auto"
+                      className="h-9 sm:h-10 md:h-11 px-4 sm:px-6 md:px-8 text-xs sm:text-sm md:text-base font-bold tracking-wider bg-green-600 text-white hover:bg-green-700 rounded-xl shadow-[0_4px_12px_rgba(34,197,94,0.3),0_2px_6px_rgba(34,197,94,0.2)] hover:shadow-[0_6px_16px_rgba(34,197,94,0.4),0_3px_8px_rgba(34,197,94,0.25)] border border-green-500/20 w-full sm:w-auto transition-all duration-200"
                     >
                       <Plus className="h-3 w-3 sm:h-4 sm:w-4 mr-2" />
                       {randomStory.buttons.primary}
@@ -474,7 +474,7 @@ export function VirtualizedGridNew({ holdings, onUpdate }: VirtualizedGridProps)
                     <Button 
                       variant="outline" 
                       size="lg" 
-                      className="h-9 sm:h-10 md:h-11 px-4 sm:px-6 md:px-8 text-xs sm:text-sm md:text-base font-bold tracking-wider border-2 border-green-500/50 hover:bg-green-500/10 hover:border-green-500/70 shadow-lg text-green-600 w-full sm:w-auto"
+                      className="h-9 sm:h-10 md:h-11 px-4 sm:px-6 md:px-8 text-xs sm:text-sm md:text-base font-bold tracking-wider rounded-xl border border-green-500/40 dark:border-green-500/30 hover:bg-green-500/10 hover:border-green-500/60 shadow-[0_2px_8px_rgba(34,197,94,0.15),0_1px_4px_rgba(34,197,94,0.1)] hover:shadow-[0_4px_12px_rgba(34,197,94,0.2),0_2px_6px_rgba(34,197,94,0.15)] text-green-600 dark:text-green-400 w-full sm:w-auto transition-all duration-200"
                     >
                       <BarChart3 className="h-3 w-3 sm:h-4 sm:w-4 mr-2" />
                       {randomStory.buttons.secondary}
@@ -484,14 +484,14 @@ export function VirtualizedGridNew({ holdings, onUpdate }: VirtualizedGridProps)
 
                 {/* 底部状态栏 */}
                 <motion.div 
-                  className="pt-3 sm:pt-4 border-t border-green-500/20"
+                  className="pt-3 sm:pt-4 border-t border-green-500/30 dark:border-green-500/20"
                   initial={{ opacity: 0 }}
                   whileInView={{ opacity: 1 }}
                   viewport={{ once: false }}
                   transition={{ delay: 1.3, duration: 0.6 }}
                 >
                   <div className="flex flex-col sm:flex-row items-center justify-center gap-2 sm:gap-4 text-xs">
-                    <div className="flex items-center gap-2 px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg bg-green-500/10 border border-green-500/20">
+                    <div className="flex items-center gap-2 px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg bg-green-500/10 border border-green-500/30 dark:border-green-500/20 shadow-[inset_0_1px_2px_rgba(34,197,94,0.05)]">
                       <motion.span 
                         className={`w-1 h-1 sm:w-1.5 sm:h-1.5 rounded-full ${isMarketOpen ? 'bg-green-500' : 'bg-foreground/30'}`}
                         animate={isMarketOpen ? { 
@@ -504,8 +504,8 @@ export function VirtualizedGridNew({ holdings, onUpdate }: VirtualizedGridProps)
                         {isMarketOpen ? randomStory.statusLive : randomStory.statusOffline}
                       </span>
                     </div>
-                    
-                    <div className="px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg bg-background/30 border border-green-500/10 font-mono tracking-wider text-foreground/70 text-[10px] sm:text-xs md:text-sm drop-shadow-md">
+                      
+                      <div className="px-2 sm:px-3 py-1 sm:py-1.5 rounded-lg bg-background/30 border border-green-500/20 dark:border-green-500/15 font-mono tracking-wider text-foreground/70 text-[10px] sm:text-xs md:text-sm drop-shadow-md shadow-[inset_0_1px_2px_rgba(0,0,0,0.05)]">
                       {new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })}
                     </div>
                   </div>

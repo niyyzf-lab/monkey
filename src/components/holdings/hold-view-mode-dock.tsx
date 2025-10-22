@@ -26,7 +26,7 @@ export function ViewModeDock({ viewMode, onViewModeChange }: ViewModeDockProps) 
         left: '50%'
       }}
     >
-      <div className="flex items-center gap-1 p-1 rounded-2xl bg-background/95 backdrop-blur-xl border border-border/60 shadow-lg">
+      <div className="flex items-center gap-1 p-1 rounded-2xl bg-background/95 backdrop-blur-xl border border-border/40 dark:border-border/30 shadow-[0_4px_16px_rgba(0,0,0,0.12),0_2px_8px_rgba(0,0,0,0.08),0_0_0_1px_rgba(0,0,0,0.04)] dark:shadow-[0_4px_16px_rgba(0,0,0,0.3),0_2px_8px_rgba(0,0,0,0.2)]">
         {modes.map((mode) => {
           const Icon = mode.icon;
           const isActive = viewMode === mode.value;
@@ -47,7 +47,7 @@ export function ViewModeDock({ viewMode, onViewModeChange }: ViewModeDockProps) 
               {isActive && (
                 <motion.div
                   layoutId="active-dock-bg"
-                  className="absolute inset-0 bg-primary rounded-xl shadow-sm"
+                  className="absolute inset-0 bg-primary rounded-xl shadow-[0_2px_8px_rgba(0,0,0,0.1),inset_0_1px_0_rgba(255,255,255,0.1)] border border-primary/20"
                   transition={{ type: 'spring', damping: 20, stiffness: 300 }}
                 />
               )}

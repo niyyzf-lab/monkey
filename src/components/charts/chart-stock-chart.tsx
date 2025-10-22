@@ -632,7 +632,7 @@ export function StockChart(props: StockChartProps) {
   }, [data, tradeMarkers, chartType, onMarkerClick, internalShowMA5, internalShowMA10]);
 
   return (
-    <div className="relative w-full" style={{ height: `${height}px` }}>
+    <div className="relative w-full h-full">
       {/* K线加载动画 */}
       {isInternalLoading && (
         <ChartLoadingAnimation 
@@ -675,7 +675,7 @@ export function StockChart(props: StockChartProps) {
 
       {/* 加载更多提示器 */}
       {isLoadingMore && !isInternalLoading && (
-        <div className="absolute top-4 left-4 z-20 bg-background/95 backdrop-blur-md border border-primary/30 rounded-lg px-3 py-2 shadow-lg animate-in fade-in slide-in-from-left-5 duration-300">
+        <div className="absolute top-4 left-4 z-20 bg-background/95 backdrop-blur-md border border-primary/30 rounded-lg px-3 py-2 animate-in fade-in slide-in-from-left-5 duration-300">
           <div className="flex items-center gap-2">
             <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" />
             <span className="text-xs font-medium text-foreground">加载更多历史数据...</span>
@@ -686,7 +686,7 @@ export function StockChart(props: StockChartProps) {
       {/* 图表容器 */}
       <div
         ref={chartContainerRef}
-        className="w-full h-full rounded-lg overflow-hidden border border-border/60 bg-card/50 shadow-sm transition-all duration-500 hover:border-border/80 hover:shadow-md"
+        className="w-full h-full overflow-hidden bg-transparent transition-all duration-500"
         style={{ 
           opacity: isInternalLoading ? 0 : 1,
         }}
@@ -695,7 +695,7 @@ export function StockChart(props: StockChartProps) {
       {/* Tooltip 提示框 */}
       <div
         ref={tooltipRef}
-        className="absolute hidden z-30 bg-background/95 backdrop-blur-md border border-border/60 rounded-lg px-3 py-2 shadow-lg pointer-events-none"
+        className="absolute hidden z-30 bg-background/95 backdrop-blur-md border border-border/60 rounded-lg px-3 py-2 pointer-events-none"
         style={{
           maxWidth: '280px',
         }}

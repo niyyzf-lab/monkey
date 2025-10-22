@@ -25,10 +25,10 @@ export function StockInfoCard({ holding, isProfitable }: StockInfoCardProps) {
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: 0.15 }}
-      className={`rounded-xl p-3 md:p-6 shadow-xl hover:shadow-2xl transition-all duration-300 relative overflow-hidden ${
+      className={`rounded-lg p-3 md:p-6 transition-all duration-300 relative overflow-hidden ${
         isProfitable 
-          ? 'bg-gradient-to-br from-red-500 via-red-500 to-red-600 dark:from-red-600 dark:via-red-600 dark:to-red-700' 
-          : 'bg-gradient-to-br from-green-500 via-green-500 to-green-600 dark:from-green-600 dark:via-green-600 dark:to-green-700'
+          ? 'bg-gradient-to-br from-red-500 to-red-600 dark:from-red-600 dark:to-red-700 shadow-[0_0_20px_rgba(239,68,68,0.15)] hover:shadow-[0_0_30px_rgba(239,68,68,0.25)]' 
+          : 'bg-gradient-to-br from-green-500 to-green-600 dark:from-green-600 dark:to-green-700 shadow-[0_0_20px_rgba(34,197,94,0.15)] hover:shadow-[0_0_30px_rgba(34,197,94,0.25)]'
       }`}
     >
       {/* 背景装饰图标 - 多层次设计 */}

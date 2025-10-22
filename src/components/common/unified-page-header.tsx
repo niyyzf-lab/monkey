@@ -78,8 +78,8 @@ export function UnifiedPageHeader({
         'sticky top-0 z-20 h-16 flex items-center justify-between gap-4 px-4  transition-all duration-300',
         'backdrop-blur-xl bg-background/80 supports-[backdrop-filter]:bg-background/60',
         isScrolled 
-          ? 'shadow-md border-b border-border/80' 
-          : 'border-b border-border/40',
+          ? 'shadow-[0_2px_8px_rgba(0,0,0,0.06),0_1px_4px_rgba(0,0,0,0.04)] border-b border-border/50 dark:border-border/30' 
+          : 'border-b border-border/30 dark:border-border/20 shadow-[0_1px_2px_rgba(0,0,0,0.03)]',
         className
       )}
       data-tauri-drag-region
@@ -165,7 +165,7 @@ export function UnifiedPageHeader({
               placeholder={searchConfig.placeholder || '搜索...'}
               value={searchConfig.value}
               onChange={(e) => searchConfig.onChange(e.target.value)}
-              className="pl-9 pr-9 h-9 bg-secondary/60 border border-border/50 focus:bg-secondary focus:border-primary/30 focus:ring-2 focus:ring-primary/20 transition-all"
+              className="pl-9 pr-9 h-9 rounded-lg bg-secondary/60 border border-border/30 dark:border-border/20 shadow-[inset_0_1px_2px_rgba(0,0,0,0.03)] focus:bg-secondary focus:border-primary/40 focus:ring-2 focus:ring-primary/15 focus:shadow-[inset_0_1px_2px_rgba(0,0,0,0.03),0_0_0_3px_rgba(var(--primary),0.1)] transition-all duration-200"
             />
             {searchConfig.value && (
               <button

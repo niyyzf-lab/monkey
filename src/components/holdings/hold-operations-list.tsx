@@ -124,7 +124,7 @@ export function OperationsList({ operations, animationDelay = 0.25 }: Operations
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: animationDelay }}
     >
-      <div className="rounded-lg border border-border/60 bg-card dark:bg-muted/50 p-2 md:p-3 shadow-sm">
+      <div className="rounded-lg border border-border/40 bg-card p-2 md:p-3">
         {/* 头部 */}
         <div className="flex items-center justify-between mb-2 md:mb-3 pb-2 border-b border-border/50">
           <div className="flex items-center gap-1.5 md:gap-2">

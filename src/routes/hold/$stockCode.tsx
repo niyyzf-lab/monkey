@@ -239,18 +239,35 @@ function HoldingDetailPage() {
   const stats = {
     totalBuyAmount: operations
       .filter((op) => op.OperationType.toLowerCase().includes('买'))
-      .reduce((sum, op) => sum + op.Amount, 0),
+      .reduce((sum, op) => {
+        const amount = typeof op.Amount === 'number' ? op.Amount : parseFloat(String(op.Amount || 0));
+        return sum + (Number.isFinite(amount) ? amount : 0);
+      }, 0),
     totalSellAmount: operations
       .filter((op) => op.OperationType.toLowerCase().includes('卖'))
-      .reduce((sum, op) => sum + op.Amount, 0),
+      .reduce((sum, op) => {
+        const amount = typeof op.Amount === 'number' ? op.Amount : parseFloat(String(op.Amount || 0));
+        return sum + (Number.isFinite(amount) ? amount : 0);
+      }, 0),
     totalBuyQuantity: operations
       .filter((op) => op.OperationType.toLowerCase().includes('买'))
-      .reduce((sum, op) => sum + op.Quantity, 0),
+      .reduce((sum, op) => {
+        const quantity = typeof op.Quantity === 'number' ? op.Quantity : parseFloat(String(op.Quantity || 0));
+        return sum + (Number.isFinite(quantity) ? quantity : 0);
+      }, 0),
     totalSellQuantity: operations
       .filter((op) => op.OperationType.toLowerCase().includes('卖'))
-      .reduce((sum, op) => sum + op.Quantity, 0),
+      .reduce((sum, op) => {
+        const quantity = typeof op.Quantity === 'number' ? op.Quantity : parseFloat(String(op.Quantity || 0));
+        return sum + (Number.isFinite(quantity) ? quantity : 0);
+      }, 0),
     totalOperations: operations.length,
   };
+
+  // 调试日志
+  console.log('Stats:', stats);
+  console.log('Buy operations:', operations.filter(op => op.OperationType.toLowerCase().includes('买')));
+  console.log('Sell operations:', operations.filter(op => op.OperationType.toLowerCase().includes('卖')));
 
   // 转换K线数据为图表数据（包含成交量）
   const chartData = (() => {
@@ -399,13 +416,13 @@ function HoldingDetailPage() {
         </motion.div>
 
         {/* 主要内容区域 - 不对称网格布局 */}
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-3 md:gap-4">
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-2 md:gap-3">
           {/* 左侧：K线图（占3列，更大空间） */}
           <motion.div
             initial={{ opacity: 0, y: 5 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             transition={{ delay: 0.1, duration: 0.3, ease: "easeOut" }}
-            className="lg:col-span-3 space-y-3"
+            className="lg:col-span-3 flex flex-col gap-2"
           >
             {/* 图表控制面板 - 独立卡片 */}
             <ChartControls
@@ -419,10 +436,10 @@ function HoldingDetailPage() {
               dataCount={klineData.length}
             />
             
-            {/* 图表卡片 - 独立卡片 */}
+            {/* 图表卡片 - 独立卡片，flex-1 自动填充剩余空间 */}
             <motion.div 
               layout
-              className="rounded-xl border border-border/60 dark:border-0 bg-gradient-to-br from-card via-card to-card/95 dark:from-muted dark:via-muted/80 dark:to-secondary shadow-sm hover:shadow-md transition-shadow overflow-hidden"
+              className="flex-1 rounded-lg border border-border/40 bg-card transition-all overflow-hidden"
             >
               <AnimatePresence mode="wait" initial={false}> 
                 {isChartLoading ? (
@@ -435,7 +452,7 @@ function HoldingDetailPage() {
                       duration: 0.2,
                       ease: "easeInOut"
                     }}
-                    className="h-[400px] md:h-[500px] lg:h-[600px] flex items-center justify-center"
+                    className="h-full min-h-[400px] flex items-center justify-center"
                   >
                     <div className="text-center">
                       <motion.div 
@@ -463,7 +480,7 @@ function HoldingDetailPage() {
                       duration: 0.35,
                       ease: [0.25, 0.1, 0.25, 1]
                     }}
-                    className="h-[400px] md:h-[500px] lg:h-[600px] w-full"
+                    className="h-full w-full"
                   >
                     <div className="w-full h-full">
                       <StockChart
@@ -487,7 +504,7 @@ function HoldingDetailPage() {
                       duration: 0.2,
                       ease: "easeInOut"
                     }}
-                    className="h-[400px] md:h-[500px] lg:h-[600px] flex items-center justify-center"
+                    className="h-full min-h-[400px] flex items-center justify-center"
                   >
                     <p className="text-sm text-muted-foreground">暂无图表数据</p>
                   </motion.div>
@@ -497,7 +514,7 @@ function HoldingDetailPage() {
         </motion.div>
 
           {/* 右侧：股票信息 + 交易统计 */}
-          <div className="grid grid-cols-2 gap-2 md:flex md:flex-col md:space-y-4">
+          <div className="grid grid-cols-2 gap-2 md:flex md:flex-col md:gap-2">
             {/* 股票信息卡片 */}
             {holding && (
               <div className="col-span-2 md:col-span-1">
@@ -510,11 +527,10 @@ function HoldingDetailPage() {
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.2 }}
-              className="col-span-2 md:col-span-1 grid grid-cols-3 md:grid-cols-1 gap-2 md:flex md:flex-col md:space-y-3"
+              className="col-span-2 md:col-span-1 grid grid-cols-3 md:grid-cols-1 gap-2 md:flex md:flex-col md:gap-2"
             >
               {/* 总交易次数 */}
-              <div className="rounded-lg border border-border/60 dark:border-0 bg-gradient-to-br from-card via-card to-card/95 dark:from-muted dark:via-muted/80 dark:to-secondary p-2.5 md:p-3 shadow-sm hover:shadow-lg hover:border-primary/40 dark:hover:shadow-primary/10 transition-all cursor-pointer relative overflow-hidden">
-                <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-white/20 dark:via-white/30 to-transparent" />
+              <div className="rounded-lg border border-border/40 bg-card p-2.5 md:p-3 hover:border-primary/40 transition-all cursor-pointer relative overflow-hidden">
                 <div className="flex items-start justify-between mb-1.5 md:mb-2 relative z-10">
                   <div className="text-[9px] md:text-[10px] font-medium text-muted-foreground uppercase tracking-wide">总交易次数</div>
                   <Receipt className="h-3 w-3 md:h-3.5 md:w-3.5 text-primary/70 dark:text-primary shrink-0" />
@@ -532,8 +548,7 @@ function HoldingDetailPage() {
               </div>
 
               {/* 买入金额/数量 */}
-              <div className="rounded-lg border border-border/60 dark:border-0 bg-gradient-to-br from-card via-card to-card/95 dark:from-muted dark:via-muted/80 dark:to-secondary p-2.5 md:p-3 shadow-sm hover:shadow-lg hover:border-red-500/40 dark:hover:shadow-red-500/10 transition-all cursor-pointer relative overflow-hidden">
-                <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-white/20 dark:via-white/30 to-transparent" />
+              <div className="rounded-lg border border-border/40 bg-card p-2.5 md:p-3 hover:border-red-500/40 transition-all cursor-pointer relative overflow-hidden">
                 <div className="flex items-start justify-between mb-1.5 md:mb-2 relative z-10">
                   <div className="text-[9px] md:text-[10px] font-medium text-muted-foreground uppercase tracking-wide">买入金额</div>
                   <ShoppingCart className="h-3 w-3 md:h-3.5 md:w-3.5 text-red-500/70 dark:text-red-400 shrink-0" />
@@ -541,7 +556,7 @@ function HoldingDetailPage() {
                 <div className="text-lg md:text-xl lg:text-2xl font-bold tabular-nums text-red-600 dark:text-red-400 relative z-10">
                   <CountUp
                     from={0}
-                    to={stats.totalBuyAmount / 10000}
+                    to={Number.isFinite(stats.totalBuyAmount) ? Number(((stats.totalBuyAmount / 10000).toFixed(2))) : 0}
                     duration={1.2}
                     separator=","
                     className="tabular-nums"
@@ -554,8 +569,7 @@ function HoldingDetailPage() {
               </div>
 
               {/* 卖出金额/数量 */}
-              <div className="rounded-lg border border-border/60 dark:border-0 bg-gradient-to-br from-card via-card to-card/95 dark:from-muted dark:via-muted/80 dark:to-secondary p-2.5 md:p-3 shadow-sm hover:shadow-lg hover:border-green-500/40 dark:hover:shadow-green-500/10 transition-all cursor-pointer relative overflow-hidden">
-                <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-white/20 dark:via-white/30 to-transparent" />
+              <div className="rounded-lg border border-border/40 bg-card p-2.5 md:p-3 hover:border-green-500/40 transition-all cursor-pointer relative overflow-hidden">
                 <div className="flex items-start justify-between mb-1.5 md:mb-2 relative z-10">
                   <div className="text-[9px] md:text-[10px] font-medium text-muted-foreground uppercase tracking-wide">卖出金额</div>
                   <Package className="h-3 w-3 md:h-3.5 md:w-3.5 text-green-500/70 dark:text-green-400 shrink-0" />
@@ -563,7 +577,7 @@ function HoldingDetailPage() {
                 <div className="text-lg md:text-xl lg:text-2xl font-bold tabular-nums text-green-600 dark:text-green-400 relative z-10">
                   <CountUp
                     from={0}
-                    to={stats.totalSellAmount / 10000}
+                    to={Number.isFinite(stats.totalSellAmount) ? Number(((stats.totalSellAmount / 10000).toFixed(2))) : 0}
                     duration={1.2}
                     separator=","
                     className="tabular-nums"
