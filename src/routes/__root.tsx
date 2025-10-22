@@ -62,7 +62,7 @@ function RootLayoutContent() {
   const location = useLocation()
   const [activeItem, setActiveItem] = useState('/')
   const { isOpen, setIsOpen, isMobile } = useSidebar()
-  const { isIOS } = useDeviceDetect()
+  const { isIOS, isAndroid } = useDeviceDetect()
   
   // 初始化视口高度监听，修复移动端 100vh 问题
   useViewportHeight()
@@ -97,8 +97,8 @@ function RootLayoutContent() {
       <motion.div 
         className="relative overflow-hidden h-full"
         style={{
-          // 仅 iOS 需要顶部 padding 来适配安全区域（0.65 倍）
-          paddingTop: isIOS ? 'calc(var(--safe-area-inset-top) * 0.65)' : '0',
+          // iOS 需要顶部 padding 来适配安全区域（0.65 倍），安卓固定 16px
+          paddingTop: isIOS ? 'calc(var(--safe-area-inset-top) * 0.65)' : isAndroid ? '16px' : '0',
         }}
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
