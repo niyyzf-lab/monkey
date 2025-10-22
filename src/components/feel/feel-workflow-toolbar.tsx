@@ -1,26 +1,27 @@
-import { useCallback, useState } from 'react'
-import { Panel, type Node, type Edge } from '@xyflow/react'
 import { Button } from '@/components/ui/button'
-import { Download, Upload, Copy, ChevronLeft, MoreHorizontal } from 'lucide-react'
+import { Download, Upload, Copy, ChevronDown, ChevronUp } from 'lucide-react'
+import { Panel } from '@xyflow/react'
+import { useState } from 'react'
+import type { Node, Edge } from '@xyflow/react'
 
-interface WorkflowToolbarProps {
+interface FeelWorkflowToolbarProps {
   nodes: Node[]
   edges: Edge[]
 }
 
 /**
- * 工作流工具栏组件
- * 提供导出、导入和复制配置功能，支持最小化折叠
+ * 猴园儿工作流工具栏
+ * 可折叠的工具面板，包含导出、导入、复制配置功能
  */
-export function WorkflowToolbar({ nodes, edges }: WorkflowToolbarProps) {
-  // 控制工具栏展开/折叠状态
+export function FeelWorkflowToolbar({ nodes, edges }: FeelWorkflowToolbarProps) {
   const [isExpanded, setIsExpanded] = useState(true)
+
   // 导出工作流配置
-  const handleExport = useCallback(() => {
+  const handleExport = () => {
     const exportData = {
       nodes: nodes.map(node => ({
         id: node.id,
-        type: node.type, // 保持原始类型
+        type: node.type,
         position: node.position,
         data: node.data,
       })),
@@ -47,10 +48,10 @@ export function WorkflowToolbar({ nodes, edges }: WorkflowToolbarProps) {
     URL.revokeObjectURL(url)
     
     alert('导出成功：工作流配置已下载')
-  }, [nodes, edges])
+  }
 
   // 复制到剪贴板
-  const handleCopyToClipboard = useCallback(async () => {
+  const handleCopyToClipboard = async () => {
     const exportData = {
       nodes: nodes.map(node => ({
         id: node.id,
@@ -78,10 +79,10 @@ export function WorkflowToolbar({ nodes, edges }: WorkflowToolbarProps) {
       console.error('复制失败:', error)
       alert('复制失败：无法访问剪贴板')
     }
-  }, [nodes, edges])
+  }
 
   // 导入工作流配置
-  const handleImport = useCallback(() => {
+  const handleImport = () => {
     const input = document.createElement('input')
     input.type = 'file'
     input.accept = 'application/json'
@@ -93,7 +94,6 @@ export function WorkflowToolbar({ nodes, edges }: WorkflowToolbarProps) {
           try {
             const importedData = JSON.parse(event.target?.result as string)
             console.log('导入的工作流数据:', importedData)
-            // 这里可以添加数据验证和转换逻辑
             alert('导入成功：工作流导入成功！刷新页面查看新配置。')
           } catch (error) {
             console.error('导入失败:', error)
@@ -104,78 +104,59 @@ export function WorkflowToolbar({ nodes, edges }: WorkflowToolbarProps) {
       }
     }
     input.click()
-  }, [])
+  }
 
   return (
-    <Panel position="top-right">
-      <div className="relative">
-        {/* 折叠状态 - 只显示一个图标按钮 */}
-        {!isExpanded && (
-          <Button
-            size="icon"
-            variant="secondary"
-            onClick={() => setIsExpanded(true)}
-            className="h-9 w-9 shadow-lg backdrop-blur-sm bg-card/95 hover:bg-card border"
-            title="展开工具栏"
-          >
-            <MoreHorizontal className="h-4 w-4" />
-          </Button>
-        )}
-
-        {/* 展开状态 - 显示所有按钮 */}
+    <Panel position="top-right" className="flex flex-col gap-2">
+      <div className="flex items-center gap-2">
+        {/* 折叠按钮 */}
+        <Button
+          size="sm"
+          variant="secondary"
+          onClick={() => setIsExpanded(!isExpanded)}
+          className="shadow-lg backdrop-blur-sm bg-card/95 hover:bg-card border"
+        >
+          {isExpanded ? (
+            <ChevronUp className="w-4 h-4" />
+          ) : (
+            <ChevronDown className="w-4 h-4" />
+          )}
+        </Button>
+        
+        {/* 工具按钮 - 折叠时隐藏 */}
         {isExpanded && (
-          <div className="flex items-center gap-1.5 rounded-lg shadow-lg backdrop-blur-sm bg-card/95 border p-1">
+          <>
             <Button
               size="sm"
-              variant="ghost"
+              variant="secondary"
               onClick={handleCopyToClipboard}
-              className="h-8 hover:bg-accent"
-              title="复制配置"
+              className="shadow-lg backdrop-blur-sm bg-card/95 hover:bg-card border"
             >
-              <Copy className="h-4 w-4 mr-1.5" />
-              <span className="text-xs">复制</span>
+              <Copy className="w-4 h-4 mr-1.5" />
+              复制配置
             </Button>
-            
             <Button
               size="sm"
-              variant="ghost"
+              variant="secondary"
               onClick={handleExport}
-              className="h-8 hover:bg-accent"
-              title="导出配置"
+              className="shadow-lg backdrop-blur-sm bg-card/95 hover:bg-card border"
             >
-              <Download className="h-4 w-4 mr-1.5" />
-              <span className="text-xs">导出</span>
+              <Download className="w-4 h-4 mr-1.5" />
+              导出工作流
             </Button>
-            
             <Button
               size="sm"
-              variant="ghost"
+              variant="secondary"
               onClick={handleImport}
-              className="h-8 hover:bg-accent"
-              title="导入配置"
+              className="shadow-lg backdrop-blur-sm bg-card/95 hover:bg-card border"
             >
-              <Upload className="h-4 w-4 mr-1.5" />
-              <span className="text-xs">导入</span>
+              <Upload className="w-4 h-4 mr-1.5" />
+              导入工作流
             </Button>
-
-            {/* 分隔线 */}
-            <div className="w-px h-5 bg-border mx-0.5" />
-
-            {/* 收起按钮 */}
-            <Button
-              size="icon"
-              variant="ghost"
-              onClick={() => setIsExpanded(false)}
-              className="h-8 w-8 hover:bg-accent"
-              title="收起工具栏"
-            >
-              <ChevronLeft className="h-4 w-4" />
-            </Button>
-          </div>
+          </>
         )}
       </div>
     </Panel>
   )
 }
-
 
