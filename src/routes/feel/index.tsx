@@ -1,6 +1,6 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { UnifiedPageHeader } from '@/components/common/unified-page-header'
-import { FeelWorkflowCanvas, FeelWorkflowChat } from '@/components/feel'
+import { FeelWorkflowCanvas, FeelWorkflowChat, FeelWorkflowProvider } from '@/components/feel'
 
 export const Route = createFileRoute('/feel/')({
   component: FeelPage,
@@ -12,20 +12,22 @@ export const Route = createFileRoute('/feel/')({
  */
 function FeelPage() {
   return (
-    <div className="h-full flex flex-col bg-background">
-      {/* 页面标题 - 统一标题栏（浮动） */}
-      <UnifiedPageHeader
-        title="猴园儿"
-        subtitle="AI 炒股工作流演示"
-      />
-      
-      {/* React Flow 画布 */}
-      <div className="flex-1 w-full pt-4">
-        <FeelWorkflowCanvas />
-      </div>
+    <FeelWorkflowProvider>
+      <div className="h-full flex flex-col bg-background">
+        {/* 页面标题 - 统一标题栏（浮动） */}
+        <UnifiedPageHeader
+          title="猴园儿"
+          subtitle="AI 炒股工作流演示"
+        />
+        
+        {/* React Flow 画布 */}
+        <div className="flex-1 w-full pt-4">
+          <FeelWorkflowCanvas />
+        </div>
 
-      {/* 悬浮聊天面板 */}
-      <FeelWorkflowChat />
-    </div>
+        {/* 悬浮聊天面板 */}
+        <FeelWorkflowChat />
+      </div>
+    </FeelWorkflowProvider>
   )
 }

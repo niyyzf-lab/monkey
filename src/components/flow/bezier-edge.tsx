@@ -4,6 +4,7 @@ import {
   type EdgeProps,
 } from '@xyflow/react'
 import { useThemeColors } from '@/hooks/use-theme-colors'
+import type { EdgeStatus } from '@/components/feel/feel-workflow-context'
 
 /**
  * 现代化贝塞尔曲线边组件
@@ -14,6 +15,7 @@ import { useThemeColors } from '@/hooks/use-theme-colors'
  * - 光子粒子系统
  * - 脉冲波扩散效果
  * - 渐变色彩流动
+ * 支持工作流状态：idle（未激活）、animating（传递中）、completed（已完成）
  */
 function BezierEdgeComponent({
   id,
@@ -26,9 +28,13 @@ function BezierEdgeComponent({
   style = {},
   markerEnd,
   selected,
+  data,
 }: EdgeProps) {
   // 获取主题颜色
   const { primary, secondary, accent } = useThemeColors()
+  
+  // 获取工作流状态
+  const workflowStatus = (data?.workflowStatus as EdgeStatus) || 'idle'
   
   const [edgePath] = getBezierPath({
     sourceX,
@@ -46,6 +52,21 @@ function BezierEdgeComponent({
   const pulseGradientId = `pulse-gradient-${id}`
   const enhancedGlowId = `enhanced-glow-${id}`
   const neonGlowId = `neon-glow-${id}`
+  
+  // 根据状态确定样式
+  const getStatusOpacity = () => {
+    switch (workflowStatus) {
+      case 'completed':
+        return 1
+      case 'animating':
+        return 1
+      case 'idle':
+      default:
+        return 0.35 // idle 状态淡但可见
+    }
+  }
+  
+  const statusOpacity = getStatusOpacity()
 
   return (
     <>
@@ -125,47 +146,51 @@ function BezierEdgeComponent({
       </defs>
 
       {/* 第一层：超大外发光 - 环境氛围 */}
-      <path
-        d={edgePath}
-        fill="none"
-        stroke={primary}
-        strokeWidth={selected ? 28 : 20}
-        strokeLinecap="round"
-        style={{
-          filter: 'blur(16px)',
-          opacity: selected ? 0.15 : 0.06,
-          transition: 'all 0.6s cubic-bezier(0.4, 0, 0.2, 1)',
-          ...(style as React.CSSProperties),
-        }}
-      />
-
-      {/* 第二层：中等外发光 - 柔和光晕 */}
-      <path
-        d={edgePath}
-        fill="none"
-        stroke={selected ? accent : primary}
-        strokeWidth={selected ? 18 : 14}
-        strokeLinecap="round"
-        style={{
-          filter: 'blur(10px)',
-          opacity: selected ? 0.25 : 0.12,
-          transition: 'all 0.5s cubic-bezier(0.4, 0, 0.2, 1)',
-          ...(style as React.CSSProperties),
-        }}
-      />
-
-      {/* 第三层：脉冲光晕 - 选中时动态呼吸 */}
-      {selected && (
+      {workflowStatus !== 'idle' && (
         <path
           d={edgePath}
           fill="none"
-          stroke={primary}
+          stroke={workflowStatus === 'completed' ? 'hsl(var(--success))' : primary}
+          strokeWidth={selected ? 28 : 20}
+          strokeLinecap="round"
+          style={{
+            filter: 'blur(16px)',
+            opacity: (selected ? 0.15 : 0.06) * statusOpacity,
+            transition: 'all 0.6s cubic-bezier(0.4, 0, 0.2, 1)',
+            ...(style as React.CSSProperties),
+          }}
+        />
+      )}
+
+      {/* 第二层：中等外发光 - 柔和光晕 */}
+      {workflowStatus !== 'idle' && (
+        <path
+          d={edgePath}
+          fill="none"
+          stroke={workflowStatus === 'completed' ? 'hsl(var(--success))' : (selected ? accent : primary)}
+          strokeWidth={selected ? 18 : 14}
+          strokeLinecap="round"
+          style={{
+            filter: 'blur(10px)',
+            opacity: (selected ? 0.25 : 0.12) * statusOpacity,
+            transition: 'all 0.5s cubic-bezier(0.4, 0, 0.2, 1)',
+            ...(style as React.CSSProperties),
+          }}
+        />
+      )}
+
+      {/* 第三层：脉冲光晕 - 选中时或animating时动态呼吸 */}
+      {(selected || workflowStatus === 'animating') && workflowStatus !== 'idle' && (
+        <path
+          d={edgePath}
+          fill="none"
+          stroke={workflowStatus === 'completed' ? 'hsl(var(--success))' : primary}
           strokeWidth={12}
           strokeLinecap="round"
           style={{
             filter: `url(#${enhancedGlowId})`,
-            opacity: 0.6,
-            animation: 'neon-pulse 2s ease-in-out infinite',
+            opacity: 0.6 * statusOpacity,
+            animation: workflowStatus === 'animating' ? 'neon-pulse 2s ease-in-out infinite' : 'none',
             ...(style as React.CSSProperties),
           }}
         />
@@ -176,85 +201,93 @@ function BezierEdgeComponent({
         id={pathId}
         d={edgePath}
         fill="none"
-        stroke={selected ? primary : secondary}
+        stroke={workflowStatus === 'completed' ? 'hsl(var(--success))' : (workflowStatus === 'idle' ? 'hsl(var(--muted-foreground))' : (selected ? primary : secondary))}
         strokeWidth={selected ? 4 : 2.5}
         strokeLinecap="round"
         strokeLinejoin="round"
         style={{
-          opacity: selected ? 0.9 : 0.35,
+          opacity: workflowStatus === 'idle' ? 0.7 : (selected ? 0.9 : 0.35),
           transition: 'all 0.3s ease',
           ...(style as React.CSSProperties),
         }}
         markerEnd={markerEnd}
       />
 
-      {/* 第五层：渐变流光 - 彩虹能量流 */}
-      <path
-        d={edgePath}
-        fill="none"
-        stroke={`url(#${accentGradientId})`}
-        strokeWidth={selected ? 6 : 4}
-        strokeLinecap="round"
-        strokeDasharray="24 12"
-        style={{
-          animation: 'rainbow-flow 2.5s linear infinite',
-          filter: selected ? `url(#${neonGlowId})` : 'none',
-          opacity: selected ? 1 : 0.75,
-          transition: 'all 0.3s ease',
-          ...(style as React.CSSProperties),
-        }}
-      />
+      {/* 第五层：渐变流光 - 彩虹能量流 - 仅animating显示 */}
+      {workflowStatus === 'animating' && (
+        <path
+          d={edgePath}
+          fill="none"
+          stroke={`url(#${accentGradientId})`}
+          strokeWidth={selected ? 6 : 4}
+          strokeLinecap="round"
+          strokeDasharray="24 12"
+          style={{
+            animation: 'rainbow-flow 2.5s linear infinite',
+            filter: selected ? `url(#${neonGlowId})` : 'none',
+            opacity: selected ? 1 : 0.75,
+            transition: 'all 0.3s ease',
+            ...(style as React.CSSProperties),
+          }}
+        />
+      )}
 
-      {/* 第六层：能量波 - 脉冲传输 */}
-      <path
-        d={edgePath}
-        fill="none"
-        stroke={`url(#${flowGradientId})`}
-        strokeWidth={selected ? 8 : 5}
-        strokeLinecap="round"
-        strokeDasharray="30 150"
-        style={{
-          animation: 'energy-wave 2s ease-out infinite',
-          filter: `drop-shadow(0 0 8px ${accent})`,
-          opacity: selected ? 1 : 0.7,
-          ...(style as React.CSSProperties),
-        }}
-      />
+      {/* 第六层：能量波 - 脉冲传输 - 仅animating显示 */}
+      {workflowStatus === 'animating' && (
+        <path
+          d={edgePath}
+          fill="none"
+          stroke={`url(#${flowGradientId})`}
+          strokeWidth={selected ? 8 : 5}
+          strokeLinecap="round"
+          strokeDasharray="30 150"
+          style={{
+            animation: 'energy-wave 2s ease-out infinite',
+            filter: `drop-shadow(0 0 8px ${accent})`,
+            opacity: selected ? 1 : 0.7,
+            ...(style as React.CSSProperties),
+          }}
+        />
+      )}
 
-      {/* 第七层：光子粒子 - 快速移动 */}
-      <path
-        d={edgePath}
-        fill="none"
-        stroke={accent}
-        strokeWidth={2.5}
-        strokeLinecap="round"
-        strokeDasharray="4 28"
-        style={{
-          animation: 'photon-flow 1s linear infinite',
-          filter: `drop-shadow(0 0 6px ${accent})`,
-          opacity: selected ? 1 : 0.7,
-          ...(style as React.CSSProperties),
-        }}
-      />
+      {/* 第七层：光子粒子 - 快速移动 - 仅animating显示 */}
+      {workflowStatus === 'animating' && (
+        <path
+          d={edgePath}
+          fill="none"
+          stroke={accent}
+          strokeWidth={2.5}
+          strokeLinecap="round"
+          strokeDasharray="4 28"
+          style={{
+            animation: 'photon-flow 1s linear infinite',
+            filter: `drop-shadow(0 0 6px ${accent})`,
+            opacity: selected ? 1 : 0.7,
+            ...(style as React.CSSProperties),
+          }}
+        />
+      )}
 
-      {/* 第八层：亮点闪烁 - 数据包 */}
-      <path
-        d={edgePath}
-        fill="none"
-        stroke={secondary}
-        strokeWidth={3}
-        strokeLinecap="round"
-        strokeDasharray="6 36"
-        style={{
-          animation: 'data-spark 1.8s linear infinite',
-          filter: `drop-shadow(0 0 10px ${primary}) drop-shadow(0 0 4px ${accent})`,
-          opacity: selected ? 1 : 0.6,
-          ...(style as React.CSSProperties),
-        }}
-      />
+      {/* 第八层：亮点闪烁 - 数据包 - 仅animating显示 */}
+      {workflowStatus === 'animating' && (
+        <path
+          d={edgePath}
+          fill="none"
+          stroke={secondary}
+          strokeWidth={3}
+          strokeLinecap="round"
+          strokeDasharray="6 36"
+          style={{
+            animation: 'data-spark 1.8s linear infinite',
+            filter: `drop-shadow(0 0 10px ${primary}) drop-shadow(0 0 4px ${accent})`,
+            opacity: selected ? 1 : 0.6,
+            ...(style as React.CSSProperties),
+          }}
+        />
+      )}
 
-      {/* 选中时的额外效果 */}
-      {selected && (
+      {/* 选中时的额外效果 - 仅animating时显示 */}
+      {selected && workflowStatus === 'animating' && (
         <>
           {/* 慢速反向流 - 双向通信感 */}
           <path

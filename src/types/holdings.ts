@@ -43,9 +43,25 @@ export interface ApiStockHolding {
   /** 创建时间 */
   createdat?: string;
   /** 止盈价格 */
-  shellprice?: string;
+  sellprice?: string;
   /** 强制平仓价格（止损价） */
   forcecloseprice?: string;
+  /** 总买入金额 */
+  totalbuyamount?: string;
+  /** 总卖出金额 */
+  totalsellamount?: string;
+  /** 已卖出数量 */
+  soldquantity?: number;
+  /** 已实现盈亏（已卖出部分的盈亏）= 总卖出金额 - 对应的买入成本 */
+  realizedpnl?: string;
+  /** 未实现盈亏（当前持仓的盈亏）= 当前市值 - 当前持仓成本 */
+  unrealizedpnl?: string;
+  /** 假设市值（如果没卖，按当前价计算）= (当前持仓数量 + 已卖出数量) * 当前价 */
+  hypotheticalmarketvalue?: string;
+  /** 假设盈亏（如果一直没卖，总共能赚多少）= 假设市值 - 总买入金额 */
+  hypotheticalpnl?: string;
+  /** 错失利润（卖早了少赚的，或者卖对了避免的损失）= 假设盈亏 - (已实现盈亏 + 未实现盈亏) */
+  missedprofit?: string;
 }
 
 /**
@@ -96,6 +112,24 @@ export interface StockHolding {
   sellPrice?: number;
   /** 强制平仓价格（止损价） */
   forceClosePrice?: number;
+  /** 总买入金额 */
+  totalBuyAmount?: number;
+  /** 总卖出金额 */
+  totalSellAmount?: number;
+  /** 已卖出数量 */
+  soldQuantity?: number;
+  /** 已实现盈亏（已卖出部分的盈亏）= 总卖出金额 - 对应的买入成本 */
+  realizedPnl?: number;
+  /** 未实现盈亏（当前持仓的盈亏）= 当前市值 - 当前持仓成本 */
+  unrealizedPnl?: number;
+  /** 假设市值（如果没卖，按当前价计算）= (当前持仓数量 + 已卖出数量) * 当前价 */
+  hypotheticalMarketValue?: number;
+  /** 假设盈亏（如果一直没卖，总共能赚多少）= 假设市值 - 总买入金额 */
+  hypotheticalPnl?: number;
+  /** 错失利润（卖早了少赚的，或者卖对了避免的损失）= 假设盈亏 - (已实现盈亏 + 未实现盈亏) */
+  missedProfit?: number;
+  /** 是否已清仓（totalQuantity === 0） */
+  isSold?: boolean;
 }
 
 /**
@@ -119,15 +153,33 @@ export interface HoldingsResponse {
 }
 
 /**
- * 持仓统计信息接口 - 用于组件展示
+ * 持仓统计信息接口 - 用于组件展示（基于新的stats API）
  */
 export interface HoldingsStatistics {
   /** 持仓股票数量 */
   totalStocks: number;
-  /** 总市值 */
-  totalMarketValue: number;
-  /** 总成本 */
-  totalCost: number;
-  /** 总盈亏 */
-  totalProfitLoss: number;
+  /** 初始资金 */
+  initialCapital: number;
+  /** 当前现金 */
+  currentCash: number;
+  /** 投入成本（已投入到股市的金额） */
+  investedCost: number;
+  /** 持仓市值 */
+  marketValue: number;
+  /** 总资产（现金 + 持仓市值） */
+  totalEquity: number;
+  /** 未实现盈亏（当前持仓的盈亏） */
+  unrealizedPnl: number;
+  /** 已实现盈亏（已卖出股票的盈亏） */
+  realizedPnl: number;
+  /** 今日盈亏 */
+  todayProfitLoss: number;
+  /** 最大资产 */
+  maxEquity?: number;
+  /** 最大回撤金额 */
+  maxDrawdownAmount?: number;
+  /** 最大回撤比率 */
+  maxDrawdownRatio?: number;
+  /** 更新时间 */
+  updatedAt?: string;
 }

@@ -414,3 +414,36 @@
   -webkit-app-region: inherit;
   app-region: inherit;
 }
+
+/* Markdown 表格样式优化 */
+.markdown-content {
+  /* 确保表格不会撑破容器 */
+  max-width: 100%;
+}
+
+.markdown-content table {
+  /* 表格内容自动换行 */
+  table-layout: auto;
+  word-break: break-word;
+}
+
+.markdown-content td,
+.markdown-content th {
+  /* 单元格内容自动换行 */
+  word-wrap: break-word;
+  overflow-wrap: anywhere;
+  hyphens: auto;
+}
+
+/* 性能优化 - 为动画元素启用硬件加速 */
+.will-change-transform {
+  will-change: transform;
+}
+
+/* 滚动性能优化 */
+[data-radix-scroll-area-viewport] {
+  will-change: scroll-position;
+  /* 使用 GPU 加速滚动 */
+  transform: translateZ(0);
+  -webkit-overflow-scrolling: touch;
+}

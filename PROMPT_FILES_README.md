@@ -144,3 +144,4 @@ const markdownPlugin = () => {
 - `src/prompts/news-analyzer.md` - 简单的 prompt 示例
 - `src/prompts/decision-ai.md` - 结构化的 prompt 示例
 
+

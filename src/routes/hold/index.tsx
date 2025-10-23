@@ -1,9 +1,10 @@
 import { createFileRoute } from '@tanstack/react-router';
 import { useEffect, useState, useCallback } from 'react';
-import { fetchHoldings } from '../../api/holdings-api';
-import { ApiStockHolding } from '../../types/holdings';
+import { fetchHoldings, fetchStats } from '../../api/holdings-api';
+import { ApiStockHolding, HoldingsStatistics } from '../../types/holdings';
 import { StatisticsCards } from '../../components/holdings/hold-statistics-cards';
 import { VirtualizedGridNew } from '../../components/holdings/hold-virtualized-grid-new';
+import { SoldGrid } from '../../components/holdings/hold-sold-grid';
 import { HoldingsSkeleton } from '../../components/holdings/hold-holdings-skeleton';
 import { HoldingsCardSkeleton } from '../../components/holdings/hold-holdings-card-skeleton';
 import { UnifiedPageHeader } from '../../components/common/unified-page-header';
@@ -37,6 +38,7 @@ const safeParseFloat = (value: string | undefined | null, defaultValue: number =
 
 function HoldPage() {
   const [holdings, setHoldings] = useState<ApiStockHolding[] | null>(null);
+  const [statsData, setStatsData] = useState<HoldingsStatistics | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -93,8 +95,13 @@ function HoldPage() {
       }
       setError(null);
       
-      const data = await fetchHoldings();
-      setHoldings(data);
+      // 同时获取holdings和stats数据
+      const [holdingsData, statsResult] = await Promise.all([
+        fetchHoldings(),
+        fetchStats()
+      ]);
+      setHoldings(holdingsData);
+      setStatsData(statsResult);
     } catch (err) {
       setError(err instanceof Error ? err.message : '加载数据失败');
     } finally {
@@ -161,11 +168,25 @@ function HoldPage() {
     firstBuyDate: h.firstbuydate,
     lastUpdated: h.lastupdated,
     createdAt: h.createdat,
-    sellPrice: safeParseFloat(h.shellprice),
+    sellPrice: safeParseFloat(h.sellprice),
     forceClosePrice: safeParseFloat(h.forcecloseprice),
+    // 新增字段
+    totalBuyAmount: safeParseFloat(h.totalbuyamount),
+    totalSellAmount: safeParseFloat(h.totalsellamount),
+    soldQuantity: h.soldquantity || 0,
+    realizedPnl: safeParseFloat(h.realizedpnl),
+    unrealizedPnl: safeParseFloat(h.unrealizedpnl),
+    hypotheticalMarketValue: safeParseFloat(h.hypotheticalmarketvalue),
+    hypotheticalPnl: safeParseFloat(h.hypotheticalpnl),
+    missedProfit: safeParseFloat(h.missedprofit),
+    isSold: h.totalquantity === 0, // 标记已清仓
   }));
 
-  // 使用滚动暂停筛选 Hook - 必须在所有条件返回之前调用
+  // 分离活跃持仓和已清仓持仓
+  const activeHoldings = convertedHoldings.filter(h => h.totalQuantity > 0);
+  const soldHoldings = convertedHoldings.filter(h => h.totalQuantity === 0);
+
+  // 使用滚动暂停筛选 Hook - 仅对活跃持仓应用筛选
   const {
     filteredHoldings,
     filterState,
@@ -178,7 +199,7 @@ function HoldPage() {
     stats,
     isScrollPaused,
     countdown, // 添加倒计时
-  } = useScrollPauseFilter(convertedHoldings, {
+  } = useScrollPauseFilter(activeHoldings, {
     scrollPauseDelay: 2000, // 滚动停止2秒后恢复排序
     scrollElement: '[data-scroll-container]' // 监听真正的滚动容器
   });
@@ -243,13 +264,8 @@ function HoldPage() {
     );
   }
 
-  const hasHoldings = convertedHoldings.length > 0;
-  
-  // 计算统计数据
-  const totalMarketValue = convertedHoldings.reduce((sum, h) => sum + h.marketValue, 0);
-  const totalCost = convertedHoldings.reduce((sum, h) => sum + h.totalCost, 0);
-  const totalProfitLoss = convertedHoldings.reduce((sum, h) => sum + h.totalProfitLoss, 0);
-  const todayTotalProfitLoss = convertedHoldings.reduce((sum, h) => sum + h.todayProfitLoss, 0);
+  const hasHoldings = activeHoldings.length > 0;
+  const hasSoldHoldings = soldHoldings.length > 0;
 
   return (
     <div className="h-full overflow-y-auto bg-background" data-scroll-container>
@@ -294,16 +310,10 @@ function HoldPage() {
       </AnimatePresence>
       
       <div className="@container max-w-[1850px] mx-auto pt-4 px-4 pb-4 space-y-4" data-holdings-container>
-        {/* 统计卡片 - 更紧凑 */}
-        {hasHoldings && (
+        {/* 统计卡片 - 使用stats API数据 */}
+        {statsData && (
           <StatisticsCards 
-            statistics={{
-              totalStocks: convertedHoldings.length,
-              totalMarketValue,
-              totalCost,
-              totalProfitLoss,
-            }}
-            todayTotalProfitLoss={todayTotalProfitLoss}
+            statistics={statsData}
             displayMode={displayMode}
           />
         )}
@@ -401,6 +411,18 @@ function HoldPage() {
             />
           )}
         </AnimatePresence>
+
+        {/* 历史持仓区域 - 已清仓股票 */}
+        {hasSoldHoldings && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4, delay: 0.2 }}
+            className="pt-8"
+          >
+            <SoldGrid holdings={soldHoldings} />
+          </motion.div>
+        )}
       </div>
     </div>
   );

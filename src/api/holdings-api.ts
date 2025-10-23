@@ -2,12 +2,44 @@ import { HoldingsStatistics, StockHolding, ApiStockHolding } from '../types/hold
 import { get } from './api';
 
 /**
+ * 安全地将字符串解析为数字
+ */
+function safeParseNumber(value: any): number {
+  if (typeof value === 'number') return value;
+  if (typeof value === 'string') {
+    const parsed = parseFloat(value);
+    return isNaN(parsed) ? 0 : parsed;
+  }
+  return 0;
+}
+
+/**
  * 获取持仓统计数据
  * @returns Promise<HoldingsStatistics> 持仓统计信息
  */
 export async function fetchStats(): Promise<HoldingsStatistics> {
   try {
-    return await get<HoldingsStatistics>('/webhook/api/v1/stats');
+    const response = await get<any>('/webhook/api/v1/stats');
+    
+    // 如果是数组，取第一个元素
+    const data = Array.isArray(response) ? response[0] : response;
+    
+    // 转换蛇形命名为驼峰命名，并将字符串转换为数字
+    return {
+      totalStocks: data.total_stocks || 0,
+      initialCapital: safeParseNumber(data.initial_capital),
+      currentCash: safeParseNumber(data.current_cash),
+      investedCost: safeParseNumber(data.invested_cost),
+      marketValue: safeParseNumber(data.market_value || data.stock_market_value),
+      totalEquity: safeParseNumber(data.total_equity),
+      unrealizedPnl: safeParseNumber(data.unrealized_pnl),
+      realizedPnl: safeParseNumber(data.realized_pnl),
+      todayProfitLoss: safeParseNumber(data.today_profit_loss),
+      maxEquity: safeParseNumber(data.max_equity),
+      maxDrawdownAmount: safeParseNumber(data.max_drawdown_amount),
+      maxDrawdownRatio: safeParseNumber(data.max_drawdown_ratio),
+      updatedAt: data.updated_at,
+    };
   } catch (error) {
     console.error('获取统计数据失败:', error);
     throw new Error('无法获取统计数据，请检查网络连接或服务器状态');
