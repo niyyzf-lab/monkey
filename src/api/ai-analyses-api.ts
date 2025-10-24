@@ -32,16 +32,16 @@ export function parseAIAnalysisGroup(records: AIAnalysisRecord[]): AIAnalysisGro
     records: records,
   }
   
-  // 根据type和category分类记录
+  // 根据type和category分类记录（支持多种category命名）
   records.forEach(record => {
     if (record.type === '触发器') {
       group.trigger = record
     } else if (record.type === 'AI') {
       if (record.category === '新闻分析') {
         group.newsAnalyst = record
-      } else if (record.category === '选股分析') {
+      } else if (record.category === '选股分析' || record.category === '新闻选股') {
         group.stockPicker = record
-      } else if (record.category === '交易决策') {
+      } else if (record.category === '交易决策' || record.category === '决策AI') {
         group.tradingExecutor = record
       }
     }

@@ -2,7 +2,6 @@ import { AnimatePresence, motion } from 'motion/react'
 import { useNavigate, useLocation, useRouter } from '@tanstack/react-router'
 import { HatGlasses, Banana, HandMetal, MessageSquareHeart, Unlink, ChevronLeft } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { useDeviceDetect } from '@/hooks/use-device-detect'
 import { useState, useEffect } from 'react'
 
 interface NavItem {
@@ -24,7 +23,8 @@ const navItems: NavItem[] = [
  * 移动端底部导航栏组件
  * 
  * 特性：
- * - 仅在移动设备竖屏时显示（横屏时隐藏，因为侧边栏会显示）
+ * - 仅在屏幕宽度 <= 720px 且竖屏时显示（与侧边栏断点保持一致）
+ * - 横屏时隐藏，因为侧边栏会显示
  * - 固定在底部，适配安全区域
  * - 毛玻璃背景效果
  * - 激活状态高亮动画
@@ -35,28 +35,34 @@ export function MobileBottomNav() {
   const navigate = useNavigate()
   const router = useRouter()
   const location = useLocation()
-  const { isMobileDevice, isIOS } = useDeviceDetect()
   const [isPortrait, setIsPortrait] = useState(true)
+  const [isMobileWidth, setIsMobileWidth] = useState(false)
   const [canGoBack, setCanGoBack] = useState(false)
 
-  // 监听屏幕方向变化
+  // 监听屏幕尺寸和方向变化
   useEffect(() => {
-    const checkOrientation = () => {
+    const checkDisplay = () => {
+      const width = window.innerWidth
+      const height = window.innerHeight
+      
+      // 宽度断点：与侧边栏保持一致 (720px)
+      setIsMobileWidth(width <= 720)
+      
       // 竖屏：高度大于宽度
-      setIsPortrait(window.innerHeight > window.innerWidth)
+      setIsPortrait(height > width)
     }
 
     // 初始检测
-    checkOrientation()
+    checkDisplay()
 
     // 监听窗口大小变化（包括旋转）
-    window.addEventListener('resize', checkOrientation)
+    window.addEventListener('resize', checkDisplay)
     // 监听方向变化事件
-    window.addEventListener('orientationchange', checkOrientation)
+    window.addEventListener('orientationchange', checkDisplay)
 
     return () => {
-      window.removeEventListener('resize', checkOrientation)
-      window.removeEventListener('orientationchange', checkOrientation)
+      window.removeEventListener('resize', checkDisplay)
+      window.removeEventListener('orientationchange', checkDisplay)
     }
   }, [])
 
@@ -72,8 +78,8 @@ export function MobileBottomNav() {
     setCanGoBack(isSubPage || hasHistory)
   }, [location.pathname])
 
-  // 仅在移动设备且竖屏时显示
-  if (!isMobileDevice || !isPortrait) {
+  // 仅在宽度 <= 720px 且竖屏时显示
+  if (!isMobileWidth || !isPortrait) {
     return null
   }
 
@@ -99,12 +105,7 @@ export function MobileBottomNav() {
 
   return (
     <div
-      className="fixed left-0 right-0 z-50 flex justify-center pointer-events-none px-6"
-      style={{
-        // iOS: 定位在安全区域之上（砍一半），Android: 固定在底部
-        bottom: isIOS ? 'calc(var(--safe-area-inset-bottom) / 2)' : '0',
-        paddingBottom: '16px',
-      }}
+      className="fixed left-0 right-0 bottom-0 z-50 flex justify-center pointer-events-none px-6 pb-4"
     >
       {/* 底部导航栏 */}
       <motion.nav

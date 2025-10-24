@@ -19,6 +19,7 @@ interface ToolAINodeData extends Record<string, unknown> {
   icon?: string
   prompt?: string // 提示词内容（已废弃，使用 promptFile 代替）
   promptFile?: string // 提示词文件路径
+  workflowStatus?: 'idle' | 'active' | 'completed' // 工作流状态
 }
 
 type ToolAINodeType = Node<ToolAINodeData>
@@ -39,8 +40,41 @@ function ToolAINodeComponent({ data, selected }: NodeProps<ToolAINodeType>) {
   const description = data?.description as string | undefined
   const prompt = data?.prompt as string | undefined
   const promptFile = data?.promptFile as string | undefined
+  const workflowStatus = (data?.workflowStatus as 'idle' | 'active' | 'completed') || 'idle'
   const hasIcon = !!iconSrc
   const [isDialogOpen, setIsDialogOpen] = useState(false)
+  
+  // 根据状态确定样式
+  const getStatusStyles = () => {
+    switch (workflowStatus) {
+      case 'active':
+        return {
+          borderColor: 'border-blue-500/60',
+          glowColor: 'from-blue-500/20 to-blue-400/15',
+          cardGlow: 'shadow-blue-500/30',
+          iconFilter: 'drop-shadow(0 0 12px rgba(59, 130, 246, 0.5))',
+          pulse: true,
+        }
+      case 'completed':
+        return {
+          borderColor: 'border-green-500/60',
+          glowColor: 'from-green-500/20 to-green-400/15',
+          cardGlow: 'shadow-green-500/30',
+          iconFilter: 'drop-shadow(0 0 12px rgba(34, 197, 94, 0.5))',
+          pulse: false,
+        }
+      default: // idle
+        return {
+          borderColor: 'border-border',
+          glowColor: 'from-primary/15 to-accent/10',
+          cardGlow: '',
+          iconFilter: 'drop-shadow(0 4px 12px rgba(0,0,0,0.15))',
+          pulse: false,
+        }
+    }
+  }
+  
+  const statusStyles = getStatusStyles()
   
   return (
     <>
@@ -77,7 +111,8 @@ function ToolAINodeComponent({ data, selected }: NodeProps<ToolAINodeType>) {
             className={cn(
               "relative w-24 h-24 transition-all duration-500 ease-out cursor-pointer",
               "group-hover/node:scale-[1.03] group-hover/node:-translate-y-0.5",
-              selected && "scale-105"
+              selected && "scale-105",
+              statusStyles.pulse && "animate-pulse"
             )}
             onClick={(e) => {
               e.stopPropagation()
@@ -99,42 +134,55 @@ function ToolAINodeComponent({ data, selected }: NodeProps<ToolAINodeType>) {
                 position={Position.Top}
                 id="top"
                 className={cn(
-                  "!w-4 !h-4 !border-2 !rounded-full !bg-background",
-                  "transition-all duration-300 ease-out",
-                  "hover:!w-5 hover:!h-5",
-                  selected 
-                    ? "!border-foreground !shadow-lg !shadow-foreground/30" 
-                    : "!border-foreground/80 hover:!border-foreground hover:!shadow-md hover:!shadow-foreground/20"
+                  "!w-3 !h-3 !border-2 !rounded-full transition-all duration-300 ease-out",
+                  "hover:!w-4 hover:!h-4 hover:!scale-125",
+                  workflowStatus === 'active' 
+                    ? "!bg-blue-500 !border-blue-600 !shadow-lg !shadow-blue-500/50" 
+                    : workflowStatus === 'completed'
+                    ? "!bg-green-500 !border-green-600 !shadow-lg !shadow-green-500/50"
+                    : "!bg-muted !border-border hover:!bg-primary/20 hover:!border-primary/60",
+                  selected && "!shadow-xl !scale-110"
                 )}
-                style={{
-                  boxShadow: selected 
-                    ? '0 0 8px rgba(0, 0, 0, 0.3), inset 0 0 0 2px white'
-                    : 'inset 0 0 0 2px white'
-                }}
               />
             </div>
 
             {/* 图标背景光晕 */}
             <div className={cn(
-              "absolute inset-0 rounded-xl bg-gradient-radial from-primary/5 to-transparent opacity-0 transition-opacity duration-500",
-              "group-hover/node:opacity-100"
+              "absolute inset-0 rounded-xl bg-gradient-radial transition-opacity duration-500",
+              workflowStatus === 'active' ? 'from-blue-400/10 to-transparent opacity-100' :
+              workflowStatus === 'completed' ? 'from-green-400/10 to-transparent opacity-100' :
+              'from-primary/5 to-transparent opacity-0 group-hover/node:opacity-100'
             )} />
+            
+            {/* 状态指示器 - Active时的呼吸环 */}
+            {workflowStatus === 'active' && (
+              <div className="absolute inset-0 rounded-xl border-2 border-blue-500/40 animate-ping" />
+            )}
+            
+            {/* Completed时的勾选标记 */}
+            {workflowStatus === 'completed' && (
+              <div className="absolute -top-1 -right-1 w-6 h-6 bg-green-500 rounded-full flex items-center justify-center shadow-lg z-10">
+                <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                </svg>
+              </div>
+            )}
             
             <img 
               src={iconSrc} 
               alt={label}
-              className="relative w-full h-full object-contain transition-all duration-500"
+              className="relative w-full h-full object-cover rounded-full transition-all duration-500"
               style={{
                 filter: selected 
                   ? 'drop-shadow(0 8px 24px rgba(0,0,0,0.35)) brightness(1.05)'
-                  : 'drop-shadow(0 4px 12px rgba(0,0,0,0.15))',
+                  : statusStyles.iconFilter,
               }}
               onError={(e) => {
                 e.currentTarget.style.display = 'none'
                 const parent = e.currentTarget.parentElement
                 if (parent) {
                   parent.innerHTML = `
-                    <div class="w-full h-full flex items-center justify-center text-5xl font-bold text-foreground/60 bg-muted rounded-xl">
+                    <div class="w-full h-full flex items-center justify-center text-5xl font-bold text-foreground/60 bg-muted rounded-full border-2 border-border">
                       ${label.substring(0, 2)}
                     </div>
                   `
@@ -161,29 +209,26 @@ function ToolAINodeComponent({ data, selected }: NodeProps<ToolAINodeType>) {
                 position={Position.Top}
                 id="top"
                 className={cn(
-                  "!w-4 !h-4 !border-2 !rounded-full !bg-background",
-                  "transition-all duration-300 ease-out",
-                  "hover:!w-5 hover:!h-5",
-                  selected 
-                    ? "!border-foreground !shadow-lg !shadow-foreground/30" 
-                    : "!border-foreground/80 hover:!border-foreground hover:!shadow-md hover:!shadow-foreground/20"
+                  "!w-3 !h-3 !border-2 !rounded-full transition-all duration-300 ease-out",
+                  "hover:!w-4 hover:!h-4 hover:!scale-125",
+                  workflowStatus === 'active' 
+                    ? "!bg-blue-500 !border-blue-600 !shadow-lg !shadow-blue-500/50" 
+                    : workflowStatus === 'completed'
+                    ? "!bg-green-500 !border-green-600 !shadow-lg !shadow-green-500/50"
+                    : "!bg-muted !border-border hover:!bg-primary/20 hover:!border-primary/60",
+                  selected && "!shadow-xl !scale-110"
                 )}
-                style={{
-                  boxShadow: selected 
-                    ? '0 0 8px rgba(0, 0, 0, 0.3), inset 0 0 0 2px white'
-                    : 'inset 0 0 0 2px white'
-                }}
               />
             </div>
           )}
 
           {/* 卡片装饰层 */}
           <div className="relative group/card">
-            {/* 外层细微光晕 - 仅悬浮和选中时显示 */}
+            {/* 外层细微光晕 - 根据状态显示 */}
             <div className={cn(
-              "absolute -inset-[1px] rounded-xl opacity-0 transition-all duration-500 blur-sm pointer-events-none",
-              "bg-gradient-to-br from-primary/15 to-accent/10",
-              "group-hover/card:opacity-60",
+              "absolute -inset-[1px] rounded-xl transition-all duration-500 blur-sm pointer-events-none",
+              `bg-gradient-to-br ${statusStyles.glowColor}`,
+              workflowStatus !== 'idle' ? "opacity-80 blur-md" : "opacity-0 group-hover/card:opacity-60",
               selected && "opacity-80 blur-md"
             )} />
             
@@ -194,6 +239,8 @@ function ToolAINodeComponent({ data, selected }: NodeProps<ToolAINodeType>) {
                 "border shadow-sm backdrop-blur-sm",
                 "group-hover/card:shadow-lg group-hover/card:border-foreground/10",
                 "group-hover/card:translate-y-[-2px]",
+                statusStyles.borderColor,
+                workflowStatus !== 'idle' && `shadow-lg ${statusStyles.cardGlow}`,
                 selected && "border-primary/40 shadow-lg translate-y-[-1px]"
               )}
             >

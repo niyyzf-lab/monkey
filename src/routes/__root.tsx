@@ -12,7 +12,6 @@ import { Settings, HatGlasses, Banana, HandMetal, MessageSquareHeart, Brain, Unl
 import { useEffect, useState } from 'react'
 import { useViewportHeight } from '../hooks/use-viewport-height'
 import { UpdaterProvider } from '../components/updater'
-import { useDeviceDetect } from '../hooks/use-device-detect'
 import { MobileBottomNav } from '../components/common/mobile-bottom-nav'
 import { PWAPrompt } from '../components/common/pwa-prompt'
 
@@ -63,7 +62,6 @@ function RootLayoutContent() {
   const location = useLocation()
   const [activeItem, setActiveItem] = useState('/')
   const { isOpen, setIsOpen, isMobile } = useSidebar()
-  const { isIOS, isAndroid } = useDeviceDetect()
   
   // 初始化视口高度监听，修复移动端 100vh 问题
   useViewportHeight()
@@ -97,10 +95,6 @@ function RootLayoutContent() {
   return (
       <motion.div 
         className="relative overflow-hidden h-full"
-        style={{
-          // iOS 需要顶部 padding 来适配安全区域（0.65 倍），安卓固定 16px
-          paddingTop: isIOS ? 'calc(var(--safe-area-inset-top) * 0.65)' : isAndroid ? '16px' : '0',
-        }}
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ 

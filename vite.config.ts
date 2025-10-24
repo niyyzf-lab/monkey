@@ -57,6 +57,12 @@ export default defineConfig(async () => ({
         start_url: '/',
         scope: '/',
         orientation: 'any',
+        // 添加分类，帮助应用商店正确分类
+        categories: ['finance', 'business', 'productivity'],
+        // 添加语言设置
+        lang: 'zh-CN',
+        // 添加方向偏好（支持PWA更好地适配移动设备）
+        prefer_related_applications: false,
         icons: [
           {
             src: '/pwa_icons/32x32.png',
@@ -92,6 +98,7 @@ export default defineConfig(async () => ({
       },
       workbox: {
         globPatterns: ['**/*.{js,css,html,ico,png,svg,json,woff2}'],
+        maximumFileSizeToCacheInBytes: 5 * 1024 * 1024, // 5MB - 允许更大的 bundle 文件被缓存
         runtimeCaching: [
           {
             urlPattern: /^https:\/\/api\..*/i,
@@ -132,7 +139,8 @@ export default defineConfig(async () => ({
   server: {
     port: 1420,
     strictPort: true,
-    host: host || false,
+    // 启用局域网访问 - 允许通过 IP 地址访问（支持移动设备测试 PWA）
+    host: '0.0.0.0',
     hmr: host
       ? {
           protocol: "ws",

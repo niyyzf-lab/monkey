@@ -43,20 +43,22 @@
 
 ## 🚀 快速开始
 
-### 1. 克隆项目
+### 桌面应用开发
+
+#### 1. 克隆项目
 
 ```bash
 git clone <repository-url>
 cd watch-monkey-app
 ```
 
-### 2. 安装依赖
+#### 2. 安装依赖
 
 ```bash
 bun install
 ```
 
-### 3. 配置环境变量
+#### 3. 配置环境变量
 
 复制环境变量示例文件：
 
@@ -66,7 +68,7 @@ cp .env.example .env
 
 编辑 `.env` 文件，配置必要的 API 密钥和数据源。
 
-### 4. 运行开发服务器
+#### 4. 运行开发服务器
 
 ```bash
 bun run dev
@@ -74,7 +76,7 @@ bun run dev
 
 这将同时启动 Vite 开发服务器和 Tauri 应用。
 
-### 5. 构建生产版本
+#### 5. 构建生产版本
 
 ```bash
 bun run build
@@ -82,6 +84,31 @@ bun run tauri build
 ```
 
 构建产物将输出到 `src-tauri/target/release/` 目录。
+
+### 📱 PWA 云端部署
+
+本应用支持作为 PWA（渐进式 Web 应用）部署到云端服务器，支持：
+- ✅ 离线使用
+- ✅ 安装到桌面/主屏幕
+- ✅ 自动更新
+- ✅ 推送通知
+
+**快速部署到 1Panel + Nginx：**
+
+```bash
+# 使用自动化脚本部署
+./scripts/deploy-pwa.sh
+```
+
+**或使用 GitHub Actions 自动部署：**
+1. 配置 GitHub Secrets（服务器信息）
+2. 推送代码到 `main` 分支
+3. 自动构建并部署到服务器
+
+详细部署文档：
+- 📖 [PWA 部署快速开始](docs/PWA_DEPLOYMENT_QUICK_START.md)
+- 📖 [完整部署指南](docs/PWA_DEPLOYMENT_GUIDE.md)
+- ⚙️ [Nginx 配置模板](nginx-pwa.conf)
 
 ## 📁 项目结构
 
@@ -188,6 +215,9 @@ bun run tauri build
 
 # 生成路由类型
 bun run routes:generate
+
+# PWA 部署
+./scripts/deploy-pwa.sh
 ```
 
 ## 🌐 环境变量

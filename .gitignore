@@ -19,6 +19,7 @@ dist-ssr
 .env
 .env.local
 .env.production
+.env.deploy
 
 # Tauri/Rust
 src-tauri/target/

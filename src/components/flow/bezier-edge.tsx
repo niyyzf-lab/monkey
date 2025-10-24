@@ -3,19 +3,13 @@ import {
   getBezierPath,
   type EdgeProps,
 } from '@xyflow/react'
-import { useThemeColors } from '@/hooks/use-theme-colors'
 import type { EdgeStatus } from '@/components/feel/feel-workflow-context'
 
 /**
- * 现代化贝塞尔曲线边组件
- * 重新设计的炫酷视觉效果
- * 特点：
- * - 多层次霓虹光晕
- * - 流体能量传输动画
- * - 光子粒子系统
- * - 脉冲波扩散效果
- * - 渐变色彩流动
- * 支持工作流状态：idle（未激活）、animating（传递中）、completed（已完成）
+ * 简化版贝塞尔曲线边组件 - 三种状态
+ * idle: 灰色虚线
+ * animating: 蓝色实线 + 动画
+ * completed: 绿色实线
  */
 function BezierEdgeComponent({
   id,
@@ -30,11 +24,17 @@ function BezierEdgeComponent({
   selected,
   data,
 }: EdgeProps) {
-  // 获取主题颜色
-  const { primary, secondary, accent } = useThemeColors()
-  
   // 获取工作流状态
   const workflowStatus = (data?.workflowStatus as EdgeStatus) || 'idle'
+  
+  console.log(`🔗 Bezier边 ${id} 渲染:`, {
+    id,
+    workflowStatus,
+    sourceX,
+    sourceY,
+    targetX,
+    targetY,
+  })
   
   const [edgePath] = getBezierPath({
     sourceX,
@@ -45,360 +45,147 @@ function BezierEdgeComponent({
     targetPosition,
   })
 
-  const pathId = `edge-path-${id}`
-  const primaryGradientId = `primary-gradient-${id}`
-  const accentGradientId = `accent-gradient-${id}`
-  const flowGradientId = `flow-gradient-${id}`
-  const pulseGradientId = `pulse-gradient-${id}`
-  const enhancedGlowId = `enhanced-glow-${id}`
-  const neonGlowId = `neon-glow-${id}`
+  // 根据状态确定颜色和样式
+  let strokeColor = '#94a3b8' // idle: 灰色
+  let strokeWidth = 2
+  let opacity = 0.5
+  let strokeDasharray = '5 5' // 虚线
   
-  // 根据状态确定样式
-  const getStatusOpacity = () => {
-    switch (workflowStatus) {
-      case 'completed':
-        return 1
-      case 'animating':
-        return 1
-      case 'idle':
-      default:
-        return 0.35 // idle 状态淡但可见
-    }
+  if (workflowStatus === 'animating') {
+    strokeColor = '#3b82f6' // 蓝色
+    strokeWidth = 3
+    opacity = 1
+    strokeDasharray = 'none'
+  } else if (workflowStatus === 'completed') {
+    strokeColor = '#22c55e' // 绿色
+    strokeWidth = 3
+    opacity = 1
+    strokeDasharray = 'none'
   }
-  
-  const statusOpacity = getStatusOpacity()
 
   return (
-    <>
-      <defs>
-        {/* 主渐变 - 霓虹蓝紫 */}
-        <linearGradient id={primaryGradientId} gradientUnits="userSpaceOnUse">
-          <stop offset="0%" stopColor={primary} stopOpacity="0.4">
-            <animate attributeName="stop-opacity" values="0.4;0.7;0.4" dur="3s" repeatCount="indefinite" />
-          </stop>
-          <stop offset="50%" stopColor={accent} stopOpacity="0.9">
-            <animate attributeName="stop-opacity" values="0.9;1;0.9" dur="3s" repeatCount="indefinite" />
-          </stop>
-          <stop offset="100%" stopColor={primary} stopOpacity="0.4">
-            <animate attributeName="stop-opacity" values="0.4;0.7;0.4" dur="3s" repeatCount="indefinite" />
-          </stop>
-        </linearGradient>
-
-        {/* 强调渐变 - 彩虹流光 */}
-        <linearGradient id={accentGradientId} gradientUnits="userSpaceOnUse">
-          <stop offset="0%" stopColor={accent} stopOpacity="0.2" />
-          <stop offset="25%" stopColor={primary} stopOpacity="0.8" />
-          <stop offset="50%" stopColor={accent} stopOpacity="1" />
-          <stop offset="75%" stopColor={primary} stopOpacity="0.8" />
-          <stop offset="100%" stopColor={accent} stopOpacity="0.2" />
-        </linearGradient>
-
-        {/* 流动渐变 - 能量波 */}
-        <linearGradient id={flowGradientId} gradientUnits="userSpaceOnUse">
-          <stop offset="0%" stopColor="transparent" />
-          <stop offset="20%" stopColor={primary} stopOpacity="0.3" />
-          <stop offset="50%" stopColor={accent} />
-          <stop offset="80%" stopColor={primary} stopOpacity="0.3" />
-          <stop offset="100%" stopColor="transparent" />
-        </linearGradient>
-
-        {/* 脉冲渐变 - 心跳效果 */}
-        <radialGradient id={pulseGradientId}>
-          <stop offset="0%" stopColor={primary} stopOpacity="1" />
-          <stop offset="70%" stopColor={accent} stopOpacity="0.6" />
-          <stop offset="100%" stopColor="transparent" stopOpacity="0" />
-        </radialGradient>
-
-        {/* 增强发光滤镜 - 多层模糊 */}
-        <filter id={enhancedGlowId} x="-150%" y="-150%" width="400%" height="400%">
-          <feGaussianBlur in="SourceGraphic" stdDeviation="2" result="blur1" />
-          <feGaussianBlur in="SourceGraphic" stdDeviation="6" result="blur2" />
-          <feGaussianBlur in="SourceGraphic" stdDeviation="12" result="blur3" />
-          <feComponentTransfer in="blur1" result="glow1">
-            <feFuncA type="linear" slope="3" />
-          </feComponentTransfer>
-          <feComponentTransfer in="blur2" result="glow2">
-            <feFuncA type="linear" slope="2" />
-          </feComponentTransfer>
-          <feComponentTransfer in="blur3" result="glow3">
-            <feFuncA type="linear" slope="1.5" />
-          </feComponentTransfer>
-          <feMerge>
-            <feMergeNode in="glow3" />
-            <feMergeNode in="glow2" />
-            <feMergeNode in="glow1" />
-            <feMergeNode in="SourceGraphic" />
-          </feMerge>
-        </filter>
-
-        {/* 霓虹光晕滤镜 */}
-        <filter id={neonGlowId} x="-100%" y="-100%" width="300%" height="300%">
-          <feGaussianBlur in="SourceGraphic" stdDeviation="5" result="coloredBlur"/>
-          <feComponentTransfer in="coloredBlur" result="neon">
-            <feFuncA type="linear" slope="2.5" />
-          </feComponentTransfer>
-          <feMerge>
-            <feMergeNode in="neon"/>
-            <feMergeNode in="neon"/>
-            <feMergeNode in="SourceGraphic"/>
-          </feMerge>
-        </filter>
-      </defs>
-
-      {/* 第一层：超大外发光 - 环境氛围 */}
-      {workflowStatus !== 'idle' && (
-        <path
-          d={edgePath}
-          fill="none"
-          stroke={workflowStatus === 'completed' ? 'hsl(var(--success))' : primary}
-          strokeWidth={selected ? 28 : 20}
-          strokeLinecap="round"
-          style={{
-            filter: 'blur(16px)',
-            opacity: (selected ? 0.15 : 0.06) * statusOpacity,
-            transition: 'all 0.6s cubic-bezier(0.4, 0, 0.2, 1)',
-            ...(style as React.CSSProperties),
-          }}
-        />
-      )}
-
-      {/* 第二层：中等外发光 - 柔和光晕 */}
-      {workflowStatus !== 'idle' && (
-        <path
-          d={edgePath}
-          fill="none"
-          stroke={workflowStatus === 'completed' ? 'hsl(var(--success))' : (selected ? accent : primary)}
-          strokeWidth={selected ? 18 : 14}
-          strokeLinecap="round"
-          style={{
-            filter: 'blur(10px)',
-            opacity: (selected ? 0.25 : 0.12) * statusOpacity,
-            transition: 'all 0.5s cubic-bezier(0.4, 0, 0.2, 1)',
-            ...(style as React.CSSProperties),
-          }}
-        />
-      )}
-
-      {/* 第三层：脉冲光晕 - 选中时或animating时动态呼吸 */}
-      {(selected || workflowStatus === 'animating') && workflowStatus !== 'idle' && (
-        <path
-          d={edgePath}
-          fill="none"
-          stroke={workflowStatus === 'completed' ? 'hsl(var(--success))' : primary}
-          strokeWidth={12}
-          strokeLinecap="round"
-          style={{
-            filter: `url(#${enhancedGlowId})`,
-            opacity: 0.6 * statusOpacity,
-            animation: workflowStatus === 'animating' ? 'neon-pulse 2s ease-in-out infinite' : 'none',
-            ...(style as React.CSSProperties),
-          }}
-        />
-      )}
-
-      {/* 第四层：主路径基础 - 实心轨迹 */}
+    <g>
+      {/* 主路径 */}
       <path
-        id={pathId}
+        id={`path-${id}`}
         d={edgePath}
         fill="none"
-        stroke={workflowStatus === 'completed' ? 'hsl(var(--success))' : (workflowStatus === 'idle' ? 'hsl(var(--muted-foreground))' : (selected ? primary : secondary))}
-        strokeWidth={selected ? 4 : 2.5}
+        stroke={strokeColor}
+        strokeWidth={strokeWidth}
         strokeLinecap="round"
         strokeLinejoin="round"
+        strokeDasharray={strokeDasharray}
         style={{
-          opacity: workflowStatus === 'idle' ? 0.7 : (selected ? 0.9 : 0.35),
+          opacity,
           transition: 'all 0.3s ease',
           ...(style as React.CSSProperties),
         }}
         markerEnd={markerEnd}
       />
-
-      {/* 第五层：渐变流光 - 彩虹能量流 - 仅animating显示 */}
-      {workflowStatus === 'animating' && (
+      
+      {/* 发光层 - 只有 animating 和 completed 状态显示 */}
+      {workflowStatus !== 'idle' && (
         <path
           d={edgePath}
           fill="none"
-          stroke={`url(#${accentGradientId})`}
-          strokeWidth={selected ? 6 : 4}
+          stroke={strokeColor}
+          strokeWidth={strokeWidth + 8}
           strokeLinecap="round"
-          strokeDasharray="24 12"
+          strokeLinejoin="round"
           style={{
-            animation: 'rainbow-flow 2.5s linear infinite',
-            filter: selected ? `url(#${neonGlowId})` : 'none',
-            opacity: selected ? 1 : 0.75,
+            filter: 'blur(8px)',
+            opacity: 0.3,
             transition: 'all 0.3s ease',
-            ...(style as React.CSSProperties),
+            pointerEvents: 'none',
           }}
         />
       )}
-
-      {/* 第六层：能量波 - 脉冲传输 - 仅animating显示 */}
+      
+      {/* 动画效果 - 只有 animating 状态显示 */}
       {workflowStatus === 'animating' && (
-        <path
-          d={edgePath}
-          fill="none"
-          stroke={`url(#${flowGradientId})`}
-          strokeWidth={selected ? 8 : 5}
-          strokeLinecap="round"
-          strokeDasharray="30 150"
-          style={{
-            animation: 'energy-wave 2s ease-out infinite',
-            filter: `drop-shadow(0 0 8px ${accent})`,
-            opacity: selected ? 1 : 0.7,
-            ...(style as React.CSSProperties),
-          }}
-        />
-      )}
-
-      {/* 第七层：光子粒子 - 快速移动 - 仅animating显示 */}
-      {workflowStatus === 'animating' && (
-        <path
-          d={edgePath}
-          fill="none"
-          stroke={accent}
-          strokeWidth={2.5}
-          strokeLinecap="round"
-          strokeDasharray="4 28"
-          style={{
-            animation: 'photon-flow 1s linear infinite',
-            filter: `drop-shadow(0 0 6px ${accent})`,
-            opacity: selected ? 1 : 0.7,
-            ...(style as React.CSSProperties),
-          }}
-        />
-      )}
-
-      {/* 第八层：亮点闪烁 - 数据包 - 仅animating显示 */}
-      {workflowStatus === 'animating' && (
-        <path
-          d={edgePath}
-          fill="none"
-          stroke={secondary}
-          strokeWidth={3}
-          strokeLinecap="round"
-          strokeDasharray="6 36"
-          style={{
-            animation: 'data-spark 1.8s linear infinite',
-            filter: `drop-shadow(0 0 10px ${primary}) drop-shadow(0 0 4px ${accent})`,
-            opacity: selected ? 1 : 0.6,
-            ...(style as React.CSSProperties),
-          }}
-        />
-      )}
-
-      {/* 选中时的额外效果 - 仅animating时显示 */}
-      {selected && workflowStatus === 'animating' && (
         <>
-          {/* 慢速反向流 - 双向通信感 */}
           <path
             d={edgePath}
             fill="none"
-            stroke={primary}
-            strokeWidth={2}
+            stroke={strokeColor}
+            strokeWidth={strokeWidth}
             strokeLinecap="round"
-            strokeDasharray="8 20"
+            strokeLinejoin="round"
+            strokeDasharray="10 10"
             style={{
-              opacity: 0.5,
-              animation: 'reverse-stream 3.5s linear infinite reverse',
-              filter: `drop-shadow(0 0 4px ${primary})`,
-              ...(style as React.CSSProperties),
+              opacity: 0.6,
+              animation: 'dash 1s linear infinite',
             }}
           />
-
-          {/* 爆发粒子 - 随机闪现 */}
-          <path
-            d={edgePath}
-            fill="none"
-            stroke={accent}
-            strokeWidth={1.5}
-            strokeLinecap="round"
-            strokeDasharray="2 50"
-            style={{
-              opacity: 0.8,
-              animation: 'burst-particles 2.2s linear infinite',
-              filter: `drop-shadow(0 0 8px ${accent})`,
-              ...(style as React.CSSProperties),
-            }}
-          />
-
-          {/* 核心亮线 - 最亮部分 */}
-          <path
-            d={edgePath}
-            fill="none"
-            stroke={`url(#${primaryGradientId})`}
-            strokeWidth={1.5}
-            strokeLinecap="round"
-            style={{
-              filter: `drop-shadow(0 0 6px ${primary}) drop-shadow(0 0 12px ${accent})`,
-              ...(style as React.CSSProperties),
-            }}
-          />
+          
+          {/* 数据传递文本动画 - 像小火车一样排队移动 */}
+          {(() => {
+            const rawText = (data?.dataText as string) || (data?.label as string) || '数据传递中';
+            // 去除所有标点符号
+            const cleanText = rawText.replace(/[，。！？、：；""''（）《》【】「」…—·,\.!\?:;'"()\[\]{}<>\/\\|@#$%^&*+=`~\s]/g, '');
+            // 按2个字切分，展示所有词组
+            const chunks: string[] = [];
+            for (let i = 0; i < cleanText.length; i += 2) {
+              chunks.push(cleanText.slice(i, i + 2));
+            }
+            // 反转顺序
+            const reversedChunks = chunks.reverse();
+            const duration = 5; // 统一动画时长（增加以适应更长的队列）
+            const delay = 0.15; // 每个词组的间隔时间（小间隔让小火车更紧凑）
+            
+            return reversedChunks.map((chunk, index) => (
+              <g key={`chunk-${index}`}>
+                {/* 词组背景 - 圆角矩形 */}
+                <rect
+                  x="-20"
+                  y="-10"
+                  width="40"
+                  height="20"
+                  rx="6"
+                  ry="6"
+                  fill={strokeColor}
+                  opacity="0.9"
+                >
+                  <animateMotion
+                    dur={`${duration}s`}
+                    repeatCount="indefinite"
+                    path={edgePath}
+                    begin={`${index * delay}s`}
+                    rotate="auto"
+                  />
+                </rect>
+                
+                {/* 词组文本 */}
+                <text
+                  fontSize="12"
+                  fontWeight="600"
+                  fill="white"
+                  textAnchor="middle"
+                  dominantBaseline="middle"
+                >
+                  {chunk}
+                  <animateMotion
+                    dur={`${duration}s`}
+                    repeatCount="indefinite"
+                    path={edgePath}
+                    begin={`${index * delay}s`}
+                    rotate="auto"
+                  />
+                </text>
+              </g>
+            ));
+          })()}
         </>
       )}
-
-      {/* 动画样式定义 */}
-      <style>
-        {`
-          @keyframes rainbow-flow {
-            to {
-              stroke-dashoffset: -36;
-            }
+      
+      <style>{`
+        @keyframes dash {
+          to {
+            stroke-dashoffset: -20;
           }
-
-          @keyframes energy-wave {
-            0% {
-              stroke-dashoffset: 0;
-              opacity: 0;
-            }
-            15% {
-              opacity: 1;
-            }
-            85% {
-              opacity: 0.5;
-            }
-            100% {
-              stroke-dashoffset: -180;
-              opacity: 0;
-            }
-          }
-
-          @keyframes photon-flow {
-            to {
-              stroke-dashoffset: -32;
-            }
-          }
-
-          @keyframes data-spark {
-            to {
-              stroke-dashoffset: -42;
-            }
-          }
-
-          @keyframes reverse-stream {
-            to {
-              stroke-dashoffset: -28;
-            }
-          }
-
-          @keyframes burst-particles {
-            to {
-              stroke-dashoffset: -52;
-            }
-          }
-
-          @keyframes neon-pulse {
-            0%, 100% {
-              opacity: 0.5;
-              stroke-width: 12;
-            }
-            50% {
-              opacity: 0.9;
-              stroke-width: 14;
-            }
-          }
-        `}
-      </style>
-    </>
+        }
+      `}</style>
+    </g>
   )
 }
 

@@ -7,6 +7,7 @@ interface IfNodeData extends Record<string, unknown> {
   description?: string
   icon?: string
   condition?: string
+  workflowStatus?: 'idle' | 'active' | 'completed' // 工作流状态
 }
 
 type IfNodeType = Node<IfNodeData>
@@ -67,7 +68,7 @@ function IfNodeComponent({ data, selected }: NodeProps<IfNodeType>) {
         <div
           className="absolute z-10"
           style={{
-            right: '-4px',
+            right: 0,
             top: '30%',
             transform: 'translateY(-50%)',
           }}
@@ -105,7 +106,7 @@ function IfNodeComponent({ data, selected }: NodeProps<IfNodeType>) {
         <div
           className="absolute z-10"
           style={{
-            right: '-4px',
+            right: 0,
             top: '70%',
             transform: 'translateY(-50%)',
           }}
