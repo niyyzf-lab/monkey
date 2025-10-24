@@ -23,7 +23,6 @@ function AnimatedGradientEdgeComponent({
   style = {},
   markerEnd,
   data,
-  selected,
 }: EdgeProps) {
   // 获取工作流状态
   const workflowStatus = (data?.workflowStatus as EdgeStatus) || 'idle'

@@ -21,7 +21,6 @@ function BezierEdgeComponent({
   targetPosition,
   style = {},
   markerEnd,
-  selected,
   data,
 }: EdgeProps) {
   // 获取工作流状态
