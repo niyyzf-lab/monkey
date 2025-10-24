@@ -3,9 +3,13 @@ import react from "@vitejs/plugin-react";
 import path from "path";
 import tailwindcss from '@tailwindcss/vite'
 import fs from 'fs'
+import { VitePWA } from 'vite-plugin-pwa'
 
 
 const host = process.env.TAURI_DEV_HOST;
+
+// 读取环境变量，判断是否启用 PWA 安装提示（默认启用）
+const isPWAPromptEnabled = process.env.VITE_PWA_PROMPT_ENABLED !== 'false';
 
 // 自定义插件：处理 markdown 文件为纯文本
 const markdownPlugin = () => {
@@ -30,7 +34,87 @@ const markdownPlugin = () => {
 
 // https://vite.dev/config/
 export default defineConfig(async () => ({
-  plugins: [react(), tailwindcss(), markdownPlugin()],
+  // 定义环境变量
+  define: {
+    __PWA_PROMPT_ENABLED__: JSON.stringify(isPWAPromptEnabled),
+  },
+  plugins: [
+    react(), 
+    tailwindcss(), 
+    markdownPlugin(),
+    VitePWA({
+      registerType: 'autoUpdate',
+      includeAssets: ['pwa_icons/*.png', 'tauri.svg', 'monkey/*.png'],
+      manifest: {
+        name: 'Watch Monkey App',
+        short_name: 'WatchMonkey',
+        description: '股票监控和分析应用',
+        theme_color: '#000000',
+        background_color: '#000000',
+        display: 'standalone',
+        // 启用窗口控件覆盖 - 允许在标题栏区域显示内容
+        display_override: ['window-controls-overlay', 'standalone'],
+        start_url: '/',
+        scope: '/',
+        orientation: 'any',
+        icons: [
+          {
+            src: '/pwa_icons/32x32.png',
+            sizes: '32x32',
+            type: 'image/png',
+            purpose: 'any'
+          },
+          {
+            src: '/pwa_icons/64x64.png',
+            sizes: '64x64',
+            type: 'image/png',
+            purpose: 'any'
+          },
+          {
+            src: '/pwa_icons/128x128.png',
+            sizes: '128x128',
+            type: 'image/png',
+            purpose: 'any'
+          },
+          {
+            src: '/pwa_icons/icon.png',
+            sizes: '512x512',
+            type: 'image/png',
+            purpose: 'any'
+          },
+          {
+            src: '/pwa_icons/icon.png',
+            sizes: '512x512',
+            type: 'image/png',
+            purpose: 'maskable'
+          }
+        ]
+      },
+      workbox: {
+        globPatterns: ['**/*.{js,css,html,ico,png,svg,json,woff2}'],
+        runtimeCaching: [
+          {
+            urlPattern: /^https:\/\/api\..*/i,
+            handler: 'NetworkFirst',
+            options: {
+              cacheName: 'api-cache',
+              expiration: {
+                maxEntries: 100,
+                maxAgeSeconds: 60 * 60 * 24 // 24 hours
+              },
+              cacheableResponse: {
+                statuses: [0, 200]
+              }
+            }
+          }
+        ]
+      },
+      devOptions: {
+        enabled: isPWAPromptEnabled,
+        type: 'module'
+      }
+    })
+  ],
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),

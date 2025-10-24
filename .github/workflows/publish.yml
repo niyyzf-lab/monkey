@@ -23,9 +23,10 @@ jobs:
           - platform: 'windows-latest'
             args: ''
             target: 'x86_64-pc-windows-msvc'
-          - platform: 'ubuntu-latest' # for Android
-            args: '--target aarch64-linux-android'
-            target: 'aarch64-linux-android'
+          # Android 构建已屏蔽
+          # - platform: 'ubuntu-latest' # for Android
+          #   args: '--target aarch64-linux-android'
+          #   target: 'aarch64-linux-android'
 
     runs-on: ${{ matrix.platform }}
     steps:
@@ -76,90 +77,93 @@ jobs:
       - name: install frontend dependencies
         run: bun install
 
-      - name: Setup Android SDK
-        if: matrix.platform == 'ubuntu-latest'
-        uses: android-actions/setup-android@v3
+      # Android 相关步骤已屏蔽
+      # - name: Setup Android SDK
+      #   if: matrix.platform == 'ubuntu-latest'
+      #   uses: android-actions/setup-android@v3
 
-      - name: Install Java
-        if: matrix.platform == 'ubuntu-latest'
-        uses: actions/setup-java@v4
-        with:
-          distribution: 'temurin'
-          java-version: '17'
+      # - name: Install Java
+      #   if: matrix.platform == 'ubuntu-latest'
+      #   uses: actions/setup-java@v4
+      #   with:
+      #     distribution: 'temurin'
+      #     java-version: '17'
 
-      - name: Cache Gradle dependencies
-        if: matrix.platform == 'ubuntu-latest'
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.gradle/caches
-            ~/.gradle/wrapper
-            ~/.android/build-cache
-          key: ${{ runner.os }}-gradle-${{ hashFiles('src-tauri/gen/android/**/*.gradle*', 'src-tauri/gen/android/gradle/wrapper/gradle-wrapper.properties') }}
-          restore-keys: |
-            ${{ runner.os }}-gradle-
+      # - name: Cache Gradle dependencies
+      #   if: matrix.platform == 'ubuntu-latest'
+      #   uses: actions/cache@v4
+      #   with:
+      #     path: |
+      #       ~/.gradle/caches
+      #       ~/.gradle/wrapper
+      #       ~/.android/build-cache
+      #     key: ${{ runner.os }}-gradle-${{ hashFiles('src-tauri/gen/android/**/*.gradle*', 'src-tauri/gen/android/gradle/wrapper/gradle-wrapper.properties') }}
+      #     restore-keys: |
+      #       ${{ runner.os }}-gradle-
 
-      - name: Cache Android build output
-        if: matrix.platform == 'ubuntu-latest'
-        uses: actions/cache@v4
-        with:
-          path: |
-            src-tauri/gen/android/.gradle
-            src-tauri/gen/android/app/build
-            src-tauri/gen/android/build
-          key: ${{ runner.os }}-android-build-${{ github.sha }}
-          restore-keys: |
-            ${{ runner.os }}-android-build-
+      # - name: Cache Android build output
+      #   if: matrix.platform == 'ubuntu-latest'
+      #   uses: actions/cache@v4
+      #   with:
+      #     path: |
+      #       src-tauri/gen/android/.gradle
+      #       src-tauri/gen/android/app/build
+      #       src-tauri/gen/android/build
+      #     key: ${{ runner.os }}-android-build-${{ github.sha }}
+      #     restore-keys: |
+      #       ${{ runner.os }}-android-build-
 
-      - name: Cache Android NDK
-        if: matrix.platform == 'ubuntu-latest'
-        uses: actions/cache@v4
-        id: ndk-cache
-        with:
-          path: ${{ env.ANDROID_HOME }}/ndk/27.0.12077973
-          key: ${{ runner.os }}-ndk-27.0.12077973
-          restore-keys: |
-            ${{ runner.os }}-ndk-
+      # - name: Cache Android NDK
+      #   if: matrix.platform == 'ubuntu-latest'
+      #   uses: actions/cache@v4
+      #   id: ndk-cache
+      #   with:
+      #     path: ${{ env.ANDROID_HOME }}/ndk/27.0.12077973
+      #     key: ${{ runner.os }}-ndk-27.0.12077973
+      #     restore-keys: |
+      #       ${{ runner.os }}-ndk-
 
-      - name: Setup Android NDK
-        if: matrix.platform == 'ubuntu-latest' && steps.ndk-cache.outputs.cache-hit != 'true'
-        shell: bash
-        run: |
-          echo "📦 Downloading Android NDK..."
-          sdkmanager "ndk;27.0.12077973"
+      # - name: Setup Android NDK
+      #   if: matrix.platform == 'ubuntu-latest' && steps.ndk-cache.outputs.cache-hit != 'true'
+      #   shell: bash
+      #   run: |
+      #     echo "📦 Downloading Android NDK..."
+      #     sdkmanager "ndk;27.0.12077973"
 
-      - name: Configure Android NDK environment
-        if: matrix.platform == 'ubuntu-latest'
-        shell: bash
-        run: |
-          # Tauri 需要 NDK_HOME 环境变量
-          echo "NDK_HOME=$ANDROID_HOME/ndk/27.0.12077973" >> $GITHUB_ENV
-          echo "ANDROID_NDK_HOME=$ANDROID_HOME/ndk/27.0.12077973" >> $GITHUB_ENV
-          echo "$ANDROID_HOME/ndk/27.0.12077973/toolchains/llvm/prebuilt/linux-x86_64/bin" >> $GITHUB_PATH
-          echo "CC_aarch64_linux_android=aarch64-linux-android21-clang" >> $GITHUB_ENV
-          echo "CXX_aarch64_linux_android=aarch64-linux-android21-clang++" >> $GITHUB_ENV
-          echo "AR_aarch64_linux_android=llvm-ar" >> $GITHUB_ENV
-          echo "CARGO_TARGET_AARCH64_LINUX_ANDROID_LINKER=aarch64-linux-android21-clang" >> $GITHUB_ENV
-          echo "✅ Android NDK configured"
+      # - name: Configure Android NDK environment
+      #   if: matrix.platform == 'ubuntu-latest'
+      #   shell: bash
+      #   run: |
+      #     # Tauri 需要 NDK_HOME 环境变量
+      #     echo "NDK_HOME=$ANDROID_HOME/ndk/27.0.12077973" >> $GITHUB_ENV
+      #     echo "ANDROID_NDK_HOME=$ANDROID_HOME/ndk/27.0.12077973" >> $GITHUB_ENV
+      #     echo "$ANDROID_HOME/ndk/27.0.12077973/toolchains/llvm/prebuilt/linux-x86_64/bin" >> $GITHUB_PATH
+      #     echo "CC_aarch64_linux_android=aarch64-linux-android21-clang" >> $GITHUB_ENV
+      #     echo "CXX_aarch64_linux_android=aarch64-linux-android21-clang++" >> $GITHUB_ENV
+      #     echo "AR_aarch64_linux_android=llvm-ar" >> $GITHUB_ENV
+      #     echo "CARGO_TARGET_AARCH64_LINUX_ANDROID_LINKER=aarch64-linux-android21-clang" >> $GITHUB_ENV
+      #     echo "✅ Android NDK configured"
 
-      - name: Setup Android signing
-        if: matrix.platform == 'ubuntu-latest'
-        shell: bash
-        run: |
-          cd src-tauri/gen/android
-          echo "keyAlias=${{ secrets.ANDROID_KEY_ALIAS }}" > keystore.properties
-          echo "password=${{ secrets.ANDROID_KEY_PASSWORD }}" >> keystore.properties
-          base64 -d <<< "${{ secrets.ANDROID_KEY_BASE64 }}" > $RUNNER_TEMP/keystore.jks
-          echo "storeFile=$RUNNER_TEMP/keystore.jks" >> keystore.properties
-          
-          echo "✅ Android signing configured"
-          cat keystore.properties | sed 's/password=.*/password=***/'
+      # - name: Setup Android signing
+      #   if: matrix.platform == 'ubuntu-latest'
+      #   shell: bash
+      #   run: |
+      #     cd src-tauri/gen/android
+      #     echo "keyAlias=${{ secrets.ANDROID_KEY_ALIAS }}" > keystore.properties
+      #     echo "password=${{ secrets.ANDROID_KEY_PASSWORD }}" >> keystore.properties
+      #     base64 -d <<< "${{ secrets.ANDROID_KEY_BASE64 }}" > $RUNNER_TEMP/keystore.jks
+      #     echo "storeFile=$RUNNER_TEMP/keystore.jks" >> keystore.properties
+      #     
+      #     echo "✅ Android signing configured"
+      #     cat keystore.properties | sed 's/password=.*/password=***/'
 
       - name: Set environment variables for build
         shell: bash
         run: |
           echo "VITE_API_BASE_URL=${{ secrets.VITE_API_BASE_URL || 'http://localhost:5678' }}" >> $GITHUB_ENV
+          echo "VITE_PWA_PROMPT_ENABLED=false" >> $GITHUB_ENV
           echo "✅ Set VITE_API_BASE_URL for build process"
+          echo "✅ Set VITE_PWA_PROMPT_ENABLED=false (PWA disabled for production builds)"
 
       - name: Get version from package.json
         id: get_version
@@ -190,29 +194,29 @@ jobs:
           echo "- **macOS (Apple Silicon)**: 下载包含 \`aarch64\` 的 \`.dmg\` 或 \`.app.tar.gz\` 文件" >> $GITHUB_OUTPUT
           echo "- **macOS (Intel)**: 下载包含 \`x64\` 的 \`.dmg\` 或 \`.app.tar.gz\` 文件" >> $GITHUB_OUTPUT
           echo "- **Windows**: 下载 \`.msi\` 或 \`.exe\` 安装文件" >> $GITHUB_OUTPUT
-          echo "- **Android**: 下载 \`.apk\` 文件" >> $GITHUB_OUTPUT
           echo "" >> $GITHUB_OUTPUT
           echo "### 🔄 自动更新" >> $GITHUB_OUTPUT
           echo "" >> $GITHUB_OUTPUT
           echo "如果您已安装旧版本，应用会自动检测并提示更新。" >> $GITHUB_OUTPUT
           echo "EOF" >> $GITHUB_OUTPUT
 
-      # Android 使用 Tauri 的 android build 命令（仅 ARM64）
-      - name: Build Android APK
-        if: matrix.platform == 'ubuntu-latest'
-        shell: bash
-        env:
-          VITE_API_BASE_URL: ${{ secrets.VITE_API_BASE_URL || 'http://localhost:5678' }}
-        run: |
-          echo "🤖 Building Android APK (ARM64 only)..."
-          # --ci: 非交互模式，跳过提示
-          # --apk: 构建 APK 文件
-          # --target: 只构建 ARM64 架构（现代 Android 设备）
-          bun tauri android build --ci --apk --target aarch64
-          
-          echo "✅ Android APK built successfully"
-          echo "📦 Generated APK files:"
-          find src-tauri/gen/android/app/build/outputs/apk -name "*.apk" -type f -exec ls -lh {} \;
+      # Android 构建已屏蔽
+      # - name: Build Android APK
+      #   if: matrix.platform == 'ubuntu-latest'
+      #   shell: bash
+      #   env:
+      #     VITE_API_BASE_URL: ${{ secrets.VITE_API_BASE_URL || 'http://localhost:5678' }}
+      #     VITE_PWA_PROMPT_ENABLED: false
+      #   run: |
+      #     echo "🤖 Building Android APK (ARM64 only)..."
+      #     # --ci: 非交互模式，跳过提示
+      #     # --apk: 构建 APK 文件
+      #     # --target: 只构建 ARM64 架构（现代 Android 设备）
+      #     bun tauri android build --ci --apk --target aarch64
+      #     
+      #     echo "✅ Android APK built successfully"
+      #     echo "📦 Generated APK files:"
+      #     find src-tauri/gen/android/app/build/outputs/apk -name "*.apk" -type f -exec ls -lh {} \;
 
       # 桌面平台使用 tauri-action（构建 + 生成 updater JSON，但不发布）
       - uses: tauri-apps/tauri-action@v0
@@ -223,6 +227,7 @@ jobs:
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
           # Vite 环境变量 - 构建时注入
           VITE_API_BASE_URL: ${{ secrets.VITE_API_BASE_URL || 'http://localhost:5678' }}
+          VITE_PWA_PROMPT_ENABLED: false
         with:
           tagName: ${{ steps.get_version.outputs.tag_name }}
           releaseName: 'Watch Monkey ${{ steps.get_version.outputs.tag_name }}'
@@ -336,7 +341,6 @@ jobs:
           echo "- **macOS (Apple Silicon)**: 下载包含 \`aarch64\` 的 \`.dmg\` 或 \`.app.tar.gz\` 文件" >> $GITHUB_OUTPUT
           echo "- **macOS (Intel)**: 下载包含 \`x64\` 的 \`.dmg\` 或 \`.app.tar.gz\` 文件" >> $GITHUB_OUTPUT
           echo "- **Windows**: 下载 \`.msi\` 或 \`.exe\` 安装文件" >> $GITHUB_OUTPUT
-          echo "- **Android**: 下载 \`.apk\` 文件" >> $GITHUB_OUTPUT
           echo "" >> $GITHUB_OUTPUT
           echo "### 🔄 自动更新" >> $GITHUB_OUTPUT
           echo "" >> $GITHUB_OUTPUT

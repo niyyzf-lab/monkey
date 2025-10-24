@@ -5,6 +5,12 @@ export type { DeviceInfo, DeviceType } from './use-device-detect'
 // 视口高度
 export { useViewportHeight, useSafeViewportHeight } from './use-viewport-height'
 
+// PWA
+export { usePWA } from './use-pwa'
+export type { UsePWAReturn } from './use-pwa'
+export { useWindowControlsOverlay } from './use-window-controls-overlay'
+export type { UseWindowControlsOverlayReturn } from './use-window-controls-overlay'
+
 // 其他 hooks
 export { useHeaderCollapse } from './use-header-collapse'
 export { useHoldingsFilter } from './use-holdings-filter'

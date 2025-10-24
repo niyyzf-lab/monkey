@@ -415,6 +415,30 @@
   app-region: inherit;
 }
 
+/* PWA 窗口控件覆盖 - 自定义标题栏样式 */
+/* 参考: https://learn.microsoft.com/zh-cn/microsoft-edge/progressive-web-apps/how-to/window-controls-overlay */
+.custom-title-bar {
+  /* 使用 CSS 环境变量定位标题栏区域 */
+  position: fixed;
+  left: env(titlebar-area-x, 0);
+  top: env(titlebar-area-y, 0);
+  height: env(titlebar-area-height, 50px);
+  width: env(titlebar-area-width, 100%);
+  
+  /* 设置为可拖动区域 */
+  -webkit-app-region: drag;
+  app-region: drag;
+}
+
+/* 标题栏内的交互元素不可拖动 */
+.custom-title-bar button,
+.custom-title-bar a,
+.custom-title-bar input,
+.custom-title-bar [data-no-drag] {
+  -webkit-app-region: no-drag;
+  app-region: no-drag;
+}
+
 /* Markdown 表格样式优化 */
 .markdown-content {
   /* 确保表格不会撑破容器 */

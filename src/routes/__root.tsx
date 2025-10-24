@@ -14,6 +14,7 @@ import { useViewportHeight } from '../hooks/use-viewport-height'
 import { UpdaterProvider } from '../components/updater'
 import { useDeviceDetect } from '../hooks/use-device-detect'
 import { MobileBottomNav } from '../components/common/mobile-bottom-nav'
+import { PWAPrompt } from '../components/common/pwa-prompt'
 
 export const Route = createRootRoute({
   component: RootLayout,
@@ -176,6 +177,9 @@ function RootLayoutContent() {
 
         {/* 移动端底部导航 */}
         <MobileBottomNav />
+        
+        {/* PWA 安装和更新提示 */}
+        <PWAPrompt />
       </motion.div>
   )
 }
