@@ -29,47 +29,51 @@ const SettingsIndexRoute = SettingsIndexRouteImport.update({
   id: '/settings/',
   path: '/settings/',
   getParentRoute: () => rootRouteImport,
-} as any)
+} as any).lazy(() =>
+  import('./routes/settings/index.lazy').then((d) => d.Route),
+)
 const PickIndexRoute = PickIndexRouteImport.update({
   id: '/pick/',
   path: '/pick/',
   getParentRoute: () => rootRouteImport,
-} as any)
+} as any).lazy(() => import('./routes/pick/index.lazy').then((d) => d.Route))
 const MindIndexRoute = MindIndexRouteImport.update({
   id: '/mind/',
   path: '/mind/',
   getParentRoute: () => rootRouteImport,
-} as any)
+} as any).lazy(() => import('./routes/mind/index.lazy').then((d) => d.Route))
 const HoldIndexRoute = HoldIndexRouteImport.update({
   id: '/hold/',
   path: '/hold/',
   getParentRoute: () => rootRouteImport,
-} as any)
+} as any).lazy(() => import('./routes/hold/index.lazy').then((d) => d.Route))
 const FeelIndexRoute = FeelIndexRouteImport.update({
   id: '/feel/',
   path: '/feel/',
   getParentRoute: () => rootRouteImport,
-} as any)
+} as any).lazy(() => import('./routes/feel/index.lazy').then((d) => d.Route))
 const DataIndexRoute = DataIndexRouteImport.update({
   id: '/data/',
   path: '/data/',
   getParentRoute: () => rootRouteImport,
-} as any)
+} as any).lazy(() => import('./routes/data/index.lazy').then((d) => d.Route))
 const ChatIndexRoute = ChatIndexRouteImport.update({
   id: '/chat/',
   path: '/chat/',
   getParentRoute: () => rootRouteImport,
-} as any)
+} as any).lazy(() => import('./routes/chat/index.lazy').then((d) => d.Route))
 const HoldStockCodeRoute = HoldStockCodeRouteImport.update({
   id: '/hold/$stockCode',
   path: '/hold/$stockCode',
   getParentRoute: () => rootRouteImport,
-} as any)
+} as any).lazy(() =>
+  import('./routes/hold/$stockCode.lazy').then((d) => d.Route),
+)
 const DataTagsRoute = DataTagsRouteImport.update({
   id: '/data/tags',
   path: '/data/tags',
   getParentRoute: () => rootRouteImport,
-} as any)
+} as any).lazy(() => import('./routes/data/tags.lazy').then((d) => d.Route))
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
