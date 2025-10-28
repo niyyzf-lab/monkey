@@ -41,47 +41,6 @@ export default defineConfig(async () => ({
   
   // 构建优化配置
   build: {
-    rollupOptions: {
-      output: {
-        // 手动分块策略 - 将大型依赖库分离以优化加载性能
-        manualChunks: (id) => {
-          // 图表库分块
-          if (id.includes('lightweight-charts') || id.includes('recharts')) {
-            return 'vendor-charts';
-          }
-          // 3D 渲染库分块
-          if (id.includes('cobe') || id.includes('ogl')) {
-            return 'vendor-3d';
-          }
-          // 流程图库分块
-          if (id.includes('@xyflow/react')) {
-            return 'vendor-flow';
-          }
-          // Radix UI 组件库分块
-          if (id.includes('@radix-ui')) {
-            return 'vendor-ui';
-          }
-          // React 核心库分块
-          if (id.includes('node_modules/react') || 
-              id.includes('node_modules/react-dom') || 
-              id.includes('node_modules/@tanstack/react-router')) {
-            return 'vendor-core';
-          }
-          // framer-motion 动画库分块
-          if (id.includes('motion')) {
-            return 'vendor-motion';
-          }
-          // Markdown 相关库分块
-          if (id.includes('react-markdown') || id.includes('remark')) {
-            return 'vendor-markdown';
-          }
-          // 其他工具库分块
-          if (id.includes('node_modules')) {
-            return 'vendor-utils';
-          }
-        },
-      },
-    },
     // 调整分块大小警告阈值
     chunkSizeWarningLimit: 1000,
   },
