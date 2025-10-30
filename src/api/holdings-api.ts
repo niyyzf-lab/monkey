@@ -34,6 +34,7 @@ export async function fetchStats(): Promise<HoldingsStatistics> {
       totalEquity: safeParseNumber(data.total_equity),
       unrealizedPnl: safeParseNumber(data.unrealized_pnl),
       realizedPnl: safeParseNumber(data.realized_pnl),
+      totalPnl: safeParseNumber(data.total_pnl),
       todayProfitLoss: safeParseNumber(data.today_profit_loss),
       maxEquity: safeParseNumber(data.max_equity),
       maxDrawdownAmount: safeParseNumber(data.max_drawdown_amount),

@@ -32,8 +32,8 @@ export function StatisticsCards({ statistics, displayMode }: StatisticsCardsProp
     return () => observer.disconnect();
   }, []);
   
-  // 计算总盈亏（总资产 - 初始资金）
-  const totalProfitLoss = statistics.totalEquity - statistics.initialCapital;
+  // 使用接口返回的总盈亏，如果没有则使用已实现盈亏 + 未实现盈亏作为后备
+  const totalProfitLoss = statistics.totalPnl ?? (statistics.realizedPnl + statistics.unrealizedPnl);
   const totalProfitLossRatio = statistics.initialCapital > 0
     ? ((totalProfitLoss / statistics.initialCapital) * 100).toFixed(2)
     : '0.00';

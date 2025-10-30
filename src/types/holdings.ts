@@ -172,6 +172,8 @@ export interface HoldingsStatistics {
   unrealizedPnl: number;
   /** 已实现盈亏（已卖出股票的盈亏） */
   realizedPnl: number;
+  /** 总盈亏（已实现盈亏 + 未实现盈亏） */
+  totalPnl?: number;
   /** 今日盈亏 */
   todayProfitLoss: number;
   /** 最大资产 */
