@@ -32,24 +32,34 @@ export function StatisticsCards({ statistics, displayMode }: StatisticsCardsProp
     return () => observer.disconnect();
   }, []);
   
-  // 使用接口返回的总盈亏，如果没有则使用已实现盈亏 + 未实现盈亏作为后备
-  const totalProfitLoss = statistics.totalPnl ?? (statistics.realizedPnl + statistics.unrealizedPnl);
-  const totalProfitLossRatio = statistics.initialCapital > 0
-    ? ((totalProfitLoss / statistics.initialCapital) * 100).toFixed(2)
-    : '0.00';
+  // 总盈亏：接口未返回时明确报错
+  const totalProfitLoss = statistics.totalPnl;
+  let profitLossDisplay: { value: string | number; unit: string };
+
+  if (totalProfitLoss === undefined || totalProfitLoss === null || isNaN(totalProfitLoss)) {
+    profitLossDisplay = { value: '数据缺失', unit: '' };
+  } else {
+    profitLossDisplay = formatCurrencyValue(totalProfitLoss);
+  }
+
+  const totalProfitLossRatio = (totalProfitLoss === undefined || totalProfitLoss === null || isNaN(totalProfitLoss) || statistics.initialCapital <= 0)
+    ? '—'
+    : ((totalProfitLoss / statistics.initialCapital) * 100).toFixed(2);
+  
+  // 判断总盈亏是否盈利（仅在 totalProfitLoss 存在时）
+  const isValidTotalProfitLoss = totalProfitLoss !== undefined && totalProfitLoss !== null && !isNaN(totalProfitLoss);
+  const isProfitable = isValidTotalProfitLoss && totalProfitLoss >= 0;
   
   // 计算今日盈亏比率
   const todayProfitLossRatio = statistics.totalEquity > 0
     ? ((statistics.todayProfitLoss / statistics.totalEquity) * 100).toFixed(2)
     : '0.00';
   
-  const isProfitable = totalProfitLoss >= 0;
   const isTodayProfitable = statistics.todayProfitLoss >= 0;
   
   // 智能模式格式化 - 四个主要卡片
   const marketValue = formatCurrencyValue(statistics.marketValue);
   const investedCost = formatCurrencyValue(statistics.investedCost);
-  const profitLoss = formatCurrencyValue(totalProfitLoss);
   const todayProfitLoss = formatCurrencyValue(statistics.todayProfitLoss);
   
   // 次要信息格式化
@@ -61,19 +71,19 @@ export function StatisticsCards({ statistics, displayMode }: StatisticsCardsProp
   // 元模式格式化
   const marketValueYuan = { value: Math.round(statistics.marketValue * 100) / 100, unit: '元' };
   const investedCostYuan = { value: Math.round(statistics.investedCost * 100) / 100, unit: '元' };
-  const profitLossYuan = { value: Math.round(totalProfitLoss * 100) / 100, unit: '元' };
   const todayProfitLossYuan = { value: Math.round(statistics.todayProfitLoss * 100) / 100, unit: '元' };
   
   // 根据模式选择显示的值
   const displayMarketValue = displayMode === 'yuan' ? marketValueYuan : marketValue;
   const displayInvestedCost = displayMode === 'yuan' ? investedCostYuan : investedCost;
-  const displayProfitLoss = displayMode === 'yuan' ? profitLossYuan : profitLoss;
   const displayTodayProfitLoss = displayMode === 'yuan' ? todayProfitLossYuan : todayProfitLoss;
   
   // 格式化详细信息用于 Tooltip
   const marketValueDetail = formatCurrencyDetail(statistics.marketValue);
   const investedCostDetail = formatCurrencyDetail(statistics.investedCost);
-  const profitLossDetail = formatCurrencyDetail(totalProfitLoss);
+  const profitLossDetail = isValidTotalProfitLoss 
+    ? formatCurrencyDetail(totalProfitLoss)
+    : { line1: '接口未返回总盈亏', line2: '请检查数据源' };
   const todayProfitLossDetail = formatCurrencyDetail(statistics.todayProfitLoss);
   const totalEquityDetail = formatCurrencyDetail(statistics.totalEquity);
   const currentCashDetail = formatCurrencyDetail(statistics.currentCash);
@@ -138,7 +148,10 @@ export function StatisticsCards({ statistics, displayMode }: StatisticsCardsProp
             <div className="text-xs opacity-80 mt-0.5">{marketValueDetail.line2}</div>
             <div className="mt-1.5 pt-1.5 border-t border-border/30">
               <div className="text-xs opacity-90">总资产: {totalEquityDetail.line1}</div>
-              <div className="text-[10px] opacity-70 mt-0.5">现金: {currentCashDetail.line1}</div>
+              <div className="text-[10px] opacity-70 mt-0.5">可用现金: {currentCashDetail.line1}</div>
+              {statistics.frozenCash !== undefined && statistics.frozenCash > 0 && (
+                <div className="text-[10px] opacity-70 mt-0.5">冻结资金: ¥{formatCurrencyDetail(statistics.frozenCash).line1}</div>
+              )}
             </div>
           </div>
         </TooltipContent>
@@ -181,13 +194,21 @@ export function StatisticsCards({ statistics, displayMode }: StatisticsCardsProp
                 />
               </div>
               
-              {/* 次要信息：当前现金 - 紧凑排列 */}
+              {/* 次要信息：当前现金和冻结资金 - 同一行显示 */}
               <div className="mt-auto pt-1.5 border-t border-border/20 dark:border-border/15">
-                <div className="flex items-center justify-between text-[8px]">
-                  <span className="text-muted-foreground/60">当前现金</span>
-                  <span className="font-semibold text-foreground/70 tabular-nums">
-                    ¥{currentCash.value.toLocaleString('en-US', { maximumFractionDigits: 2 })}{currentCash.unit}
-                  </span>
+                <div className="flex items-center justify-between gap-2 text-[8px]">
+                  <div className="flex items-center gap-1 min-w-0">
+                    <span className="text-muted-foreground/60 whitespace-nowrap">当前现金</span>
+                    <span className="font-semibold text-foreground/70 tabular-nums truncate">
+                      ¥{currentCash.value.toLocaleString('en-US', { maximumFractionDigits: 2 })}{currentCash.unit}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-1 min-w-0">
+                    <span className="text-muted-foreground/60 whitespace-nowrap">冻结</span>
+                    <span className="font-semibold text-foreground/50 tabular-nums truncate">
+                      ¥{formatCurrencyValue(statistics.frozenCash ?? 0).value.toLocaleString('en-US', { maximumFractionDigits: 2 })}{formatCurrencyValue(statistics.frozenCash ?? 0).unit}
+                    </span>
+                  </div>
                 </div>
               </div>
             </ClickSpark>
@@ -198,7 +219,10 @@ export function StatisticsCards({ statistics, displayMode }: StatisticsCardsProp
             <div className="font-semibold">{investedCostDetail.line1}</div>
             <div className="text-xs opacity-80 mt-0.5">{investedCostDetail.line2}</div>
             <div className="mt-1.5 pt-1.5 border-t border-border/30">
-              <div className="text-xs opacity-90">当前现金: {currentCashDetail.line1}</div>
+              <div className="text-xs opacity-90">可用现金: {currentCashDetail.line1}</div>
+              {statistics.frozenCash !== undefined && statistics.frozenCash > 0 && (
+                <div className="text-xs opacity-90 mt-0.5">冻结资金: ¥{formatCurrencyDetail(statistics.frozenCash).line1}</div>
+              )}
             </div>
           </div>
         </TooltipContent>
@@ -213,8 +237,8 @@ export function StatisticsCards({ statistics, displayMode }: StatisticsCardsProp
             transition={{ duration: 0.3, delay: 0.15 }}
             whileHover={{ y: -2 }}
             className={`@[1200px]:col-span-2 rounded-xl p-2.5 border transition-all duration-300 cursor-pointer min-w-0 flex flex-col ${
-              isProfitable 
-                ? 'bg-red-50 dark:bg-red-600/90 border-red-200/40 dark:border-red-500/20 shadow-[0_1px_3px_rgba(220,38,38,0.08),0_1px_2px_rgba(220,38,38,0.04)] hover:shadow-[0_4px_12px_rgba(220,38,38,0.12),0_2px_4px_rgba(220,38,38,0.06)]' 
+              isProfitable
+                ? 'bg-red-50 dark:bg-red-600/90 border-red-200/40 dark:border-red-500/20 shadow-[0_1px_3px_rgba(220,38,38,0.08),0_1px_2px_rgba(220,38,38,0.04)] hover:shadow-[0_4px_12px_rgba(220,38,38,0.12),0_2px_4px_rgba(220,38,38,0.06)]'
                 : 'bg-green-50 dark:bg-green-600/90 border-green-200/40 dark:border-green-500/20 shadow-[0_1px_3px_rgba(22,163,74,0.08),0_1px_2px_rgba(22,163,74,0.04)] hover:shadow-[0_4px_12px_rgba(22,163,74,0.12),0_2px_4px_rgba(22,163,74,0.06)]'
             }`}
           >
@@ -225,79 +249,91 @@ export function StatisticsCards({ statistics, displayMode }: StatisticsCardsProp
               sparkCount={8}
               duration={400}
             >
-            <div className="flex items-start justify-between mb-1.5">
-              <div className={`text-[9px] font-medium uppercase tracking-wide ${
-                isProfitable ? 'text-red-600/70 dark:text-red-50/80' : 'text-green-600/70 dark:text-green-50/80'
-              }`}>总盈亏</div>
-              {isProfitable ? (
-                <TrendingUp className="h-3 w-3 text-red-600 dark:text-red-50 shrink-0" />
-              ) : (
-                <TrendingDown className="h-3 w-3 text-green-600 dark:text-green-50 shrink-0" />
-              )}
-            </div>
-            <div className="flex items-center justify-between gap-2 mb-1">
-              <div className="min-w-0">
-                <div className={`text-lg font-bold tabular-nums flex items-baseline gap-1 ${
-                  isProfitable ? 'text-red-700 dark:text-white' : 'text-green-700 dark:text-white'
-                }`}>
-                  <FloatingText
-                    text={`${isProfitable ? '+' : ''}${displayProfitLoss.value.toLocaleString('en-US', { maximumFractionDigits: 2 })}`}
-                    staggerDuration={0.035}
-                  />
-                  <FloatingText
-                    text={displayProfitLoss.unit}
-                    className={`text-sm font-normal ${
-                      isProfitable ? 'text-red-600 dark:text-red-100' : 'text-green-600 dark:text-green-100'
-                    }`}
-                    staggerDuration={0.025}
-                    animationKey={`${displayMode}-${displayProfitLoss.value}`}
-                  />
-                </div>
-              </div>
-              <Badge 
-                className={`h-5 px-1.5 text-[10px] font-bold tabular-nums shrink-0 ${
-                  isProfitable 
-                    ? 'bg-red-600 hover:bg-red-700 text-white dark:bg-red-800 dark:hover:bg-red-900 dark:text-red-50' 
-                    : 'bg-green-600 hover:bg-green-700 text-white dark:bg-green-800 dark:hover:bg-green-900 dark:text-green-50'
-                }`}
-              >
+              <div className="flex items-start justify-between mb-1.5">
+                <div className={`text-[9px] font-medium uppercase tracking-wide ${
+                  isProfitable ? 'text-red-600/70 dark:text-red-50/80' : 'text-green-600/70 dark:text-green-50/80'
+                }`}>总盈亏</div>
                 {isProfitable ? (
-                  <TrendingUp className="h-2.5 w-2.5 mr-0.5 inline" />
+                  <TrendingUp className="h-3 w-3 text-red-600 dark:text-red-50 shrink-0" />
                 ) : (
-                  <TrendingDown className="h-2.5 w-2.5 mr-0.5 inline" />
+                  <TrendingDown className="h-3 w-3 text-green-600 dark:text-green-50 shrink-0" />
                 )}
-                {isProfitable ? '+' : ''}{totalProfitLossRatio}%
-              </Badge>
-            </div>
-            
-            {/* 次要信息：已实现盈亏和未实现盈亏 - 重新布局为单行 */}
-            <div className="mt-auto pt-1.5 border-t border-white/20 dark:border-white/10 flex items-center justify-between text-[8px]">
-              <div className="flex items-center gap-3">
-                <div className="flex items-center gap-1">
-                  <span className={`${isProfitable ? 'text-red-600/60 dark:text-red-100/60' : 'text-green-600/60 dark:text-green-100/60'}`}>已实现</span>
-                  <span className={`font-semibold tabular-nums ${isProfitable ? 'text-red-700 dark:text-red-50' : 'text-green-700 dark:text-green-50'}`}>
-                    ¥{realizedPnl.value.toLocaleString('en-US', { maximumFractionDigits: 2 })}{realizedPnl.unit}
-                  </span>
-                </div>
-                <div className="flex items-center gap-1">
-                  <span className={`${isProfitable ? 'text-red-600/60 dark:text-red-100/60' : 'text-green-600/60 dark:text-green-100/60'}`}>未实现</span>
-                  <span className={`font-semibold tabular-nums ${isProfitable ? 'text-red-700 dark:text-red-50' : 'text-green-700 dark:text-green-50'}`}>
-                    ¥{unrealizedPnl.value.toLocaleString('en-US', { maximumFractionDigits: 2 })}{unrealizedPnl.unit}
-                  </span>
-                </div>
               </div>
-            </div>
+              <div className="flex items-center justify-between gap-2 mb-1">
+                <div className="min-w-0">
+                  <div className={`text-lg font-bold tabular-nums flex items-baseline gap-1 ${
+                    isProfitable ? 'text-red-700 dark:text-white' : 'text-green-700 dark:text-white'
+                  }`}>
+                    {/* 关键显示内容：如果 totalPnl 不存在，直接显示错误提示 */}
+                    {typeof profitLossDisplay.value === 'string' ? (
+                      <span>{profitLossDisplay.value}</span>
+                    ) : (
+                      <>
+                        <FloatingText
+                          text={`${isProfitable ? '+' : ''}${profitLossDisplay.value.toLocaleString('en-US', { maximumFractionDigits: 2 })}`}
+                          staggerDuration={0.035}
+                        />
+                        {profitLossDisplay.unit && (
+                          <FloatingText
+                            text={profitLossDisplay.unit}
+                            className="text-sm font-normal"
+                            staggerDuration={0.025}
+                            animationKey={`${displayMode}-${profitLossDisplay.value}`}
+                          />
+                        )}
+                      </>
+                    )}
+                  </div>
+                </div>
+                <Badge
+                  className={`h-5 px-1.5 text-[10px] font-bold tabular-nums shrink-0 ${
+                    isProfitable
+                      ? 'bg-red-600 hover:bg-red-700 text-white dark:bg-red-800 dark:hover:bg-red-900 dark:text-red-50'
+                      : 'bg-green-600 hover:bg-green-700 text-white dark:bg-green-800 dark:hover:bg-green-900 dark:text-green-50'
+                  }`}
+                >
+                  {isProfitable
+                    ? <TrendingUp className="h-2.5 w-2.5 mr-0.5 inline" />
+                    : <TrendingDown className="h-2.5 w-2.5 mr-0.5 inline" />}
+                  {totalProfitLossRatio}
+                  {totalProfitLossRatio !== '—' && '%'}
+                </Badge>
+              </div>
+              {/* 剩余信息不变 */}
+              {isValidTotalProfitLoss && (
+                <div className="mt-auto pt-1.5 border-t border-white/20 dark:border-white/10 flex items-center justify-between text-[8px]">
+                  <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-1">
+                      <span className={`${isProfitable ? 'text-red-600/60 dark:text-red-100/60' : 'text-green-600/60 dark:text-green-100/60'}`}>已实现</span>
+                      <span className={`font-semibold tabular-nums ${isProfitable ? 'text-red-700 dark:text-red-50' : 'text-green-700 dark:text-green-50'}`}>
+                        ¥{realizedPnl.value.toLocaleString('en-US', { maximumFractionDigits: 2 })}{realizedPnl.unit}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <span className={`${isProfitable ? 'text-red-600/60 dark:text-red-100/60' : 'text-green-600/60 dark:text-green-100/60'}`}>未实现</span>
+                      <span className={`font-semibold tabular-nums ${isProfitable ? 'text-red-700 dark:text-red-50' : 'text-green-700 dark:text-green-50'}`}>
+                        ¥{unrealizedPnl.value.toLocaleString('en-US', { maximumFractionDigits: 2 })}{unrealizedPnl.unit}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              )}
             </ClickSpark>
           </motion.div>
         </TooltipTrigger>
         <TooltipContent>
           <div className="text-center">
-            <div className="font-semibold">{profitLossDetail.line1}</div>
-            <div className="text-xs opacity-80 mt-0.5">{profitLossDetail.line2}</div>
-            <div className="mt-1.5 pt-1.5 border-t border-border/30 text-left">
-              <div className="text-xs opacity-90">已实现盈亏: ¥{formatCurrencyDetail(statistics.realizedPnl).line1}</div>
-              <div className="text-xs opacity-90 mt-0.5">未实现盈亏: ¥{formatCurrencyDetail(statistics.unrealizedPnl).line1}</div>
-            </div>
+            {(totalProfitLoss === undefined || totalProfitLoss === null || isNaN(totalProfitLoss))
+              ? <div className="font-semibold text-red-600">接口未返回总盈亏</div>
+              : <>
+                <div className="font-semibold">{profitLossDetail.line1}</div>
+                <div className="text-xs opacity-80 mt-0.5">{profitLossDetail.line2}</div>
+                <div className="mt-1.5 pt-1.5 border-t border-border/30 text-left">
+                  <div className="text-xs opacity-90">已实现盈亏: ¥{formatCurrencyDetail(statistics.realizedPnl).line1}</div>
+                  <div className="text-xs opacity-90 mt-0.5">未实现盈亏: ¥{formatCurrencyDetail(statistics.unrealizedPnl).line1}</div>
+                </div>
+              </>
+            }
           </div>
         </TooltipContent>
       </Tooltip>

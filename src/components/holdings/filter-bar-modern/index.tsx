@@ -165,17 +165,16 @@ export function FilterBarModern({
               {/* 筛选 + 排序 Popover */}
               <Popover>
                 <PopoverTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className={`h-7 px-2.5 text-xs rounded-lg transition-all duration-200 ${hasActiveFilters ? 'bg-primary/10 dark:bg-primary/15 text-primary border border-primary/30 dark:border-primary/40' : 'border border-transparent hover:bg-muted/80'}`}
+                  <button
+                    type="button"
+                    className={`inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md font-medium transition-all disabled:pointer-events-none disabled:opacity-50 h-7 px-2.5 text-xs ${hasActiveFilters ? 'bg-primary/10 dark:bg-primary/15 text-primary border border-primary/30 dark:border-primary/40' : 'border border-transparent hover:bg-muted/80'}`}
                   >
                     <Filter className="h-3 w-3 mr-1" />
                     {isCompact ? '筛选&排序' : '筛选'}
                     {hasActiveFilters && (
                       <div className="ml-1 w-1.5 h-1.5 bg-primary rounded-full" />
                     )}
-                  </Button>
+                  </button>
                 </PopoverTrigger>
                 <PopoverContent className="w-64 p-3.5 bg-popover rounded-xl border border-border/50" align="start">
                   {/* 排序方式 - 仅在紧凑模式显示 */}
@@ -324,12 +323,11 @@ export function FilterBarModern({
               <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger asChild>
-                      <Button
-                      variant="ghost"
-                      size="sm"
+                      <button
+                      type="button"
                       onClick={onRefresh}
                       disabled={isRefreshing}
-                      className="h-7 px-2 relative rounded-lg border border-transparent hover:bg-muted/80 transition-all duration-200"
+                      className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-lg text-sm font-medium transition-all disabled:pointer-events-none disabled:opacity-50 h-7 px-2 relative border border-transparent hover:bg-muted/80"
                     >
                       <motion.div
                         animate={isRefreshing ? { rotate: 360 } : { rotate: 0 }}
@@ -371,7 +369,7 @@ export function FilterBarModern({
                           }}
                         />
                       )}
-                    </Button>
+                    </button>
                   </TooltipTrigger>
                   <TooltipContent side="bottom">
                     <p className="text-xs">

@@ -28,7 +28,8 @@ export async function fetchStats(): Promise<HoldingsStatistics> {
     return {
       totalStocks: data.total_stocks || 0,
       initialCapital: safeParseNumber(data.initial_capital),
-      currentCash: safeParseNumber(data.current_cash),
+      currentCash: safeParseNumber(data.available_cash),
+      frozenCash: safeParseNumber(data.frozen_cash),
       investedCost: safeParseNumber(data.invested_cost),
       marketValue: safeParseNumber(data.market_value || data.stock_market_value),
       totalEquity: safeParseNumber(data.total_equity),

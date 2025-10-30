@@ -160,8 +160,10 @@ export interface HoldingsStatistics {
   totalStocks: number;
   /** 初始资金 */
   initialCapital: number;
-  /** 当前现金 */
+  /** 可用现金 */
   currentCash: number;
+  /** 冻结资金 */
+  frozenCash?: number;
   /** 投入成本（已投入到股市的金额） */
   investedCost: number;
   /** 持仓市值 */
