@@ -3,11 +3,12 @@ import { AdvancedSystemSettings } from '@/components/settings/advanced-system-se
 import { AppearanceSettings } from '@/components/settings/appearance-settings';
 import { DataSettings } from '@/components/settings/data-settings';
 import { AboutSettings } from '@/components/settings/about-settings';
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '@radix-ui/react-tabs';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { createLazyFileRoute } from '@tanstack/react-router';
 import { Palette, Database, Info, Settings as SettingsIcon } from 'lucide-react';
 import { useState } from 'react';
 import { useSettings } from '@/hooks';
+import { motion, AnimatePresence } from 'framer-motion';
 
 export const Route = createLazyFileRoute('/settings/')({
   component: SettingsPage,
