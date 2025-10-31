@@ -4,11 +4,11 @@ import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
 import { getSystemSettings, updateSystemSetting, SystemSetting } from '@/api/settings-api';
-import { Loader2, Save, RefreshCw, Settings } from 'lucide-react';
+import { Loader2, Save, RefreshCw, Settings, Lock, Unlock } from 'lucide-react';
 import { toast } from 'sonner';
-import { AnimatePresence } from 'framer-motion';
 import { MasonryLayout } from '@/components/common/masonry-layout';
 import { useResponsiveColumns } from '@/hooks/use-responsive-columns';
+import { UnlockConfirmDialog } from './unlock-confirm-dialog';
 
 /**
  * 按类别分组的设置
@@ -49,6 +49,8 @@ export function AdvancedSystemSettings() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState<Record<number, boolean>>({});
   const [editedValues, setEditedValues] = useState<Record<number, string>>({});
+  const [isUnlocked, setIsUnlocked] = useState(false);
+  const [showUnlockDialog, setShowUnlockDialog] = useState(false);
   const columns = useResponsiveColumns(2);
 
   // 加载设置
@@ -93,15 +95,38 @@ export function AdvancedSystemSettings() {
 
   // 处理值变更
   const handleValueChange = (id: number, value: string) => {
+    if (!isUnlocked) {
+      toast.warning('请先解锁才能修改设置');
+      setShowUnlockDialog(true);
+      return;
+    }
     setEditedValues((prev) => ({
       ...prev,
       [id]: value,
     }));
   };
 
+  // 处理解锁确认
+  const handleUnlockConfirm = () => {
+    setIsUnlocked(true);
+    toast.success('已解锁，现在可以修改设置了');
+  };
+
   // 保存单个设置
   const handleSave = async (setting: SystemSetting) => {
+    if (!isUnlocked) {
+      toast.warning('请先解锁才能保存设置');
+      setShowUnlockDialog(true);
+      return;
+    }
+
     const newValue = editedValues[setting.id];
+    
+    // 验证值是否存在
+    if (newValue === undefined || newValue === null) {
+      toast.error('值不能为空');
+      return;
+    }
     
     // 验证值类型
     if (!validateValue(newValue, setting.value_type)) {
@@ -119,12 +144,12 @@ export function AdvancedSystemSettings() {
       setSaving((prev) => ({ ...prev, [setting.id]: true }));
       const updated = await updateSystemSetting(setting.id, newValue);
       
-      // 更新分组数据
+      // 更新分组数据，保持所有字段完整
       setGroupedSettings((prev) => {
         const newGrouped = { ...prev };
         Object.keys(newGrouped).forEach((category) => {
           newGrouped[category] = newGrouped[category].map((s) =>
-            s.id === setting.id ? updated : s
+            s.id === setting.id ? { ...updated } : s
           );
         });
         return newGrouped;
@@ -173,7 +198,10 @@ export function AdvancedSystemSettings() {
   // 渲染设置项
   const renderSettingItem = (setting: SystemSetting) => {
     const isSaving = saving[setting.id] || false;
-    const currentValue = editedValues[setting.id] ?? setting.setting_value;
+    // 优先使用编辑值，如果没有则使用原始值，确保始终有值
+    const currentValue = editedValues[setting.id] !== undefined 
+      ? editedValues[setting.id] 
+      : setting.setting_value;
     const hasChanges = currentValue !== setting.setting_value;
 
     return (
@@ -189,7 +217,7 @@ export function AdvancedSystemSettings() {
               onCheckedChange={(checked) =>
                 handleValueChange(setting.id, String(checked))
               }
-              disabled={!setting.is_editable || isSaving}
+              disabled={!setting.is_editable || isSaving || !isUnlocked}
             />
           ) : (
             <Input
@@ -201,10 +229,11 @@ export function AdvancedSystemSettings() {
                   : 'text'
               }
               step={setting.value_type === 'decimal' ? '0.0001' : undefined}
-              value={currentValue}
+              value={currentValue || ''}
               onChange={(e) => handleValueChange(setting.id, e.target.value)}
-              disabled={!setting.is_editable || isSaving}
+              disabled={!setting.is_editable || isSaving || !isUnlocked}
               className="w-32"
+              placeholder={!isUnlocked ? '已锁定' : undefined}
             />
           )}
           {setting.is_editable && (
@@ -212,7 +241,7 @@ export function AdvancedSystemSettings() {
               size="sm"
               variant="outline"
               onClick={() => handleSave(setting)}
-              disabled={isSaving || !hasChanges}
+              disabled={isSaving || !hasChanges || !isUnlocked}
               className="h-8 gap-1"
             >
               {isSaving ? (
@@ -245,39 +274,80 @@ export function AdvancedSystemSettings() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-lg font-semibold">高级系统设置</h2>
-          <p className="text-sm text-muted-foreground mt-1">
-            管理系统级配置参数，包括交易规则和费用设置
-          </p>
+        <div className="flex items-center gap-3">
+          <div>
+            <div className="flex items-center gap-2">
+              <h2 className="text-lg font-semibold">高级系统设置</h2>
+              {isUnlocked ? (
+                <Unlock className="h-4 w-4 text-green-500" />
+              ) : (
+                <Lock className="h-4 w-4 text-muted-foreground" />
+              )}
+            </div>
+            <p className="text-sm text-muted-foreground mt-1">
+              管理系统级配置参数，包括交易规则和费用设置
+              {!isUnlocked && (
+                <span className="ml-2 text-amber-600 dark:text-amber-400">
+                  （已锁定，需要解锁才能修改）
+                </span>
+              )}
+            </p>
+          </div>
         </div>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={loadSettings}
-          disabled={loading}
-          className="gap-2"
-        >
-          <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-          刷新
-        </Button>
+        <div className="flex items-center gap-2">
+          {!isUnlocked ? (
+            <Button
+              variant="default"
+              size="sm"
+              onClick={() => setShowUnlockDialog(true)}
+              className="gap-2"
+            >
+              <Lock className="h-4 w-4" />
+              解锁编辑
+            </Button>
+          ) : (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setIsUnlocked(false)}
+              className="gap-2"
+            >
+              <Lock className="h-4 w-4" />
+              重新锁定
+            </Button>
+          )}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={loadSettings}
+            disabled={loading}
+            className="gap-2"
+          >
+            <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+            刷新
+          </Button>
+        </div>
       </div>
 
+      <UnlockConfirmDialog
+        open={showUnlockDialog}
+        onOpenChange={setShowUnlockDialog}
+        onConfirm={handleUnlockConfirm}
+      />
+
       <div className="w-full">
-        <AnimatePresence mode="wait">
-          <MasonryLayout columns={columns} gap={24}>
-            {Object.keys(groupedSettings).map((category) => (
-              <SettingsSection
-                key={category}
-                title={categoryNames[category] || category}
-                description={`${categoryNames[category] || category}相关配置`}
-                icon={<Settings className="h-5 w-5" />}
-              >
-                {groupedSettings[category].map(renderSettingItem)}
-              </SettingsSection>
-            ))}
-          </MasonryLayout>
-        </AnimatePresence>
+        <MasonryLayout columns={columns} gap={16}>
+          {Object.keys(groupedSettings).map((category) => (
+            <SettingsSection
+              key={category}
+              title={categoryNames[category] || category}
+              description={`${categoryNames[category] || category}相关配置`}
+              icon={<Settings className="h-5 w-5" />}
+            >
+              {groupedSettings[category].map(renderSettingItem)}
+            </SettingsSection>
+          ))}
+        </MasonryLayout>
       </div>
 
       {Object.keys(groupedSettings).length === 0 && (
