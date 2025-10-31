@@ -2,6 +2,8 @@ import { SettingsSection, SettingsItem } from '@/components/settings';
 import { Switch } from '@/components/ui/switch';
 import { Palette } from 'lucide-react';
 import { toast } from 'sonner';
+import { MasonryLayout } from '@/components/common/masonry-layout';
+import { useResponsiveColumns } from '@/hooks/use-responsive-columns';
 
 interface AppearanceSettingsProps {
   settings: {
@@ -52,9 +54,10 @@ export function AppearanceSettings({
 
   // 是否跟随系统
   const isFollowingSystem = settings.theme === 'system';
+  const columns = useResponsiveColumns(2);
 
   return (
-    <div className="space-y-4">
+    <MasonryLayout columns={columns} gap={24}>
       <SettingsSection
         title="主题设置"
         description="自定义应用的外观和视觉效果"
@@ -168,7 +171,7 @@ export function AppearanceSettings({
           </select>
         </SettingsItem>
       </SettingsSection>
-    </div>
+    </MasonryLayout>
   );
 }
 

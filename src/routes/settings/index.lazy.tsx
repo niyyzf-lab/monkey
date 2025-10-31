@@ -42,30 +42,30 @@ function SettingsPage() {
       />
       
       {/* 全宽布局 */}
-      <div className="w-full pt-8 px-6 pb-6 space-y-6">
+      <div className="w-full pt-6 px-4 pb-6 max-w-[1600px] mx-auto">
         {/* 标签页 */}
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-4 lg:w-auto lg:inline-grid">
-            <TabsTrigger value="appearance" className="gap-2">
-              <Palette className="h-4 w-4" />
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
+          <TabsList className="grid w-full grid-cols-4 lg:w-auto lg:inline-flex bg-muted/30 p-1 h-9">
+            <TabsTrigger value="appearance" className="gap-1.5 px-3 h-7 text-xs font-medium data-[state=active]:bg-background data-[state=active]:shadow-sm">
+              <Palette className="h-3.5 w-3.5" />
               <span className="hidden sm:inline">外观</span>
             </TabsTrigger>
-            <TabsTrigger value="data" className="gap-2">
-              <Database className="h-4 w-4" />
+            <TabsTrigger value="data" className="gap-1.5 px-3 h-7 text-xs font-medium data-[state=active]:bg-background data-[state=active]:shadow-sm">
+              <Database className="h-3.5 w-3.5" />
               <span className="hidden sm:inline">数据</span>
             </TabsTrigger>
-            <TabsTrigger value="system" className="gap-2">
-              <SettingsIcon className="h-4 w-4" />
+            <TabsTrigger value="system" className="gap-1.5 px-3 h-7 text-xs font-medium data-[state=active]:bg-background data-[state=active]:shadow-sm">
+              <SettingsIcon className="h-3.5 w-3.5" />
               <span className="hidden sm:inline">系统</span>
             </TabsTrigger>
-            <TabsTrigger value="about" className="gap-2">
-              <Info className="h-4 w-4" />
+            <TabsTrigger value="about" className="gap-1.5 px-3 h-7 text-xs font-medium data-[state=active]:bg-background data-[state=active]:shadow-sm">
+              <Info className="h-3.5 w-3.5" />
               <span className="hidden sm:inline">关于</span>
             </TabsTrigger>
           </TabsList>
 
           {/* 外观设置 */}
-          <TabsContent value="appearance" className="space-y-4">
+          <TabsContent value="appearance" className="mt-4">
             <AppearanceSettings
               settings={{
                 theme: settings.theme,
@@ -83,7 +83,7 @@ function SettingsPage() {
           </TabsContent>
 
           {/* 数据管理 */}
-          <TabsContent value="data" className="space-y-4">
+          <TabsContent value="data" className="mt-4">
             <DataSettings
               cacheStats={cacheStats}
               refreshCacheStats={refreshCacheStats}
@@ -96,12 +96,12 @@ function SettingsPage() {
           </TabsContent>
 
           {/* 系统设置 */}
-          <TabsContent value="system" className="space-y-4">
+          <TabsContent value="system" className="mt-4">
             <AdvancedSystemSettings />
           </TabsContent>
 
           {/* 关于 */}
-          <TabsContent value="about" className="space-y-4">
+          <TabsContent value="about" className="mt-4">
             <AboutSettings />
           </TabsContent>
         </Tabs>

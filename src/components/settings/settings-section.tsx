@@ -18,24 +18,25 @@ export function SettingsSection({
   className,
 }: SettingsSectionProps) {
   return (
-    <Card className={cn('p-6 space-y-4', className)}>
-      <div className="flex items-start gap-3">
+    <Card className={cn('p-4 border border-border/50 bg-card shadow-sm', className)}>
+      <div className="flex items-start gap-3 mb-3">
         {icon && (
-          <div className="flex-shrink-0 mt-0.5 text-primary">
+          <div className="flex-shrink-0 mt-0.5 text-muted-foreground">
             {icon}
           </div>
         )}
         <div className="flex-1 min-w-0">
-          <h3 className="text-lg font-semibold text-foreground">{title}</h3>
+          <h3 className="text-sm font-semibold text-foreground leading-tight">{title}</h3>
           {description && (
-            <p className="text-sm text-muted-foreground mt-1">{description}</p>
+            <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">{description}</p>
           )}
         </div>
       </div>
-      <div className="space-y-4">
+      <div className="space-y-2">
         {children}
       </div>
     </Card>
   );
 }
+
 

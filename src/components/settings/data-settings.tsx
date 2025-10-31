@@ -4,6 +4,8 @@ import { API_BASE_URL } from '@/api/api';
 import { Wifi, Loader2, WifiOff, Check, AlertCircle, RefreshCw, Download, Upload, Trash2, RotateCcw, Database } from 'lucide-react';
 import { useState, useRef } from 'react';
 import { toast } from 'sonner';
+import { MasonryLayout } from '@/components/common/masonry-layout';
+import { useResponsiveColumns } from '@/hooks/use-responsive-columns';
 
 interface DataSettingsProps {
   cacheStats: {
@@ -155,8 +157,10 @@ export function DataSettings({
     }
   };
 
+  const columns = useResponsiveColumns(2);
+
   return (
-    <div className="space-y-4">
+    <MasonryLayout columns={columns} gap={24}>
       <SettingsSection
         title="服务器连接"
         description="测试与后端服务器的连接状态"
@@ -319,6 +323,6 @@ export function DataSettings({
           </div>
         </div>
       </SettingsSection>
-    </div>
+    </MasonryLayout>
   );
 }

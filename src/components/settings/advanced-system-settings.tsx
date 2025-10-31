@@ -6,7 +6,9 @@ import { Button } from '@/components/ui/button';
 import { getSystemSettings, updateSystemSetting, SystemSetting } from '@/api/settings-api';
 import { Loader2, Save, RefreshCw, Settings } from 'lucide-react';
 import { toast } from 'sonner';
-import { AnimatePresence, motion } from 'framer-motion';
+import { AnimatePresence } from 'framer-motion';
+import { MasonryLayout } from '@/components/common/masonry-layout';
+import { useResponsiveColumns } from '@/hooks/use-responsive-columns';
 
 /**
  * 按类别分组的设置
@@ -47,6 +49,7 @@ export function AdvancedSystemSettings() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState<Record<number, boolean>>({});
   const [editedValues, setEditedValues] = useState<Record<number, string>>({});
+  const columns = useResponsiveColumns(2);
 
   // 加载设置
   const loadSettings = async () => {
@@ -126,6 +129,12 @@ export function AdvancedSystemSettings() {
         });
         return newGrouped;
       });
+
+      // 更新编辑值，确保保存后值同步
+      setEditedValues((prev) => ({
+        ...prev,
+        [setting.id]: updated.setting_value,
+      }));
 
       toast.success('设置已保存');
     } catch (error) {
@@ -254,25 +263,22 @@ export function AdvancedSystemSettings() {
         </Button>
       </div>
 
-      <AnimatePresence>
-        {Object.keys(groupedSettings).map((category) => (
-          <motion.div
-            key={category}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -20 }}
-            transition={{ duration: 0.2 }}
-          >
-            <SettingsSection
-              title={categoryNames[category] || category}
-              description={`${categoryNames[category] || category}相关配置`}
-              icon={<Settings className="h-5 w-5" />}
-            >
-              {groupedSettings[category].map(renderSettingItem)}
-            </SettingsSection>
-          </motion.div>
-        ))}
-      </AnimatePresence>
+      <div className="w-full">
+        <AnimatePresence mode="wait">
+          <MasonryLayout columns={columns} gap={24}>
+            {Object.keys(groupedSettings).map((category) => (
+              <SettingsSection
+                key={category}
+                title={categoryNames[category] || category}
+                description={`${categoryNames[category] || category}相关配置`}
+                icon={<Settings className="h-5 w-5" />}
+              >
+                {groupedSettings[category].map(renderSettingItem)}
+              </SettingsSection>
+            ))}
+          </MasonryLayout>
+        </AnimatePresence>
+      </div>
 
       {Object.keys(groupedSettings).length === 0 && (
         <div className="text-center py-12 text-muted-foreground">
