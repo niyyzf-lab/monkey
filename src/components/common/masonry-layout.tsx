@@ -37,9 +37,16 @@ export function MasonryLayout({
         {children.map((child, index) => (
           <motion.div
             key={index}
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.15, delay: index * 0.03 }}
+            initial={{ opacity: 0, y: 8, scale: 0.96 }}
+            whileInView={{ opacity: 1, y: 0, scale: 1 }}
+            viewport={{ once: true, amount: 0.15 }}
+            transition={{ 
+              type: "spring",
+              stiffness: 350,
+              damping: 35,
+              mass: 0.7,
+              delay: index * 0.04,
+            }}
           >
             {child}
           </motion.div>
@@ -61,9 +68,16 @@ export function MasonryLayout({
             return (
               <motion.div
                 key={globalIndex}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.15, delay: itemIndex * 0.03 }}
+                initial={{ opacity: 0, y: 8, scale: 0.96 }}
+                whileInView={{ opacity: 1, y: 0, scale: 1 }}
+                viewport={{ once: true, amount: 0.15 }}
+                transition={{ 
+                  type: "spring",
+                  stiffness: 350,
+                  damping: 35,
+                  mass: 0.7,
+                  delay: itemIndex * 0.04,
+                }}
                 className="w-full"
               >
                 {item}

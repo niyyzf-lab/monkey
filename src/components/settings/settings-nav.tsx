@@ -85,15 +85,16 @@ export function SettingsNav({ className }: SettingsNavProps) {
                   ? 'text-foreground'
                   : 'text-muted-foreground hover:text-foreground'
               )}
-              whileHover={{ x: -2 }}
-              whileTap={{ scale: 0.95 }}
+              whileHover={{ x: -2, scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              transition={{ type: "spring", stiffness: 350, damping: 35, mass: 0.7 }}
             >
               {isActive && (
                 <motion.div
                   layoutId="activeNavDot"
                   className="absolute left-0 w-1 h-1 bg-foreground rounded-full"
                   initial={false}
-                  transition={{ type: 'spring', stiffness: 500, damping: 30 }}
+                  transition={{ type: 'spring', stiffness: 350, damping: 30, mass: 0.6 }}
                 />
               )}
               <Icon className={cn(

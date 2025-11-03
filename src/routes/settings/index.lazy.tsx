@@ -12,13 +12,6 @@ export const Route = createLazyFileRoute('/settings/')({
   component: SettingsPage,
 });
 
-const sections = [
-  { id: 'appearance', title: '外观设置', subtitle: '自定义应用的外观和视觉效果' },
-  { id: 'data', title: '数据管理', subtitle: '管理本地数据、缓存和配置' },
-  { id: 'system', title: '交易设置', subtitle: '高级交易配置和交易规则' },
-  { id: 'about', title: '关于', subtitle: '应用信息和版本更新' },
-];
-
 function SettingsPage() {
   const {
     settings,
@@ -37,12 +30,7 @@ function SettingsPage() {
   } = useSettings();
 
   return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      transition={{ duration: 0.2 }}
-      className="h-full overflow-y-auto"
-    >
+    <div className="h-full overflow-y-auto">
       {/* 页面标题 - 统一标题栏（浮动） */}
       <UnifiedPageHeader
         title="设置"
@@ -57,18 +45,28 @@ function SettingsPage() {
         {/* 外观设置 */}
         <motion.section
           id="appearance"
-          initial={{ opacity: 0, y: 30 }}
-          animate={{ opacity: 1, y: 0 }}
+          initial={{ opacity: 0, y: 20, scale: 0.96 }}
+          whileInView={{ opacity: 1, y: 0, scale: 1 }}
+          viewport={{ once: true, amount: 0.15 }}
           transition={{ 
-            duration: 0.4,
-            ease: [0.22, 1, 0.36, 1],
+            type: "spring",
+            stiffness: 300,
+            damping: 35,
+            mass: 0.8,
           }}
           className="mb-16 scroll-mt-24"
         >
           <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.3, delay: 0.1 }}
+            initial={{ opacity: 0, y: 8 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ 
+              type: "spring",
+              stiffness: 350,
+              damping: 35,
+              mass: 0.7,
+              delay: 0.08,
+            }}
             className="mb-8"
           >
             <h2 className="text-2xl font-semibold text-foreground mb-2">外观设置</h2>
@@ -93,19 +91,28 @@ function SettingsPage() {
         {/* 数据管理 */}
         <motion.section
           id="data"
-          initial={{ opacity: 0, y: 30 }}
-          animate={{ opacity: 1, y: 0 }}
+          initial={{ opacity: 0, y: 20, scale: 0.96 }}
+          whileInView={{ opacity: 1, y: 0, scale: 1 }}
+          viewport={{ once: true, amount: 0.15 }}
           transition={{ 
-            duration: 0.4,
-            delay: 0.1,
-            ease: [0.22, 1, 0.36, 1],
+            type: "spring",
+            stiffness: 300,
+            damping: 35,
+            mass: 0.8,
           }}
           className="mb-16 scroll-mt-24"
         >
           <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.3, delay: 0.2 }}
+            initial={{ opacity: 0, y: 8 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ 
+              type: "spring",
+              stiffness: 350,
+              damping: 35,
+              mass: 0.7,
+              delay: 0.08,
+            }}
             className="mb-8"
           >
             <h2 className="text-2xl font-semibold text-foreground mb-2">数据管理</h2>
@@ -125,19 +132,28 @@ function SettingsPage() {
         {/* 交易设置 */}
         <motion.section
           id="system"
-          initial={{ opacity: 0, y: 30 }}
-          animate={{ opacity: 1, y: 0 }}
+          initial={{ opacity: 0, y: 20, scale: 0.96 }}
+          whileInView={{ opacity: 1, y: 0, scale: 1 }}
+          viewport={{ once: true, amount: 0.15 }}
           transition={{ 
-            duration: 0.4,
-            delay: 0.2,
-            ease: [0.22, 1, 0.36, 1],
+            type: "spring",
+            stiffness: 300,
+            damping: 35,
+            mass: 0.8,
           }}
           className="mb-16 scroll-mt-24"
         >
           <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.3, delay: 0.3 }}
+            initial={{ opacity: 0, y: 8 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ 
+              type: "spring",
+              stiffness: 350,
+              damping: 35,
+              mass: 0.7,
+              delay: 0.08,
+            }}
             className="mb-8"
           >
             <h2 className="text-2xl font-semibold text-foreground mb-2">交易设置</h2>
@@ -149,19 +165,28 @@ function SettingsPage() {
         {/* 关于 */}
         <motion.section
           id="about"
-          initial={{ opacity: 0, y: 30 }}
-          animate={{ opacity: 1, y: 0 }}
+          initial={{ opacity: 0, y: 20, scale: 0.96 }}
+          whileInView={{ opacity: 1, y: 0, scale: 1 }}
+          viewport={{ once: true, amount: 0.15 }}
           transition={{ 
-            duration: 0.4,
-            delay: 0.3,
-            ease: [0.22, 1, 0.36, 1],
+            type: "spring",
+            stiffness: 300,
+            damping: 35,
+            mass: 0.8,
           }}
           className="mb-16 scroll-mt-24"
         >
           <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.3, delay: 0.4 }}
+            initial={{ opacity: 0, y: 8 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ 
+              type: "spring",
+              stiffness: 350,
+              damping: 35,
+              mass: 0.7,
+              delay: 0.08,
+            }}
             className="mb-8"
           >
             <h2 className="text-2xl font-semibold text-foreground mb-2">关于</h2>
@@ -170,6 +195,6 @@ function SettingsPage() {
           <AboutSettings />
         </motion.section>
       </div>
-    </motion.div>
+    </div>
   );
 }
