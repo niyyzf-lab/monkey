@@ -6,11 +6,18 @@ import { AboutSettings } from '@/components/settings/about-settings';
 import { SettingsNav } from '@/components/settings/settings-nav';
 import { createLazyFileRoute } from '@tanstack/react-router';
 import { useSettings } from '@/hooks';
-import { motion } from 'framer-motion';
+import { motion } from 'motion/react';
 
 export const Route = createLazyFileRoute('/settings/')({
   component: SettingsPage,
 });
+
+const sections = [
+  { id: 'appearance', title: '外观设置', subtitle: '自定义应用的外观和视觉效果' },
+  { id: 'data', title: '数据管理', subtitle: '管理本地数据、缓存和配置' },
+  { id: 'system', title: '交易设置', subtitle: '高级交易配置和交易规则' },
+  { id: 'about', title: '关于', subtitle: '应用信息和版本更新' },
+];
 
 function SettingsPage() {
   const {
@@ -30,7 +37,12 @@ function SettingsPage() {
   } = useSettings();
 
   return (
-    <div className="h-full overflow-y-auto">
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.2 }}
+      className="h-full overflow-y-auto"
+    >
       {/* 页面标题 - 统一标题栏（浮动） */}
       <UnifiedPageHeader
         title="设置"
@@ -45,15 +57,23 @@ function SettingsPage() {
         {/* 外观设置 */}
         <motion.section
           id="appearance"
-          initial={{ opacity: 0, y: 20 }}
+          initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.3 }}
+          transition={{ 
+            duration: 0.4,
+            ease: [0.22, 1, 0.36, 1],
+          }}
           className="mb-16 scroll-mt-24"
         >
-          <div className="mb-8">
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3, delay: 0.1 }}
+            className="mb-8"
+          >
             <h2 className="text-2xl font-semibold text-foreground mb-2">外观设置</h2>
             <p className="text-sm text-muted-foreground">自定义应用的外观和视觉效果</p>
-          </div>
+          </motion.div>
           <AppearanceSettings
             settings={{
               theme: settings.theme,
@@ -73,15 +93,24 @@ function SettingsPage() {
         {/* 数据管理 */}
         <motion.section
           id="data"
-          initial={{ opacity: 0, y: 20 }}
+          initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.3, delay: 0.05 }}
+          transition={{ 
+            duration: 0.4,
+            delay: 0.1,
+            ease: [0.22, 1, 0.36, 1],
+          }}
           className="mb-16 scroll-mt-24"
         >
-          <div className="mb-8">
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3, delay: 0.2 }}
+            className="mb-8"
+          >
             <h2 className="text-2xl font-semibold text-foreground mb-2">数据管理</h2>
             <p className="text-sm text-muted-foreground">管理本地数据、缓存和配置</p>
-          </div>
+          </motion.div>
           <DataSettings
             cacheStats={cacheStats}
             refreshCacheStats={refreshCacheStats}
@@ -96,33 +125,51 @@ function SettingsPage() {
         {/* 交易设置 */}
         <motion.section
           id="system"
-          initial={{ opacity: 0, y: 20 }}
+          initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.3, delay: 0.1 }}
+          transition={{ 
+            duration: 0.4,
+            delay: 0.2,
+            ease: [0.22, 1, 0.36, 1],
+          }}
           className="mb-16 scroll-mt-24"
         >
-          <div className="mb-8">
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3, delay: 0.3 }}
+            className="mb-8"
+          >
             <h2 className="text-2xl font-semibold text-foreground mb-2">交易设置</h2>
             <p className="text-sm text-muted-foreground">高级交易配置和交易规则</p>
-          </div>
+          </motion.div>
           <AdvancedTradingSettings />
         </motion.section>
 
         {/* 关于 */}
         <motion.section
           id="about"
-          initial={{ opacity: 0, y: 20 }}
+          initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.3, delay: 0.15 }}
+          transition={{ 
+            duration: 0.4,
+            delay: 0.3,
+            ease: [0.22, 1, 0.36, 1],
+          }}
           className="mb-16 scroll-mt-24"
         >
-          <div className="mb-8">
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3, delay: 0.4 }}
+            className="mb-8"
+          >
             <h2 className="text-2xl font-semibold text-foreground mb-2">关于</h2>
             <p className="text-sm text-muted-foreground">应用信息和版本更新</p>
-          </div>
+          </motion.div>
           <AboutSettings />
         </motion.section>
       </div>
-    </div>
+    </motion.div>
   );
 }
