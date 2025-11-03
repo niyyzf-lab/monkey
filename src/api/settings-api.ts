@@ -48,9 +48,20 @@ export async function updateSystemSetting(
   id: number,
   settingValue: string
 ): Promise<SystemSetting> {
-  return put<SystemSetting>('/webhook/api/v1/setting', {
+  const response = await put<SystemSetting | SystemSetting[]>('/webhook/api/v1/setting', {
     id,
     setting_value: settingValue,
   });
+  
+  // 如果返回的是数组，取第一个元素
+  if (Array.isArray(response)) {
+    const updatedSetting = response.find(s => s.id === id);
+    if (!updatedSetting) {
+      throw new Error(`未找到更新后的设置项 (id: ${id})`);
+    }
+    return updatedSetting;
+  }
+  
+  return response;
 }
 

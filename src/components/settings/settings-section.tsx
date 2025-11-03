@@ -1,5 +1,4 @@
 import { ReactNode } from 'react';
-import { Card } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 
 interface SettingsSectionProps {
@@ -18,24 +17,34 @@ export function SettingsSection({
   className,
 }: SettingsSectionProps) {
   return (
-    <Card className={cn('p-4 border border-border/50 bg-card shadow-sm', className)}>
-      <div className="flex items-start gap-3 mb-3">
+    <div className={cn(
+      'group relative',
+      className
+    )}>
+      {/* 标题区域 - 极简线条风格 */}
+      <div className="flex items-start gap-3 mb-6 pb-4 border-b border-border/30">
         {icon && (
-          <div className="flex-shrink-0 mt-0.5 text-muted-foreground">
+          <div className="flex-shrink-0 mt-0.5 text-muted-foreground/60">
             {icon}
           </div>
         )}
         <div className="flex-1 min-w-0">
-          <h3 className="text-sm font-semibold text-foreground leading-tight">{title}</h3>
+          <h3 className="text-base font-semibold text-foreground leading-tight mb-1">
+            {title}
+          </h3>
           {description && (
-            <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">{description}</p>
+            <p className="text-xs text-muted-foreground/80 leading-relaxed">
+              {description}
+            </p>
           )}
         </div>
       </div>
-      <div className="space-y-2">
+
+      {/* 内容区域 - 极简透明背景 */}
+      <div className="space-y-0">
         {children}
       </div>
-    </Card>
+    </div>
   );
 }
 

@@ -4,7 +4,7 @@ import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
 import { getSystemSettings, updateSystemSetting, SystemSetting } from '@/api/settings-api';
-import { Loader2, Save, RefreshCw, Settings, Lock, Unlock } from 'lucide-react';
+import { Loader2, Save, RefreshCw, Lock, Unlock } from 'lucide-react';
 import { toast } from 'sonner';
 import { MasonryLayout } from '@/components/common/masonry-layout';
 import { useResponsiveColumns } from '@/hooks/use-responsive-columns';
@@ -23,6 +23,9 @@ interface GroupedSettings {
 const categoryNames: Record<string, string> = {
   trading_rules: '交易规则',
   fees: '费用设置',
+  risk_control: '风险控制',
+  system: '系统配置',
+  backtest: '回测设置',
 };
 
 /**
@@ -39,12 +42,62 @@ const settingKeyNames: Record<string, string> = {
   stamp_tax_rate: '印花税率',
   stamp_tax_on_buy: '买入时收取印花税',
   stamp_tax_on_sell: '卖出时收取印花税',
+  max_single_position_ratio: '单只股票最大持仓比例',
+  max_daily_loss_ratio: '单日最大亏损比例',
+  max_total_loss_ratio: '总资产最大亏损比例',
+  enable_stop_loss: '是否启用止损功能',
+  enable_take_profit: '是否启用止盈功能',
+  min_cash_reserve_ratio: '最低现金储备比例',
+  currency: '货币单位',
+  currency_symbol: '货币符号',
+  decimal_places_price: '价格小数位数',
+  decimal_places_amount: '金额小数位数',
+  timezone: '时区设置',
+  enable_realtime_quotes: '是否启用实时行情',
+  quote_refresh_interval: '行情刷新间隔',
+  initial_capital: '回测初始资金',
+  slippage_rate: '滑点率',
+  enable_slippage: '是否启用滑点',
+  enable_realistic_fees: '是否使用真实费用',
 };
 
 /**
- * 高级系统设置组件
+ * 设置项描述映射
  */
-export function AdvancedSystemSettings() {
+const settingDescriptions: Record<string, string> = {
+  t_plus_n: 'T+N 交易规则，中国A股为 T+1（当日买入次日才能卖出）',
+  allow_short_selling: '是否允许做空（卖空）',
+  min_buy_quantity: '最小买入数量（A股为100股，即1手）',
+  max_position_count: '最大持仓股票数量',
+  allow_fractional_shares: '是否允许零股交易',
+  commission_rate: '佣金费率',
+  commission_min: '最低佣金',
+  stamp_tax_rate: '印花税率',
+  stamp_tax_on_buy: '买入时收取印花税',
+  stamp_tax_on_sell: '卖出时收取印花税',
+  max_single_position_ratio: '单只股票最大持仓比例（30%）',
+  max_daily_loss_ratio: '单日最大亏损比例（5%）',
+  max_total_loss_ratio: '总资产最大亏损比例（20%）',
+  enable_stop_loss: '是否启用止损功能',
+  enable_take_profit: '是否启用止盈功能',
+  min_cash_reserve_ratio: '最低现金储备比例（10%）',
+  currency: '货币单位',
+  currency_symbol: '货币符号',
+  decimal_places_price: '价格小数位数',
+  decimal_places_amount: '金额小数位数',
+  timezone: '时区设置',
+  enable_realtime_quotes: '是否启用实时行情',
+  quote_refresh_interval: '行情刷新间隔（秒）',
+  initial_capital: '回测初始资金',
+  slippage_rate: '滑点率（0.1%）',
+  enable_slippage: '是否启用滑点',
+  enable_realistic_fees: '是否使用真实费用',
+};
+
+/**
+ * 高级交易设置组件
+ */
+export function AdvancedTradingSettings() {
   const [groupedSettings, setGroupedSettings] = useState<GroupedSettings>({});
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState<Record<number, boolean>>({});
@@ -144,12 +197,12 @@ export function AdvancedSystemSettings() {
       setSaving((prev) => ({ ...prev, [setting.id]: true }));
       const updated = await updateSystemSetting(setting.id, newValue);
       
-      // 更新分组数据，保持所有字段完整
+      // 更新分组数据，保持所有字段完整（保留原始设置的所有属性，只更新返回的字段）
       setGroupedSettings((prev) => {
         const newGrouped = { ...prev };
         Object.keys(newGrouped).forEach((category) => {
           newGrouped[category] = newGrouped[category].map((s) =>
-            s.id === setting.id ? { ...updated } : s
+            s.id === setting.id ? { ...s, ...updated } : s
           );
         });
         return newGrouped;
@@ -207,8 +260,8 @@ export function AdvancedSystemSettings() {
     return (
       <SettingsItem
         key={setting.id}
-        label={settingKeyNames[setting.setting_key] || setting.setting_key}
-        description={setting.description}
+        label={settingKeyNames[setting.setting_key] || setting.setting_key || `设置 #${setting.id}`}
+        description={settingDescriptions[setting.setting_key] || setting.description || ''}
       >
         <div className="flex items-center gap-2">
           {setting.value_type === 'boolean' ? (
@@ -242,17 +295,18 @@ export function AdvancedSystemSettings() {
               variant="outline"
               onClick={() => handleSave(setting)}
               disabled={isSaving || !hasChanges || !isUnlocked}
-              className="h-8 gap-1"
+              className="h-8 gap-1 min-w-[60px]"
+              aria-label={isSaving ? '保存中' : '保存'}
             >
               {isSaving ? (
                 <>
                   <Loader2 className="h-3 w-3 animate-spin" />
-                  保存中
+                  <span>保存中</span>
                 </>
               ) : (
                 <>
                   <Save className="h-3 w-3" />
-                  保存
+                  <span>保存</span>
                 </>
               )}
             </Button>
@@ -273,25 +327,31 @@ export function AdvancedSystemSettings() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <UnlockConfirmDialog
+        open={showUnlockDialog}
+        onOpenChange={setShowUnlockDialog}
+        onConfirm={handleUnlockConfirm}
+      />
+
+      <div className="flex items-center justify-between p-4 bg-muted/20 rounded-lg border border-border/20 mb-6 backdrop-blur-sm">
         <div className="flex items-center gap-3">
+          {isUnlocked ? (
+            <Unlock className="h-5 w-5 text-green-500" />
+          ) : (
+            <Lock className="h-5 w-5 text-muted-foreground" />
+          )}
           <div>
-            <div className="flex items-center gap-2">
-              <h2 className="text-lg font-semibold">高级系统设置</h2>
-              {isUnlocked ? (
-                <Unlock className="h-4 w-4 text-green-500" />
-              ) : (
-                <Lock className="h-4 w-4 text-muted-foreground" />
-              )}
-            </div>
-            <p className="text-sm text-muted-foreground mt-1">
-              管理系统级配置参数，包括交易规则和费用设置
+            <div className="text-sm font-medium text-foreground">
+              交易设置
               {!isUnlocked && (
-                <span className="ml-2 text-amber-600 dark:text-amber-400">
-                  （已锁定，需要解锁才能修改）
+                <span className="ml-2 text-xs text-amber-600 dark:text-amber-400 font-normal">
+                  （已锁定）
                 </span>
               )}
-            </p>
+            </div>
+            <div className="text-xs text-muted-foreground mt-0.5">
+              管理交易配置参数，包括交易规则和费用设置
+            </div>
           </div>
         </div>
         <div className="flex items-center gap-2">
@@ -329,20 +389,13 @@ export function AdvancedSystemSettings() {
         </div>
       </div>
 
-      <UnlockConfirmDialog
-        open={showUnlockDialog}
-        onOpenChange={setShowUnlockDialog}
-        onConfirm={handleUnlockConfirm}
-      />
-
       <div className="w-full">
-        <MasonryLayout columns={columns} gap={16}>
+        <MasonryLayout columns={columns} gap={32}>
           {Object.keys(groupedSettings).map((category) => (
             <SettingsSection
               key={category}
               title={categoryNames[category] || category}
               description={`${categoryNames[category] || category}相关配置`}
-              icon={<Settings className="h-5 w-5" />}
             >
               {groupedSettings[category].map(renderSettingItem)}
             </SettingsSection>

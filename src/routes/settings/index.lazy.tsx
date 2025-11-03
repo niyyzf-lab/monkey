@@ -1,14 +1,12 @@
 import { UnifiedPageHeader } from '@/components/common/unified-page-header';
-import { AdvancedSystemSettings } from '@/components/settings/advanced-system-settings';
+import { AdvancedTradingSettings } from '@/components/settings/advanced-trading-settings';
 import { AppearanceSettings } from '@/components/settings/appearance-settings';
 import { DataSettings } from '@/components/settings/data-settings';
 import { AboutSettings } from '@/components/settings/about-settings';
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import { SettingsNav } from '@/components/settings/settings-nav';
 import { createLazyFileRoute } from '@tanstack/react-router';
-import { Palette, Database, Info, Settings as SettingsIcon } from 'lucide-react';
-import { useState } from 'react';
 import { useSettings } from '@/hooks';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 
 export const Route = createLazyFileRoute('/settings/')({
   component: SettingsPage,
@@ -31,80 +29,99 @@ function SettingsPage() {
     isLoading,
   } = useSettings();
 
-  const [activeTab, setActiveTab] = useState('appearance');
-
   return (
     <div className="h-full overflow-y-auto">
       {/* 页面标题 - 统一标题栏（浮动） */}
       <UnifiedPageHeader
-        title="倒腾"
+        title="设置"
         subtitle="管理应用的所有配置和偏好设置"
       />
       
-      {/* 全宽布局 */}
-      <div className="w-full pt-6 px-4 pb-6 max-w-[1600px] mx-auto">
-        {/* 标签页 */}
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-          <TabsList className="grid w-full grid-cols-4 lg:w-auto lg:inline-flex bg-muted/30 p-1 h-9">
-            <TabsTrigger value="appearance" className="gap-1.5 px-3 h-7 text-xs font-medium data-[state=active]:bg-background data-[state=active]:shadow-sm">
-              <Palette className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline">外观</span>
-            </TabsTrigger>
-            <TabsTrigger value="data" className="gap-1.5 px-3 h-7 text-xs font-medium data-[state=active]:bg-background data-[state=active]:shadow-sm">
-              <Database className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline">数据</span>
-            </TabsTrigger>
-            <TabsTrigger value="system" className="gap-1.5 px-3 h-7 text-xs font-medium data-[state=active]:bg-background data-[state=active]:shadow-sm">
-              <SettingsIcon className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline">系统</span>
-            </TabsTrigger>
-            <TabsTrigger value="about" className="gap-1.5 px-3 h-7 text-xs font-medium data-[state=active]:bg-background data-[state=active]:shadow-sm">
-              <Info className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline">关于</span>
-            </TabsTrigger>
-          </TabsList>
+      {/* 右侧悬浮导航 */}
+      <SettingsNav />
 
-          {/* 外观设置 */}
-          <TabsContent value="appearance" className="mt-4">
-            <AppearanceSettings
-              settings={{
-                theme: settings.theme,
-                viewMode: settings.viewMode,
-                statisticsDisplayMode: settings.statisticsDisplayMode,
-                sidebarOpen: settings.sidebarOpen,
-                trafficLightsPosition: settings.trafficLightsPosition,
-              }}
-              setTheme={setTheme}
-              setViewMode={setViewMode}
-              setStatisticsDisplayMode={setStatisticsDisplayMode}
-              setSidebarOpen={setSidebarOpen}
-              setTrafficLightsPosition={setTrafficLightsPosition}
-            />
-          </TabsContent>
+      {/* 主内容区域 - 全宽布局 */}
+      <div className="w-full pt-8 px-8 pb-12 xl:pr-[180px]">
+        {/* 外观设置 */}
+        <motion.section
+          id="appearance"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3 }}
+          className="mb-16 scroll-mt-24"
+        >
+          <div className="mb-8">
+            <h2 className="text-2xl font-semibold text-foreground mb-2">外观设置</h2>
+            <p className="text-sm text-muted-foreground">自定义应用的外观和视觉效果</p>
+          </div>
+          <AppearanceSettings
+            settings={{
+              theme: settings.theme,
+              viewMode: settings.viewMode,
+              statisticsDisplayMode: settings.statisticsDisplayMode,
+              sidebarOpen: settings.sidebarOpen,
+              trafficLightsPosition: settings.trafficLightsPosition,
+            }}
+            setTheme={setTheme}
+            setViewMode={setViewMode}
+            setStatisticsDisplayMode={setStatisticsDisplayMode}
+            setSidebarOpen={setSidebarOpen}
+            setTrafficLightsPosition={setTrafficLightsPosition}
+          />
+        </motion.section>
 
-          {/* 数据管理 */}
-          <TabsContent value="data" className="mt-4">
-            <DataSettings
-              cacheStats={cacheStats}
-              refreshCacheStats={refreshCacheStats}
-              exportConfig={exportConfig}
-              importConfig={importConfig}
-              clearCache={clearCache}
-              resetSettings={resetSettings}
-              isLoading={isLoading}
-            />
-          </TabsContent>
+        {/* 数据管理 */}
+        <motion.section
+          id="data"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3, delay: 0.05 }}
+          className="mb-16 scroll-mt-24"
+        >
+          <div className="mb-8">
+            <h2 className="text-2xl font-semibold text-foreground mb-2">数据管理</h2>
+            <p className="text-sm text-muted-foreground">管理本地数据、缓存和配置</p>
+          </div>
+          <DataSettings
+            cacheStats={cacheStats}
+            refreshCacheStats={refreshCacheStats}
+            exportConfig={exportConfig}
+            importConfig={importConfig}
+            clearCache={clearCache}
+            resetSettings={resetSettings}
+            isLoading={isLoading}
+          />
+        </motion.section>
 
-          {/* 系统设置 */}
-          <TabsContent value="system" className="mt-4">
-            <AdvancedSystemSettings />
-          </TabsContent>
+        {/* 交易设置 */}
+        <motion.section
+          id="system"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3, delay: 0.1 }}
+          className="mb-16 scroll-mt-24"
+        >
+          <div className="mb-8">
+            <h2 className="text-2xl font-semibold text-foreground mb-2">交易设置</h2>
+            <p className="text-sm text-muted-foreground">高级交易配置和交易规则</p>
+          </div>
+          <AdvancedTradingSettings />
+        </motion.section>
 
-          {/* 关于 */}
-          <TabsContent value="about" className="mt-4">
-            <AboutSettings />
-          </TabsContent>
-        </Tabs>
+        {/* 关于 */}
+        <motion.section
+          id="about"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3, delay: 0.15 }}
+          className="mb-16 scroll-mt-24"
+        >
+          <div className="mb-8">
+            <h2 className="text-2xl font-semibold text-foreground mb-2">关于</h2>
+            <p className="text-sm text-muted-foreground">应用信息和版本更新</p>
+          </div>
+          <AboutSettings />
+        </motion.section>
       </div>
     </div>
   );

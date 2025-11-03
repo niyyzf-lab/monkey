@@ -1,6 +1,5 @@
 import { SettingsSection, SettingsItem } from '@/components/settings';
 import { Switch } from '@/components/ui/switch';
-import { Palette } from 'lucide-react';
 import { toast } from 'sonner';
 import { MasonryLayout } from '@/components/common/masonry-layout';
 import { useResponsiveColumns } from '@/hooks/use-responsive-columns';
@@ -57,15 +56,15 @@ export function AppearanceSettings({
   const columns = useResponsiveColumns(2);
 
   return (
-    <MasonryLayout columns={columns} gap={24}>
+    <MasonryLayout columns={columns} gap={32}>
       <SettingsSection
         title="主题设置"
-        description="自定义应用的外观和视觉效果"
-        icon={<Palette className="h-5 w-5" />}
+        description="自定义应用的外观主题和视觉样式"
       >
         <SettingsItem
           label="跟随系统主题"
-          description="自动根据系统设置切换主题"
+          description="自动根据操作系统设置切换主题"
+          hint="系统主题变更时自动应用"
         >
           <Switch
             checked={isFollowingSystem}
@@ -76,6 +75,7 @@ export function AppearanceSettings({
         <SettingsItem
           label="深色模式"
           description={isFollowingSystem ? '当前由系统控制' : '手动切换深色或浅色主题'}
+          hint={isFollowingSystem ? 'system' : isDarkMode ? 'dark' : 'light'}
         >
           <Switch
             checked={isDarkMode}
@@ -87,11 +87,12 @@ export function AppearanceSettings({
 
       <SettingsSection
         title="视图偏好"
-        description="设置数据的默认显示方式"
+        description="配置数据展示的默认视图和格式"
       >
         <SettingsItem
           label="持仓视图模式"
-          description="选择卡片或列表视图"
+          description="选择默认的持仓数据展示方式"
+          hint="card | table"
         >
           <select
             value={settings.viewMode}
@@ -108,7 +109,8 @@ export function AppearanceSettings({
 
         <SettingsItem
           label="统计数值显示"
-          description="选择统计数字的显示格式"
+          description="选择统计数字的显示格式和单位"
+          hint="auto | yuan"
         >
           <select
             value={settings.statisticsDisplayMode}
@@ -125,7 +127,8 @@ export function AppearanceSettings({
 
         <SettingsItem
           label="侧边栏默认状态"
-          description="设置侧边栏是否默认展开"
+          description="设置应用启动时侧边栏的初始展开状态"
+          hint={settings.sidebarOpen ? 'expanded' : 'collapsed'}
         >
           <Switch
             checked={settings.sidebarOpen}
@@ -139,11 +142,12 @@ export function AppearanceSettings({
 
       <SettingsSection
         title="窗口控制"
-        description="设置窗口控制按钮的位置"
+        description="设置 macOS 风格窗口控制按钮的显示位置"
       >
         <SettingsItem
           label="红绿灯位置"
-          description="选择 macOS 风格窗口控制按钮的显示位置"
+          description="调整窗口控制按钮在窗口中的位置"
+          hint={settings.trafficLightsPosition}
         >
           <select
             value={settings.trafficLightsPosition}

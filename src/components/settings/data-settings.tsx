@@ -1,7 +1,7 @@
 import { SettingsSection } from '@/components/settings';
 import { Button } from '@/components/ui/button';
 import { API_BASE_URL } from '@/api/api';
-import { Wifi, Loader2, WifiOff, Check, AlertCircle, RefreshCw, Download, Upload, Trash2, RotateCcw, Database } from 'lucide-react';
+import { Wifi, Loader2, WifiOff, Check, AlertCircle, RefreshCw, Download, Upload, Trash2, RotateCcw } from 'lucide-react';
 import { useState, useRef } from 'react';
 import { toast } from 'sonner';
 import { MasonryLayout } from '@/components/common/masonry-layout';
@@ -160,18 +160,20 @@ export function DataSettings({
   const columns = useResponsiveColumns(2);
 
   return (
-    <MasonryLayout columns={columns} gap={24}>
+    <MasonryLayout columns={columns} gap={32}>
       <SettingsSection
         title="服务器连接"
-        description="测试与后端服务器的连接状态"
-        icon={<Wifi className="h-5 w-5" />}
+        description="测试与后端 API 服务器的连接状态和网络配置"
       >
         <div className="space-y-4">
-          <div className="flex items-center justify-between p-4 bg-muted/50 rounded-lg">
-            <div className="flex-1">
-              <div className="text-sm font-medium text-foreground">服务器地址</div>
-              <div className="text-xs text-muted-foreground mt-1 font-mono">
+          <div className="flex items-center justify-between p-4 bg-background/60 rounded-md border border-border/15">
+            <div className="flex-1 min-w-0">
+              <div className="text-sm font-medium text-foreground mb-1">服务器地址</div>
+              <div className="text-xs text-muted-foreground font-mono break-all">
                 {API_BASE_URL}
+              </div>
+              <div className="text-[10px] text-muted-foreground/70 mt-1.5">
+                API endpoint for backend services
               </div>
             </div>
             <div className="flex-shrink-0 ml-4">
@@ -202,20 +204,21 @@ export function DataSettings({
           </Button>
 
           {serverStatus === 'success' && (
-            <div className="flex items-start gap-2 p-3 bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-800 rounded-lg text-sm">
+            <div className="flex items-start gap-2.5 p-3.5 bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-800 rounded-lg text-sm">
               <Check className="h-4 w-4 text-green-600 dark:text-green-400 mt-0.5 flex-shrink-0" />
               <div className="text-green-900 dark:text-green-100">
-                <strong>连接成功!</strong> 服务器运行正常。
+                <div className="font-semibold mb-1">连接成功</div>
+                <div className="text-xs text-green-800 dark:text-green-200">服务器运行正常，API 服务可用</div>
               </div>
             </div>
           )}
 
           {serverStatus === 'error' && serverError && (
-            <div className="flex items-start gap-2 p-3 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800 rounded-lg text-sm">
+            <div className="flex items-start gap-2.5 p-3.5 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800 rounded-lg text-sm">
               <AlertCircle className="h-4 w-4 text-red-600 dark:text-red-400 mt-0.5 flex-shrink-0" />
               <div className="flex-1 min-w-0">
-                <div className="text-red-900 dark:text-red-100 font-semibold mb-1">连接失败</div>
-                <div className="text-red-800 dark:text-red-200 whitespace-pre-wrap break-all font-mono text-xs">
+                <div className="text-red-900 dark:text-red-100 font-semibold mb-1.5">连接失败</div>
+                <div className="text-red-800 dark:text-red-200 whitespace-pre-wrap break-all font-mono text-xs leading-relaxed">
                   {serverError}
                 </div>
               </div>
@@ -226,47 +229,53 @@ export function DataSettings({
 
       <SettingsSection
         title="缓存统计"
-        description="查看和管理本地存储的数据"
-        icon={<Database className="h-5 w-5" />}
+        description="查看和管理本地存储的数据缓存和配置信息"
       >
-        <div className="grid grid-cols-2 gap-4 p-4 bg-muted/50 rounded-lg">
-          <div>
-            <div className="text-xs text-muted-foreground">总项目数</div>
-            <div className="text-2xl font-bold text-foreground mt-1">
+        <div className="grid grid-cols-2 gap-4 p-4 bg-background/60 rounded-md border border-border/15">
+          <div className="space-y-1">
+            <div className="text-xs text-muted-foreground uppercase tracking-wide">总项目数</div>
+            <div className="text-2xl font-bold text-foreground">
               {cacheStats.totalItems}
             </div>
+            <div className="text-[10px] text-muted-foreground/70">Total items</div>
           </div>
-          <div>
-            <div className="text-xs text-muted-foreground">配置项</div>
-            <div className="text-2xl font-bold text-primary mt-1">
+          <div className="space-y-1">
+            <div className="text-xs text-muted-foreground uppercase tracking-wide">配置项</div>
+            <div className="text-2xl font-bold text-primary">
               {cacheStats.settingsItems}
             </div>
+            <div className="text-[10px] text-muted-foreground/70">Settings</div>
           </div>
-          <div>
-            <div className="text-xs text-muted-foreground">临时缓存</div>
-            <div className="text-2xl font-bold text-orange-500 mt-1">
+          <div className="space-y-1">
+            <div className="text-xs text-muted-foreground uppercase tracking-wide">临时缓存</div>
+            <div className="text-2xl font-bold text-orange-500">
               {cacheStats.temporaryItems}
             </div>
+            <div className="text-[10px] text-muted-foreground/70">Temporary</div>
           </div>
-          <div>
-            <div className="text-xs text-muted-foreground">总大小</div>
-            <div className="text-2xl font-bold text-foreground mt-1">
+          <div className="space-y-1">
+            <div className="text-xs text-muted-foreground uppercase tracking-wide">总大小</div>
+            <div className="text-2xl font-bold text-foreground">
               {formatSize(cacheStats.totalSize)}
             </div>
+            <div className="text-[10px] text-muted-foreground/70">Storage used</div>
           </div>
         </div>
 
         <Button
           variant="outline"
           onClick={refreshCacheStats}
-          className="w-full gap-2"
+          className="w-full gap-2 mt-4"
         >
           <RefreshCw className="h-4 w-4" />
           刷新统计
         </Button>
       </SettingsSection>
 
-      <SettingsSection title="配置管理" description="导入、导出或重置配置">
+      <SettingsSection 
+        title="配置管理" 
+        description="导入、导出或重置应用配置和设置"
+      >
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <Button
             variant="outline"
@@ -316,10 +325,13 @@ export function DataSettings({
           </Button>
         </div>
 
-        <div className="flex items-start gap-2 p-3 bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-lg text-sm">
+        <div className="flex items-start gap-2.5 p-3.5 bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-lg text-sm mt-4">
           <AlertCircle className="h-4 w-4 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" />
           <div className="text-blue-900 dark:text-blue-100">
-            <strong>提示:</strong> 临时缓存包括页面折叠状态、分页位置等会话级数据,清空后不影响主要配置。
+            <div className="font-semibold mb-1">提示</div>
+            <div className="text-xs text-blue-800 dark:text-blue-200 leading-relaxed">
+              临时缓存包括页面折叠状态、分页位置等会话级数据。清空后不影响主要配置，页面刷新后会自动重建。
+            </div>
           </div>
         </div>
       </SettingsSection>
